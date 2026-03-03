@@ -16,9 +16,10 @@ export default function Header() {
           'mx-auto max-w-5xl flex items-center justify-between',
           'px-6 py-3 rounded-full transition-all duration-500',
           scrolled
-            ? 'bg-white/80 backdrop-blur-xl shadow-gamma-card border border-slate-100'
-            : 'bg-white/40 backdrop-blur-md border border-transparent'
+            ? 'bg-white/85 backdrop-blur-xl shadow-gamma-card border border-slate-100/80'
+            : 'bg-white/40 backdrop-blur-md border border-transparent',
         )}
+        aria-label="Main navigation"
       >
         <a href="#" className="flex items-center">
           <span className="text-lg font-bold text-ink tracking-tight">
@@ -51,6 +52,7 @@ export default function Header() {
           className="md:hidden flex flex-col gap-1.5 p-2"
           onClick={() => setMobileOpen(!mobileOpen)}
           aria-label="Toggle menu"
+          aria-expanded={mobileOpen}
         >
           <motion.span
             animate={mobileOpen ? { rotate: 45, y: 6 } : { rotate: 0, y: 0 }}
@@ -74,7 +76,7 @@ export default function Header() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -10, scale: 0.98 }}
             transition={{ duration: 0.2 }}
-            className="md:hidden mx-auto max-w-5xl mt-2 p-6 rounded-3xl bg-white/90 backdrop-blur-xl border border-slate-100 shadow-gamma-float"
+            className="md:hidden mx-auto max-w-5xl mt-2 p-6 rounded-3xl bg-white/90 backdrop-blur-xl border border-slate-100/80 shadow-gamma-float"
           >
             <div className="flex flex-col gap-2">
               {NAV_LINKS.map((link) => (

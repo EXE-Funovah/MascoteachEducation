@@ -2,7 +2,7 @@
 
 export default function Footer() {
   return (
-    <footer className="bg-surface border-t border-slate-100">
+    <footer className="bg-surface border-t border-slate-100/80">
       <div className="max-w-7xl mx-auto px-6 py-16">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-10">
           <div className="col-span-2 md:col-span-1">
@@ -15,7 +15,7 @@ export default function Footer() {
                 <a
                   key={social}
                   href="#"
-                  className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center text-ink-muted hover:bg-slate-200 hover:text-ink transition-colors text-xs font-medium"
+                  className="w-9 h-9 rounded-full bg-white border border-slate-100 flex items-center justify-center text-ink-muted hover:bg-blue-50 hover:text-brand-blue hover:border-blue-200 transition-all duration-300 text-xs font-medium shadow-sm"
                   aria-label={social}
                 >
                   {social[0]}
@@ -25,7 +25,7 @@ export default function Footer() {
           </div>
 
           {FOOTER.columns.map((col) => (
-            <div key={col.title}>
+            <nav key={col.title} aria-label={col.title}>
               <h4 className="text-sm font-semibold text-ink mb-4 tracking-wide">
                 {col.title}
               </h4>
@@ -34,24 +34,24 @@ export default function Footer() {
                   <li key={link.label}>
                     <a
                       href={link.href}
-                      className="text-sm text-ink-muted hover:text-ink transition-colors"
+                      className="text-sm text-ink-muted hover:text-brand-blue transition-colors"
                     >
                       {link.label}
                     </a>
                   </li>
                 ))}
               </ul>
-            </div>
+            </nav>
           ))}
         </div>
 
-        <div className="mt-16 pt-8 border-t border-slate-100 flex flex-col md:flex-row items-center justify-between gap-4">
+        <div className="mt-16 pt-8 border-t border-slate-100/80 flex flex-col md:flex-row items-center justify-between gap-4">
           <p className="text-sm text-ink-muted">{FOOTER.copyright}</p>
           <div className="flex gap-6 text-sm text-ink-muted">
-            <a href="#" className="hover:text-ink transition-colors">
+            <a href="#" className="hover:text-brand-blue transition-colors">
               Chính sách bảo mật
             </a>
-            <a href="#" className="hover:text-ink transition-colors">
+            <a href="#" className="hover:text-brand-blue transition-colors">
               Điều khoản sử dụng
             </a>
           </div>

@@ -4,7 +4,7 @@ import Badge from '@/components/common/Badge';
 import { FEATURES } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 
-/* Icon map cho từng feature — brand blue palette */
+/* Vibrant icon set — brand blue palette */
 const FEATURE_ICONS = {
   'mascot-ai': (
     <svg className="w-10 h-10" viewBox="0 0 40 40" fill="none">
@@ -43,77 +43,109 @@ const FEATURE_ICONS = {
   ),
 };
 
+/* Pastel backgrounds per feature */
+const CARD_STYLES = {
+  'mascot-ai': {
+    bg: 'bg-blue-50/60',
+    border: 'border-blue-100/80',
+  },
+  'quiz-game': {
+    bg: 'bg-violet-50/60',
+    border: 'border-violet-100/80',
+  },
+  'analytics': {
+    bg: 'bg-teal-50/60',
+    border: 'border-teal-100/80',
+  },
+  'hardware': {
+    bg: 'bg-amber-50/60',
+    border: 'border-amber-100/80',
+  },
+};
+
 export default function FeatureBentoGrid() {
   return (
-    <section id="features" className="py-32 mesh-feature relative overflow-hidden">
-      <div className="orb orb-sky w-[400px] h-[400px] -top-20 right-0 opacity-50" />
+    <section id="features" className="py-24 md:py-32 relative overflow-hidden" aria-label="Tính năng">
+      <div className="orb orb-sky w-[400px] h-[400px] -top-20 right-0 opacity-40" />
+      <div className="orb orb-pink w-[300px] h-[300px] bottom-10 -left-20 opacity-30" />
+
       <div className="relative z-10 max-w-7xl mx-auto px-6">
         <FadeInUp>
-          <div className="text-center max-w-2xl mx-auto mb-20">
+          <div className="text-center max-w-2xl mx-auto mb-16 md:mb-20">
             <Badge color="violet" className="mb-4">Tính năng</Badge>
             <h2 className="text-display-md md:text-display-lg">
               Mọi thứ giáo viên cần,{' '}
               <span className="text-gradient">trong một nền tảng</span>
             </h2>
-            <p className="mt-6 text-body-lg text-ink-secondary">
+            <p className="mt-6 text-body-lg text-ink/80 font-medium">
               Từ mascot AI đến phần cứng IoT — Mascoteach là hệ sinh thái toàn diện cho lớp học thế hệ mới.
             </p>
           </div>
         </FadeInUp>
 
-        {/* Bento Grid: 2+1 / 1+2 columns */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 auto-rows-auto">
-          {FEATURES.map((feature, idx) => (
-            <motion.div
-              key={feature.id}
-              className={cn(
-                'group relative rounded-4xl border border-slate-100 bg-white overflow-hidden',
-                'shadow-gamma-card hover:shadow-gamma-hover transition-all duration-300',
-                'hover:-translate-y-1 flex flex-col',
-                feature.span
-              )}
-              initial={{ opacity: 0, y: 24 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: '-60px' }}
-              transition={{ duration: 0.5, delay: idx * 0.1, ease: [0.25, 0.4, 0.25, 1] }}
-              whileHover={{ scale: 1.01 }}
-            >
-              {/* Visual area */}
-              <div className={cn(
-                'relative flex items-center justify-center overflow-hidden',
-                feature.span === 'md:col-span-2' ? 'h-52' : 'h-44',
-                feature.bgColor
-              )}>
-                {/* Decorative circles */}
-                <div className="absolute inset-0 opacity-30">
-                  <div className="absolute top-4 left-6 w-16 h-16 rounded-full bg-white/50" />
-                  <div className="absolute bottom-2 right-8 w-10 h-10 rounded-full bg-white/40" />
-                  <div className="absolute top-1/2 right-1/4 w-6 h-6 rounded-full bg-white/60" />
-                </div>
-                {/* Icon in floating card */}
-                <motion.div
-                  className="relative z-10 w-20 h-20 rounded-3xl bg-white shadow-gamma-card flex items-center justify-center"
-                  animate={{ y: [0, -6, 0] }}
-                  transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut', delay: idx * 0.5 }}
-                >
-                  {FEATURE_ICONS[feature.id]}
-                </motion.div>
-              </div>
+        {/* ── Bento grid: asymmetric layout ── */}
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-5 auto-rows-auto">
+          {FEATURES.map((feature, idx) => {
+            const styles = CARD_STYLES[feature.id];
+            const colSpan = idx === 0 ? 'md:col-span-7' : idx === 1 ? 'md:col-span-5' : idx === 2 ? 'md:col-span-5' : 'md:col-span-7';
 
-              {/* Content */}
-              <div className="p-8 flex flex-col flex-1">
-                <Badge color={feature.badgeColor} className="mb-3 self-start">
-                  {feature.badge}
-                </Badge>
-                <h3 className="text-xl font-semibold text-ink mb-2">
-                  {feature.title}
-                </h3>
-                <p className="text-body-md text-ink-secondary leading-relaxed">
-                  {feature.description}
-                </p>
-              </div>
-            </motion.div>
-          ))}
+            return (
+              <motion.article
+                key={feature.id}
+                className={cn(
+                  'group relative rounded-4xl border overflow-hidden',
+                  'shadow-card-pastel hover:shadow-gamma-hover transition-all duration-400',
+                  'hover:-translate-y-1.5 flex flex-col bg-white',
+                  styles.border,
+                  colSpan,
+                )}
+                initial={{ opacity: 0, y: 28 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: '-60px' }}
+                transition={{ duration: 0.6, delay: idx * 0.1, ease: [0.25, 0.4, 0.25, 1] }}
+                whileHover={{ scale: 1.01 }}
+              >
+                {/* Visual area */}
+                <div className={cn(
+                  'relative flex items-center justify-center overflow-hidden',
+                  idx === 0 || idx === 3 ? 'h-52' : 'h-44',
+                  styles.bg,
+                )}>
+                  {/* Decorative circles */}
+                  <div className="absolute inset-0 opacity-40">
+                    <div className="absolute top-4 left-6 w-20 h-20 rounded-full bg-white/50 animate-blob" />
+                    <div className="absolute bottom-2 right-8 w-12 h-12 rounded-full bg-white/40" />
+                    <div className="absolute top-1/2 right-1/4 w-8 h-8 rounded-full bg-white/60" />
+                  </div>
+
+                  {/* Icon in floating pill */}
+                  <motion.div
+                    className={cn(
+                      'relative z-10 w-20 h-20 rounded-3xl bg-white shadow-gamma-card flex items-center justify-center',
+                      'group-hover:shadow-gamma-hover transition-shadow duration-300'
+                    )}
+                    animate={{ y: [0, -8, 0] }}
+                    transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut', delay: idx * 0.5 }}
+                  >
+                    {FEATURE_ICONS[feature.id]}
+                  </motion.div>
+                </div>
+
+                {/* Content */}
+                <div className="p-7 md:p-8 flex flex-col flex-1">
+                  <Badge color={feature.badgeColor} className="mb-3 self-start">
+                    {feature.badge}
+                  </Badge>
+                  <h3 className="text-xl font-bold text-ink mb-2">
+                    {feature.title}
+                  </h3>
+                  <p className="text-body-md text-ink/75 leading-relaxed">
+                    {feature.description}
+                  </p>
+                </div>
+              </motion.article>
+            );
+          })}
         </div>
       </div>
     </section>

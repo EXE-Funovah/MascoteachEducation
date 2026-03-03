@@ -8,15 +8,15 @@ import { cn } from '@/lib/utils';
 function CheckIcon({ included }) {
   if (included) {
     return (
-      <div className="w-5 h-5 rounded-full bg-emerald-50 flex items-center justify-center flex-shrink-0">
-        <svg className="w-3 h-3 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
+        <svg className="w-3 h-3 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
         </svg>
       </div>
     );
   }
   return (
-    <div className="w-5 h-5 rounded-full bg-slate-50 flex items-center justify-center flex-shrink-0">
+    <div className="w-5 h-5 rounded-full bg-slate-100 flex items-center justify-center flex-shrink-0">
       <svg className="w-3 h-3 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
       </svg>
@@ -26,8 +26,9 @@ function CheckIcon({ included }) {
 
 export default function PricingTable() {
   return (
-    <section id="pricing" className="py-32 mesh-pricing relative overflow-hidden">
-      <div className="orb orb-violet w-[400px] h-[400px] -top-32 left-1/2 -translate-x-1/2 opacity-40" />
+    <section id="pricing" className="py-24 md:py-32 mesh-pricing relative overflow-hidden" aria-label="Bảng giá">
+      <div className="orb orb-violet w-[450px] h-[450px] -top-32 left-1/2 -translate-x-1/2 opacity-30" />
+      <div className="orb orb-peach w-[300px] h-[300px] bottom-0 right-0 opacity-25" />
 
       <div className="relative z-10 max-w-7xl mx-auto px-6">
         <FadeInUp>
@@ -43,47 +44,59 @@ export default function PricingTable() {
           </div>
         </FadeInUp>
 
-        {/* Pricing cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-stretch">
+        {/* ── Pricing cards ── */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 items-stretch">
           {PRICING_PLANS.map((plan, idx) => (
-            <motion.div
+            <motion.article
               key={plan.id}
               className={cn(
-                'relative rounded-4xl flex flex-col transition-all duration-300 bg-white',
+                'relative rounded-4xl flex flex-col transition-all duration-400',
                 plan.popular
-                  ? 'ring-2 ring-brand-blue shadow-gamma-float'
-                  : 'border border-slate-100 shadow-gamma-card hover:shadow-gamma-hover hover:-translate-y-1'
+                  ? 'gradient-border-pro bg-white md:scale-[1.04] md:-my-4 z-10 shadow-gamma-float'
+                  : 'bg-white border border-slate-100/80 shadow-gamma-card hover:shadow-gamma-hover hover:-translate-y-2',
               )}
-              initial={{ opacity: 0, y: 24 }}
+              initial={{ opacity: 0, y: 28 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: '-60px' }}
               transition={{ duration: 0.5, delay: idx * 0.12, ease: [0.25, 0.4, 0.25, 1] }}
-              whileHover={!plan.popular ? { y: -4 } : {}}
+              whileHover={!plan.popular ? { y: -6 } : {}}
             >
+              {/* Popular badge */}
               {plan.badge && (
-                <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 z-10">
+                <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-10">
                   <span className={cn(
-                    'px-4 py-1.5 rounded-full text-xs font-semibold text-white whitespace-nowrap',
+                    'px-5 py-2 rounded-full text-xs font-bold text-white whitespace-nowrap shadow-lg',
                     plan.popular
-                      ? 'bg-gradient-to-r from-brand-navy to-brand-blue'
-                      : 'bg-brand-navy'
+                      ? 'bg-gradient-to-r from-brand-navy via-brand-blue to-brand-mid'
+                      : 'bg-gradient-to-r from-slate-600 to-slate-700'
                   )}>
+                    {plan.popular && (
+                      <span className="mr-1.5">✦</span>
+                    )}
                     {plan.badge}
                   </span>
                 </div>
               )}
 
               {/* Card body */}
-              <div className="p-8 flex flex-col flex-1">
+              <div className={cn(
+                'p-7 md:p-8 flex flex-col flex-1',
+                plan.popular && 'pt-10',
+              )}>
                 {/* Header */}
                 <div className="mb-6">
-                  <h3 className="text-xl font-semibold text-ink">{plan.name}</h3>
-                  <p className="mt-1 text-sm text-ink-muted">{plan.description}</p>
+                  <h3 className="text-xl font-bold text-ink">{plan.name}</h3>
+                  <p className="mt-1.5 text-sm text-ink-muted">{plan.description}</p>
                 </div>
 
                 {/* Price */}
                 <div className="mb-8">
-                  <span className="text-display-sm font-bold text-ink">{plan.priceLabel}</span>
+                  <span className={cn(
+                    'text-display-sm font-extrabold',
+                    plan.popular ? 'text-gradient' : 'text-ink',
+                  )}>
+                    {plan.priceLabel}
+                  </span>
                   {plan.priceUnit && (
                     <span className="text-body-md text-ink-muted ml-1">{plan.priceUnit}</span>
                   )}
@@ -93,19 +106,22 @@ export default function PricingTable() {
                 <Button
                   variant={plan.popular ? 'primary' : 'secondary'}
                   size="lg"
-                  className="w-full mb-8"
+                  className={cn(
+                    'w-full mb-8',
+                    plan.popular && 'shadow-gamma-btn hover:shadow-gamma-btn-hover',
+                  )}
                 >
                   {plan.cta}
                 </Button>
 
                 {/* Features */}
-                <ul className="space-y-3 flex-1">
+                <ul className="space-y-3.5 flex-1">
                   {plan.features.map((feat, i) => (
                     <li key={i} className="flex items-start gap-3">
                       <CheckIcon included={feat.included} />
                       <span className={cn(
                         'text-sm leading-relaxed',
-                        feat.included ? 'text-ink-secondary' : 'text-ink-light'
+                        feat.included ? 'text-ink-secondary' : 'text-ink-light',
                       )}>
                         {feat.text}
                       </span>
@@ -113,10 +129,10 @@ export default function PricingTable() {
                   ))}
                 </ul>
 
-                {/* Trust box — luôn ở cuối card */}
+                {/* Trust box */}
                 {plan.trustBox && (
-                  <div className="mt-8 p-5 rounded-2xl bg-surface-violet border border-violet-100">
-                    <h4 className="text-sm font-semibold text-violet-700 mb-3 flex items-center gap-2">
+                  <div className="mt-8 p-5 rounded-2xl bg-gradient-to-br from-blue-50/80 to-sky-50/60 border border-blue-100/60">
+                    <h4 className="text-sm font-semibold text-brand-navy mb-3 flex items-center gap-2">
                       <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                       </svg>
@@ -124,8 +140,8 @@ export default function PricingTable() {
                     </h4>
                     <ul className="space-y-2">
                       {plan.trustBox.items.map((item, i) => (
-                        <li key={i} className="flex items-start gap-2 text-xs text-violet-600">
-                          <span className="mt-0.5 text-violet-400 flex-shrink-0">✦</span>
+                        <li key={i} className="flex items-start gap-2 text-xs text-brand-blue">
+                          <span className="mt-0.5 text-brand-mid flex-shrink-0">✦</span>
                           {item}
                         </li>
                       ))}
@@ -133,7 +149,7 @@ export default function PricingTable() {
                   </div>
                 )}
               </div>
-            </motion.div>
+            </motion.article>
           ))}
         </div>
       </div>
