@@ -24,8 +24,7 @@ export default function InteractiveShowcase() {
           <div className="text-center max-w-2xl mx-auto mb-16 md:mb-20">
             <Badge color="teal" className="mb-4">Giải pháp</Badge>
             <h2 className="text-display-md md:text-display-lg">
-              Xem Mascoteach{' '}
-              <span className="text-gradient">trong hành động</span>
+              Xem Mascoteach trong hành động
             </h2>
             <p className="mt-6 text-body-lg text-ink/80 font-medium">
               Ba trụ cột tạo nên trải nghiệm lớp học khác biệt.

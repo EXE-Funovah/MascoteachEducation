@@ -35,8 +35,7 @@ export default function PricingTable() {
           <div className="text-center max-w-2xl mx-auto mb-16">
             <Badge color="pink" className="mb-4">Bảng giá</Badge>
             <h2 className="text-display-md md:text-display-lg">
-              Chọn gói phù hợp{' '}
-              <span className="text-gradient">cho bạn</span>
+              Chọn gói phù hợp cho bạn
             </h2>
             <p className="mt-6 text-body-lg text-ink-secondary">
               Bắt đầu miễn phí, mở rộng khi cần — không ràng buộc hợp đồng.
@@ -91,10 +90,7 @@ export default function PricingTable() {
 
                 {/* Price */}
                 <div className="mb-8">
-                  <span className={cn(
-                    'text-display-sm font-extrabold',
-                    plan.popular ? 'text-gradient' : 'text-ink',
-                  )}>
+                  <span className="text-display-sm font-extrabold text-ink">
                     {plan.priceLabel}
                   </span>
                   {plan.priceUnit && (
@@ -104,12 +100,12 @@ export default function PricingTable() {
 
                 {/* CTA */}
                 <Button
-                  variant={plan.popular ? 'primary' : 'secondary'}
+                  variant={plan.popular ? 'outline' : 'secondary'}
                   size="lg"
                   className={cn(
-                    'w-full mb-8',
-                    plan.popular && 'shadow-gamma-btn hover:shadow-gamma-btn-hover',
+                    'w-full mb-8'
                   )}
+                  href="/signup"
                 >
                   {plan.cta}
                 </Button>

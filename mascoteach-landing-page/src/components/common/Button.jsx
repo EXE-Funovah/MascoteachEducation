@@ -13,9 +13,9 @@ const variants = {
 
 const sizes = {
   sm: 'px-4 py-2 text-sm rounded-full',
-  md: 'px-6 py-3 text-body-sm rounded-full',
-  lg: 'px-8 py-4 text-body-md rounded-full font-medium',
-  xl: 'px-10 py-5 text-body-lg rounded-full font-semibold',
+  md: 'px-6 py-3 text-sm rounded-full',
+  lg: 'px-8 py-4 text-base rounded-full font-medium',
+  xl: 'px-10 py-5 text-lg rounded-full font-semibold',
 };
 
 export default function Button({

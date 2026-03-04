@@ -1,5 +1,6 @@
 ﻿import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Link } from 'react-router-dom';
 import useScroll from '@/hooks/useScroll';
 import Button from '@/components/common/Button';
 import { NAV_LINKS, SITE } from '@/lib/constants';
@@ -21,7 +22,7 @@ export default function Header() {
         )}
         aria-label="Main navigation"
       >
-        <a href="#" className="flex items-center">
+        <a href="/" className="flex items-center">
           <span className="text-lg font-bold text-ink tracking-tight">
             {SITE.name}
           </span>
@@ -40,10 +41,10 @@ export default function Header() {
         </div>
 
         <div className="hidden md:flex items-center gap-3">
-          <Button variant="ghost" size="sm">
+          <Button variant="ghost" size="sm" href="/login">
             Đăng nhập
           </Button>
-          <Button variant="primary" size="sm">
+          <Button variant="primary" size="sm" href="/signup">
             Bắt đầu miễn phí
           </Button>
         </div>
@@ -90,7 +91,14 @@ export default function Header() {
                 </a>
               ))}
               <hr className="border-slate-100 my-2" />
-              <Button variant="primary" size="lg" className="w-full mt-2">
+              <Link
+                to="/login"
+                onClick={() => setMobileOpen(false)}
+                className="px-4 py-3 text-base font-medium text-ink-secondary hover:text-ink hover:bg-slate-50 rounded-2xl transition-colors text-center"
+              >
+                Đăng nhập
+              </Link>
+              <Button variant="primary" size="lg" className="w-full mt-2" href="/signup">
                 Bắt đầu miễn phí
               </Button>
             </div>

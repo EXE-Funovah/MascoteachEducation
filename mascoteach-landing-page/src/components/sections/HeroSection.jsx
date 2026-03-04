@@ -45,7 +45,7 @@ export default function HeroSection() {
               <h1 className="text-display-lg md:text-display-xl">
                 {HERO.headline.map((line, i) => (
                   <span key={i} className="block">
-                    {i === 1 ? <span className="text-gradient">{line}</span> : line}
+                    {line}
                   </span>
                 ))}
               </h1>
@@ -59,7 +59,7 @@ export default function HeroSection() {
 
             <FadeInUp delay={0.5}>
               <div className="mt-8 lg:mt-10 flex flex-col sm:flex-row items-center lg:items-start justify-center lg:justify-start gap-4">
-                <Button variant="primary" size="lg">
+                <Button variant="primary" size="lg" href="/signup">
                   {HERO.cta_primary}
                 </Button>
                 <Button variant="secondary" size="lg">

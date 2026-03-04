@@ -74,8 +74,7 @@ export default function FeatureBentoGrid() {
           <div className="text-center max-w-2xl mx-auto mb-16 md:mb-20">
             <Badge color="violet" className="mb-4">Tính năng</Badge>
             <h2 className="text-display-md md:text-display-lg">
-              Mọi thứ giáo viên cần,{' '}
-              <span className="text-gradient">trong một nền tảng</span>
+              Mọi thứ giáo viên cần, trong một nền tảng
             </h2>
             <p className="mt-6 text-body-lg text-ink/80 font-medium">
               Từ mascot AI đến phần cứng IoT — Mascoteach là hệ sinh thái toàn diện cho lớp học thế hệ mới.

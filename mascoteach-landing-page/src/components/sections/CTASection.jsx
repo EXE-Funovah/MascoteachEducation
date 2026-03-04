@@ -81,6 +81,7 @@ export default function CTASection() {
                 variant="secondary"
                 size="xl"
                 className="bg-white text-brand-navy border-white/20 hover:bg-white/90 hover:text-brand-navy shadow-lg hover:shadow-xl font-bold"
+                href="/signup"
               >
                 {CTA.cta_primary}
               </Button>

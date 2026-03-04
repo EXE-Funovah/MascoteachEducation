@@ -37,8 +37,7 @@ export default function Testimonials() {
           <div className="text-center max-w-2xl mx-auto mb-12 md:mb-16">
             <Badge color="orange" className="mb-4">Đánh giá</Badge>
             <h2 className="text-display-md md:text-display-lg">
-              Được yêu thích bởi{' '}
-              <span className="text-gradient">giáo viên thực thụ</span>
+              Được yêu thích bởi giáo viên thực thụ
             </h2>
             <p className="mt-6 text-body-lg text-ink-secondary">
               Đây là những câu chuyện thật từ các trường đang sử dụng Mascoteach.

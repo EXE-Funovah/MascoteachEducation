@@ -24,8 +24,8 @@
     id: 'pro',
     name: 'Pro',
     description: 'Cho giáo viên & tổ bộ môn chuyên nghiệp.',
-    price: 299000,
-    priceLabel: '299.000₫',
+    price: 119000,
+    priceLabel: '119.000₫',
     priceUnit: '/tháng',
     badge: 'Phổ biến nhất',
     popular: true,
@@ -70,20 +70,5 @@
         'Fair Use Policy: 500 thiết bị/trường. Liên hệ để mở rộng.',
       ],
     },
-  },
-];
-
-export const PRICING_FAQ = [
-  {
-    question: 'Tôi có thể hủy bất kỳ lúc nào không?',
-    answer: 'Có. Tất cả gói đều không ràng buộc hợp đồng dài hạn. Bạn có thể hủy hoặc downgrade bất cứ lúc nào.',
-  },
-  {
-    question: 'Phần cứng IoT hoạt động như thế nào?',
-    answer: 'Thiết bị plug-and-play, kết nối Bluetooth với hub trung tâm. Không cần wifi riêng cho từng thiết bị. Giáo viên tự lắp trong 10 phút.',
-  },
-  {
-    question: 'Có hỗ trợ tích hợp LMS hiện tại không?',
-    answer: 'Gói Pro trở lên hỗ trợ API tích hợp với Moodle, Google Classroom, Microsoft Teams for Education.',
   },
 ];
