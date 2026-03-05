@@ -6,12 +6,15 @@ import ForgotPasswordPage from '@/pages/ForgotPasswordPage';
 
 // Portal layout + pages
 import PortalLayout from '@/components/portal/layout/PortalLayout';
-import DashboardPage from '@/pages/portal/DashboardPage';
+import HomePage from '@/pages/portal/HomePage';
+import LibraryPage from '@/pages/portal/LibraryPage';
+import SessionsPage from '@/pages/portal/SessionsPage';
+
+// Legacy pages (still accessible if needed)
 import CreatePage from '@/pages/portal/CreatePage';
 import GameModesPage from '@/pages/portal/GameModesPage';
 import HostGamePage from '@/pages/portal/HostGamePage';
 import StudentGamePage from '@/pages/portal/StudentGamePage';
-import SessionsPage from '@/pages/portal/SessionsPage';
 import AnalyticsPage from '@/pages/portal/AnalyticsPage';
 
 export default function App() {
@@ -24,14 +27,10 @@ export default function App() {
         <Route path="/signup" element={<SignUpPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
-        {/* ── Teacher Portal (after login) ── */}
         <Route path="/portal" element={<PortalLayout />}>
-          <Route index element={<DashboardPage />} />
-          <Route path="create" element={<CreatePage />} />
-          <Route path="games" element={<GameModesPage />} />
-          <Route path="host" element={<HostGamePage />} />
+          <Route index element={<HomePage />} />
+          <Route path="library" element={<LibraryPage />} />
           <Route path="sessions" element={<SessionsPage />} />
-          <Route path="analytics" element={<AnalyticsPage />} />
         </Route>
 
         {/* ── Student Game (standalone, no sidebar) ── */}

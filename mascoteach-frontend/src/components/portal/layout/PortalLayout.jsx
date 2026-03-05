@@ -1,25 +1,27 @@
 import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
-import MascotPanel from '@/components/portal/mascot/MascotPanel';
+import TopBar from './TopBar';
 
 /**
- * PortalLayout — Shell layout wrapping all teacher portal pages
- * Includes the sidebar, main content area, and floating mascot
+ * PortalLayout — Redesigned shell layout for teacher portal
+ * Sidebar (left) + TopBar (top) + Main content area
+ * Clean, spacious Wayground-inspired layout
  */
 export default function PortalLayout() {
     return (
-        <div className="min-h-screen bg-slate-50/80">
+        <div className="min-h-screen bg-white">
             <Sidebar />
 
             {/* Main content area — offset by sidebar width */}
-            <main className="ml-[260px] transition-all duration-300 min-h-screen">
-                <div className="max-w-[1400px] mx-auto px-8 py-8">
-                    <Outlet />
-                </div>
-            </main>
+            <div className="ml-[248px] min-h-screen flex flex-col">
+                <TopBar />
 
-            {/* Floating mascot assistant — accessible from any page */}
-            <MascotPanel />
+                <main className="flex-1">
+                    <div className="max-w-[1200px] mx-auto px-8 py-8">
+                        <Outlet />
+                    </div>
+                </main>
+            </div>
         </div>
     );
 }

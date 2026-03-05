@@ -1,42 +1,75 @@
 // ═══════════════════════════════════════════════
-// MASCOTEACH — Centralized Mock Data
+// MASCOTEACH — Centralized Mock Data (Vietnamese)
 // All placeholder data lives here for easy swap to API later
 // ═══════════════════════════════════════════════
 
+// ── Teacher Profile ──
+export const teacherProfile = {
+    name: 'Cô Johnson',
+    email: 'johnson@school.edu',
+    avatar: '👩‍🏫',
+    school: 'Trường THCS Nguyễn Du',
+    subject: 'Sinh học',
+    plan: 'Pro',
+};
+
 // ── Dashboard Stats ──
 export const dashboardStats = [
-    { id: 'sessions', label: 'Total Sessions', value: '142', change: '+12%', trend: 'up', icon: 'Gamepad2' },
-    { id: 'accuracy', label: 'Avg Accuracy', value: '78%', change: '+5%', trend: 'up', icon: 'Target' },
-    { id: 'engagement', label: 'Student Engagement', value: '91%', change: '+3%', trend: 'up', icon: 'Users' },
-    { id: 'ai-usage', label: 'AI Usage Count', value: '56', change: '+18%', trend: 'up', icon: 'Sparkles' },
+    { id: 'sessions', label: 'Tổng phiên học', value: '142', change: '+12%', trend: 'up', icon: 'Gamepad2' },
+    { id: 'accuracy', label: 'Độ chính xác TB', value: '78%', change: '+5%', trend: 'up', icon: 'Target' },
+    { id: 'engagement', label: 'Tương tác HS', value: '91%', change: '+3%', trend: 'up', icon: 'Users' },
+    { id: 'ai-usage', label: 'Sử dụng AI', value: '56', change: '+18%', trend: 'up', icon: 'Sparkles' },
+];
+
+// ── Recent Activities (for Home page) ──
+export const recentActivities = [
+    { id: 1, title: 'Quiz Sinh học Chương 5', action: 'đã chơi', mode: 'Trận chiến Câu hỏi', players: 28, date: '2026-03-05', time: '14:30' },
+    { id: 2, title: 'Bài kiểm tra Toán nhanh', action: 'đã tạo', mode: 'Chạy đua Thời gian', players: null, date: '2026-03-05', time: '10:15' },
+    { id: 3, title: 'Ôn tập Lịch sử cuối kỳ', action: 'đã chơi', mode: 'Đấu trường Đội', players: 24, date: '2026-03-04', time: '09:00' },
+    { id: 4, title: 'Từ vựng Tiếng Anh', action: 'đã chỉnh sửa', mode: 'Chế độ Kho báu', players: null, date: '2026-03-03', time: '16:45' },
 ];
 
 // ── Recent Games ──
 export const recentGames = [
-    { id: 1, title: 'Biology Chapter 5 Quiz', mode: 'Quiz Battle', players: 28, date: '2026-03-04', avgScore: 82, status: 'completed' },
-    { id: 2, title: 'Math Speed Drill', mode: 'Speed Rush', players: 32, date: '2026-03-03', avgScore: 74, status: 'completed' },
-    { id: 3, title: 'History Final Review', mode: 'Team Arena', players: 24, date: '2026-03-02', avgScore: 88, status: 'completed' },
-    { id: 4, title: 'English Vocabulary', mode: 'Treasure Mode', players: 30, date: '2026-03-01', avgScore: 79, status: 'completed' },
-    { id: 5, title: 'Physics Forces Unit', mode: 'Survival Mode', players: 26, date: '2026-02-28', avgScore: 71, status: 'completed' },
+    { id: 1, title: 'Quiz Sinh học Chương 5', mode: 'Trận chiến Câu hỏi', players: 28, date: '2026-03-04', avgScore: 82, status: 'completed' },
+    { id: 2, title: 'Bài kiểm tra Toán nhanh', mode: 'Chạy đua Thời gian', players: 32, date: '2026-03-03', avgScore: 74, status: 'completed' },
+    { id: 3, title: 'Ôn tập Lịch sử cuối kỳ', mode: 'Đấu trường Đội', players: 24, date: '2026-03-02', avgScore: 88, status: 'completed' },
+    { id: 4, title: 'Từ vựng Tiếng Anh', mode: 'Chế độ Kho báu', players: 30, date: '2026-03-01', avgScore: 79, status: 'completed' },
+    { id: 5, title: 'Lực trong Vật lý', mode: 'Chế độ Sinh tồn', players: 26, date: '2026-02-28', avgScore: 71, status: 'completed' },
 ];
+
+// ── Library Resources ──
+export const libraryResources = {
+    created: [
+        { id: 1, title: 'Quiz Sinh học Chương 5', questionCount: 20, grade: 'Lớp 8', createdAt: '2026-03-04', source: 'AI', status: 'published' },
+        { id: 2, title: 'Bài kiểm tra Toán nhanh', questionCount: 15, grade: 'Lớp 9', createdAt: '2026-03-03', source: 'Thủ công', status: 'published' },
+        { id: 3, title: 'Ôn tập Lịch sử cuối kỳ', questionCount: 30, grade: 'Lớp 8', createdAt: '2026-03-02', source: 'AI', status: 'published' },
+        { id: 4, title: 'Từ vựng Tiếng Anh', questionCount: 25, grade: 'Lớp 7', createdAt: '2026-03-01', source: 'AI', status: 'published' },
+        { id: 5, title: 'Lực trong Vật lý', questionCount: 18, grade: 'Lớp 9', createdAt: '2026-02-28', source: 'Thủ công', status: 'published' },
+    ],
+    drafts: [
+        { id: 101, title: 'Hóa học - Liên kết', questionCount: 8, grade: 'Lớp 9', createdAt: '2026-03-05', source: 'AI', status: 'draft' },
+        { id: 102, title: 'Địa lý - Thủ đô', questionCount: 12, grade: 'Lớp 7', createdAt: '2026-03-04', source: 'Thủ công', status: 'draft' },
+    ],
+};
 
 // ── Question Sets ──
 export const questionSets = [
-    { id: 1, title: 'Biology Chapter 5', questionCount: 20, createdAt: '2026-03-04', source: 'AI Generated', subject: 'Biology' },
-    { id: 2, title: 'Math Speed Drill', questionCount: 15, createdAt: '2026-03-03', source: 'Manual', subject: 'Mathematics' },
-    { id: 3, title: 'History Final Review', questionCount: 30, createdAt: '2026-03-02', source: 'AI Generated', subject: 'History' },
-    { id: 4, title: 'English Vocabulary', questionCount: 25, createdAt: '2026-03-01', source: 'AI Generated', subject: 'English' },
-    { id: 5, title: 'Physics Forces', questionCount: 18, createdAt: '2026-02-28', source: 'Manual', subject: 'Physics' },
+    { id: 1, title: 'Sinh học Chương 5', questionCount: 20, createdAt: '2026-03-04', source: 'AI', subject: 'Sinh học' },
+    { id: 2, title: 'Bài kiểm tra Toán nhanh', questionCount: 15, createdAt: '2026-03-03', source: 'Thủ công', subject: 'Toán học' },
+    { id: 3, title: 'Ôn tập Lịch sử cuối kỳ', questionCount: 30, createdAt: '2026-03-02', source: 'AI', subject: 'Lịch sử' },
+    { id: 4, title: 'Từ vựng Tiếng Anh', questionCount: 25, createdAt: '2026-03-01', source: 'AI', subject: 'Tiếng Anh' },
+    { id: 5, title: 'Lực trong Vật lý', questionCount: 18, createdAt: '2026-02-28', source: 'Thủ công', subject: 'Vật lý' },
 ];
 
-// ── Game Modes ──
+// ── Game Modes (Vietnamese) ──
 export const gameModes = [
     {
         id: 'quiz-battle',
-        name: 'Quiz Battle',
-        description: 'Classic head-to-head quiz competition. Answer questions faster than your opponents to climb the leaderboard.',
-        playStyle: 'Individual',
-        duration: '10-15 min',
+        name: 'Trận chiến Câu hỏi',
+        description: 'Thi đấu trắc nghiệm đối kháng kinh điển. Trả lời nhanh hơn đối thủ để leo bảng xếp hạng.',
+        playStyle: 'Cá nhân',
+        duration: '10-15 phút',
         icon: 'Swords',
         color: 'from-blue-500 to-indigo-600',
         bgColor: 'bg-blue-50',
@@ -45,10 +78,10 @@ export const gameModes = [
     },
     {
         id: 'speed-rush',
-        name: 'Speed Rush',
-        description: 'Race against the clock! Answer as many questions as you can before time runs out.',
-        playStyle: 'Individual',
-        duration: '5-8 min',
+        name: 'Chạy đua Thời gian',
+        description: 'Chạy đua với đồng hồ! Trả lời nhiều câu hỏi nhất trước khi hết thời gian.',
+        playStyle: 'Cá nhân',
+        duration: '5-8 phút',
         icon: 'Zap',
         color: 'from-amber-500 to-orange-600',
         bgColor: 'bg-amber-50',
@@ -57,10 +90,10 @@ export const gameModes = [
     },
     {
         id: 'team-arena',
-        name: 'Team Arena',
-        description: 'Form teams and collaborate to answer questions. Strategy and teamwork win the game.',
-        playStyle: 'Team',
-        duration: '15-20 min',
+        name: 'Đấu trường Đội',
+        description: 'Lập đội và hợp tác trả lời câu hỏi. Chiến thuật và tinh thần đồng đội quyết định chiến thắng.',
+        playStyle: 'Nhóm',
+        duration: '15-20 phút',
         icon: 'Shield',
         color: 'from-emerald-500 to-teal-600',
         bgColor: 'bg-emerald-50',
@@ -69,10 +102,10 @@ export const gameModes = [
     },
     {
         id: 'treasure-mode',
-        name: 'Treasure Mode',
-        description: 'Collect treasures by answering correctly. Use special items to boost your score or sabotage others.',
-        playStyle: 'Strategy',
-        duration: '12-18 min',
+        name: 'Chế độ Kho báu',
+        description: 'Thu thập kho báu khi trả lời đúng. Dùng vật phẩm đặc biệt để tăng điểm hoặc cản trở đối thủ.',
+        playStyle: 'Chiến thuật',
+        duration: '12-18 phút',
         icon: 'Gem',
         color: 'from-purple-500 to-violet-600',
         bgColor: 'bg-purple-50',
@@ -81,10 +114,10 @@ export const gameModes = [
     },
     {
         id: 'survival-mode',
-        name: 'Survival Mode',
-        description: 'Get it wrong and lose a life. Last player standing wins. High stakes, high rewards.',
-        playStyle: 'Individual',
-        duration: '10-15 min',
+        name: 'Chế độ Sinh tồn',
+        description: 'Trả lời sai mất mạng. Người cuối cùng đứng vững sẽ chiến thắng.',
+        playStyle: 'Cá nhân',
+        duration: '10-15 phút',
         icon: 'Heart',
         color: 'from-rose-500 to-pink-600',
         bgColor: 'bg-rose-50',
@@ -97,73 +130,73 @@ export const gameModes = [
 export const generatedQuestions = [
     {
         id: 1,
-        question: 'What is the powerhouse of the cell?',
+        question: 'Nhà máy năng lượng của tế bào là gì?',
         type: 'multiple-choice',
         difficulty: 'easy',
-        options: ['Mitochondria', 'Nucleus', 'Ribosome', 'Golgi Apparatus'],
+        options: ['Ti thể', 'Nhân tế bào', 'Ribosome', 'Bộ máy Golgi'],
         correctAnswer: 0,
         approved: true,
     },
     {
         id: 2,
-        question: 'Which organelle is responsible for protein synthesis?',
+        question: 'Bào quan nào chịu trách nhiệm tổng hợp protein?',
         type: 'multiple-choice',
         difficulty: 'medium',
-        options: ['Ribosome', 'Lysosome', 'Mitochondria', 'Vacuole'],
+        options: ['Ribosome', 'Lysosome', 'Ti thể', 'Không bào'],
         correctAnswer: 0,
         approved: true,
     },
     {
         id: 3,
-        question: 'What is the function of the cell membrane?',
+        question: 'Chức năng của màng tế bào là gì?',
         type: 'multiple-choice',
         difficulty: 'easy',
-        options: ['Controls what enters/exits the cell', 'Produces energy', 'Stores DNA', 'Digests waste'],
+        options: ['Kiểm soát chất ra vào tế bào', 'Sản xuất năng lượng', 'Lưu trữ DNA', 'Tiêu hóa chất thải'],
         correctAnswer: 0,
         approved: false,
     },
     {
         id: 4,
-        question: 'DNA replication occurs during which phase of the cell cycle?',
+        question: 'Sao chép DNA xảy ra ở pha nào của chu kỳ tế bào?',
         type: 'multiple-choice',
         difficulty: 'hard',
-        options: ['S phase', 'G1 phase', 'G2 phase', 'M phase'],
+        options: ['Pha S', 'Pha G1', 'Pha G2', 'Pha M'],
         correctAnswer: 0,
         approved: true,
     },
     {
         id: 5,
-        question: 'Which type of transport requires energy?',
+        question: 'Loại vận chuyển nào cần năng lượng?',
         type: 'multiple-choice',
         difficulty: 'medium',
-        options: ['Active transport', 'Osmosis', 'Diffusion', 'Facilitated diffusion'],
+        options: ['Vận chuyển chủ động', 'Thẩm thấu', 'Khuếch tán', 'Khuếch tán có hỗ trợ'],
         correctAnswer: 0,
         approved: true,
     },
     {
         id: 6,
-        question: 'What is the role of chloroplasts in plant cells?',
+        question: 'Vai trò của lục lạp trong tế bào thực vật là gì?',
         type: 'multiple-choice',
         difficulty: 'easy',
-        options: ['Photosynthesis', 'Cellular respiration', 'Protein synthesis', 'Cell division'],
+        options: ['Quang hợp', 'Hô hấp tế bào', 'Tổng hợp protein', 'Phân chia tế bào'],
         correctAnswer: 0,
         approved: true,
     },
     {
         id: 7,
-        question: 'Which structure is found in plant cells but NOT in animal cells?',
+        question: 'Cấu trúc nào có trong tế bào thực vật mà KHÔNG có trong tế bào động vật?',
         type: 'multiple-choice',
         difficulty: 'medium',
-        options: ['Cell wall', 'Cell membrane', 'Nucleus', 'Mitochondria'],
+        options: ['Thành tế bào', 'Màng tế bào', 'Nhân tế bào', 'Ti thể'],
         correctAnswer: 0,
         approved: false,
     },
     {
         id: 8,
-        question: 'What is apoptosis?',
+        question: 'Apoptosis là gì?',
         type: 'multiple-choice',
         difficulty: 'hard',
-        options: ['Programmed cell death', 'Cell growth', 'Cell division', 'Cell differentiation'],
+        options: ['Chết tế bào theo chương trình', 'Sự phát triển tế bào', 'Phân chia tế bào', 'Biệt hóa tế bào'],
         correctAnswer: 0,
         approved: true,
     },
@@ -189,8 +222,8 @@ export const hostPlayers = [
 export const currentHostQuestion = {
     number: 5,
     total: 20,
-    question: 'What is the powerhouse of the cell?',
-    options: ['Mitochondria', 'Nucleus', 'Ribosome', 'Golgi Apparatus'],
+    question: 'Nhà máy năng lượng của tế bào là gì?',
+    options: ['Ti thể', 'Nhân tế bào', 'Ribosome', 'Bộ máy Golgi'],
     correctAnswer: 0,
     timeLimit: 20,
     answeredCount: 10,
@@ -199,8 +232,8 @@ export const currentHostQuestion = {
 
 // ── Student Game State ──
 export const studentGameState = {
-    question: 'Which organelle is responsible for protein synthesis?',
-    options: ['Ribosome', 'Lysosome', 'Mitochondria', 'Vacuole'],
+    question: 'Bào quan nào chịu trách nhiệm tổng hợp protein?',
+    options: ['Ribosome', 'Lysosome', 'Ti thể', 'Không bào'],
     timeLeft: 15,
     timeTotal: 20,
     score: 450,
@@ -211,22 +244,22 @@ export const studentGameState = {
 
 // ── Mascot Messages ──
 export const mascotMessages = [
-    { id: 1, type: 'encouragement', text: "You're on fire! 🔥 Keep that streak going!", mood: 'excited' },
-    { id: 2, type: 'hint', text: 'Think about where energy production happens in cells...', mood: 'thinking' },
-    { id: 3, type: 'celebration', text: '🎉 Correct! That was a tough one!', mood: 'celebrating' },
-    { id: 4, type: 'support', text: "Don't worry, you'll get the next one! Stay focused.", mood: 'supportive' },
-    { id: 5, type: 'greeting', text: 'Hey there! Ready to learn something awesome today? 📚', mood: 'idle' },
+    { id: 1, type: 'encouragement', text: 'Bạn đang cháy! 🔥 Giữ chuỗi thắng nhé!', mood: 'excited' },
+    { id: 2, type: 'hint', text: 'Hãy nghĩ về nơi sản xuất năng lượng trong tế bào...', mood: 'thinking' },
+    { id: 3, type: 'celebration', text: '🎉 Chính xác! Câu đó khó đấy!', mood: 'celebrating' },
+    { id: 4, type: 'support', text: 'Đừng lo, câu sau sẽ đúng thôi! Tập trung nhé.', mood: 'supportive' },
+    { id: 5, type: 'greeting', text: 'Chào bạn! Sẵn sàng học điều thú vị hôm nay chưa? 📚', mood: 'idle' },
 ];
 
-// ── Sessions History ──
+// ── Sessions History (Vietnamese) ──
 export const sessionsHistory = [
-    { id: 1, title: 'Biology Chapter 5 Quiz', mode: 'Quiz Battle', date: '2026-03-04', players: 28, avgScore: 82, duration: '14 min', status: 'completed' },
-    { id: 2, title: 'Math Speed Drill', mode: 'Speed Rush', date: '2026-03-03', players: 32, avgScore: 74, duration: '7 min', status: 'completed' },
-    { id: 3, title: 'History Final Review', mode: 'Team Arena', date: '2026-03-02', players: 24, avgScore: 88, duration: '18 min', status: 'completed' },
-    { id: 4, title: 'English Vocabulary', mode: 'Treasure Mode', date: '2026-03-01', players: 30, avgScore: 79, duration: '15 min', status: 'completed' },
-    { id: 5, title: 'Physics Forces Unit', mode: 'Survival Mode', date: '2026-02-28', players: 26, avgScore: 71, duration: '12 min', status: 'completed' },
-    { id: 6, title: 'Chemistry Bonds', mode: 'Quiz Battle', date: '2026-02-27', players: 22, avgScore: 85, duration: '13 min', status: 'completed' },
-    { id: 7, title: 'Geography Capitals', mode: 'Speed Rush', date: '2026-02-26', players: 35, avgScore: 90, duration: '6 min', status: 'completed' },
+    { id: 1, title: 'Quiz Sinh học Chương 5', mode: 'Trận chiến Câu hỏi', date: '2026-03-04', players: 28, avgScore: 82, duration: '14 phút', status: 'completed' },
+    { id: 2, title: 'Bài kiểm tra Toán nhanh', mode: 'Chạy đua Thời gian', date: '2026-03-03', players: 32, avgScore: 74, duration: '7 phút', status: 'completed' },
+    { id: 3, title: 'Ôn tập Lịch sử cuối kỳ', mode: 'Đấu trường Đội', date: '2026-03-02', players: 24, avgScore: 88, duration: '18 phút', status: 'completed' },
+    { id: 4, title: 'Từ vựng Tiếng Anh', mode: 'Chế độ Kho báu', date: '2026-03-01', players: 30, avgScore: 79, duration: '15 phút', status: 'completed' },
+    { id: 5, title: 'Lực trong Vật lý', mode: 'Chế độ Sinh tồn', date: '2026-02-28', players: 26, avgScore: 71, duration: '12 phút', status: 'completed' },
+    { id: 6, title: 'Hóa học - Liên kết', mode: 'Trận chiến Câu hỏi', date: '2026-02-27', players: 22, avgScore: 85, duration: '13 phút', status: 'completed' },
+    { id: 7, title: 'Địa lý - Thủ đô', mode: 'Chạy đua Thời gian', date: '2026-02-26', players: 35, avgScore: 90, duration: '6 phút', status: 'completed' },
 ];
 
 // ── Analytics Data ──
@@ -255,13 +288,13 @@ export const studentRankings = [
 ];
 
 export const engagementData = [
-    { day: 'Mon', minutes: 42 },
-    { day: 'Tue', minutes: 58 },
-    { day: 'Wed', minutes: 35 },
-    { day: 'Thu', minutes: 67 },
-    { day: 'Fri', minutes: 51 },
-    { day: 'Sat', minutes: 12 },
-    { day: 'Sun', minutes: 8 },
+    { day: 'T2', minutes: 42 },
+    { day: 'T3', minutes: 58 },
+    { day: 'T4', minutes: 35 },
+    { day: 'T5', minutes: 67 },
+    { day: 'T6', minutes: 51 },
+    { day: 'T7', minutes: 12 },
+    { day: 'CN', minutes: 8 },
 ];
 
 export const difficultyHeatmap = [
@@ -274,13 +307,3 @@ export const difficultyHeatmap = [
     { question: 'Q7', easy: 93, medium: 80, hard: 60 },
     { question: 'Q8', easy: 86, medium: 68, hard: 42 },
 ];
-
-// ── Teacher Profile ──
-export const teacherProfile = {
-    name: 'Ms. Johnson',
-    email: 'johnson@school.edu',
-    avatar: '👩‍🏫',
-    school: 'Lincoln High School',
-    subject: 'Biology',
-    plan: 'Pro',
-};
