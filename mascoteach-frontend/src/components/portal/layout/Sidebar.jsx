@@ -13,9 +13,9 @@ import { useAuth } from '@/contexts/AuthContext';
  * Wayground-inspired clean design with light sky blue accents
  */
 const navItems = [
-    { to: '/portal', icon: Home, label: 'Trang chủ', end: true },
-    { to: '/portal/library', icon: Library, label: 'Thư viện của tôi' },
-    { to: '/portal/sessions', icon: History, label: 'Lịch sử Phiên' },
+    { to: '/teacher', icon: Home, label: 'Trang chủ', end: true },
+    { to: '/teacher/library', icon: Library, label: 'Thư viện của tôi' },
+    { to: '/teacher/sessions', icon: History, label: 'Lịch sử Phiên' },
 ];
 
 export default function Sidebar() {

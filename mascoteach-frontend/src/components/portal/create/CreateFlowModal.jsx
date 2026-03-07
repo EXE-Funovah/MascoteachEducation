@@ -1,13 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { X, Upload, FileText, Sparkles, CheckCircle2, Swords, Zap, Shield, Gem, Heart, ArrowRight, Loader2, File, AlertCircle } from 'lucide-react';
 import { getAllGameTemplates } from '@/services/gameTemplateService';
 import { generateUploadUrl, uploadFileToS3, createDocument } from '@/services/documentService';
 
 /**
  * CreateFlowModal — Full AI Quiz creation flow
- * Step 1: Upload document (drag-and-drop zone) → calls real API
- * Step 2: Choose Game Mode (from real API game templates)
- * Clean, spacious, Wayground-inspired modal design
+ * Step 1: Upload document (drag-and-drop zone) → calls API
+ * Step 2: Choose Game Mode
  */
 const modeIcons = {
     'Swords': Swords,
@@ -29,6 +29,7 @@ function getIconForTemplate(name) {
 }
 
 export default function CreateFlowModal({ onClose }) {
+    const navigate = useNavigate();
     const [step, setStep] = useState(1);
     const [dragActive, setDragActive] = useState(false);
     const [uploadedFile, setUploadedFile] = useState(null);

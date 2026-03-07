@@ -7,7 +7,6 @@ export default function Footer() {
       <div className="max-w-7xl mx-auto px-6 py-16">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-10">
           <div className="col-span-2 md:col-span-1">
-            {/* Logo thay cho text */}
             <Link to="/" className="inline-block mb-4">
               <img src="/images/Logo.png" alt={SITE.name} className="h-7 object-contain" />
             </Link>
