@@ -1,13 +1,14 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { X, Upload, FileText, Sparkles, CheckCircle2, Swords, Zap, Shield, Gem, Heart, ArrowRight, Loader2, File, AlertCircle } from 'lucide-react';
 import { getAllGameTemplates } from '@/services/gameTemplateService';
 import { createDocument } from '@/services/documentService';
+import { setPendingFile } from '@/services/fileStore';
 
 /**
  * CreateFlowModal — Full AI Quiz creation flow
- * Step 1: Upload document (drag-and-drop zone) → calls real API
- * Step 2: Choose Game Mode (from real API game templates)
- * Clean, spacious, Wayground-inspired modal design
+ * Step 1: Upload document (drag-and-drop zone) → calls API
+ * Step 2: Choose Game Mode
  */
 const modeIcons = {
     'Swords': Swords,
@@ -29,11 +30,10 @@ function getIconForTemplate(name) {
 }
 
 export default function CreateFlowModal({ onClose }) {
-    const [step, setStep] = useState(1);
+    const navigate = useNavigate();
     const [dragActive, setDragActive] = useState(false);
     const [uploadedFile, setUploadedFile] = useState(null);
     const [isProcessing, setIsProcessing] = useState(false);
-    const [selectedMode, setSelectedMode] = useState(null);
     const [uploadError, setUploadError] = useState(null);
 
     // Game templates from API
@@ -93,10 +93,18 @@ export default function CreateFlowModal({ onClose }) {
         setUploadError(null);
         try {
             // Create a document record in the backend
-            // For now, we use the file name as the URL since actual file hosting
-            // would require a separate upload endpoint
-            await createDocument({ fileUrl: uploadedFile.name });
-            setStep(2);
+            const result = await createDocument({ fileUrl: uploadedFile.name });
+            // Store File object in memory (can't be serialized in route state)
+            setPendingFile(uploadedFile);
+            // Navigate to settings page with metadata + documentId
+            onClose();
+            navigate('/teacher/quiz-settings', {
+                state: {
+                    fileName: uploadedFile.name,
+                    fileSize: uploadedFile.size,
+                    documentId: result?.id,
+                },
+            });
         } catch (err) {
             setUploadError(err.message || 'Tải lên thất bại. Vui lòng thử lại.');
         } finally {

@@ -8,11 +8,13 @@ import ForgotPasswordPage from '@/pages/ForgotPasswordPage';
 // Auth guard
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 
-// Portal layout + pages
+// Teacher layout + pages
 import PortalLayout from '@/components/portal/layout/PortalLayout';
 import HomePage from '@/pages/portal/HomePage';
 import LibraryPage from '@/pages/portal/LibraryPage';
 import SessionsPage from '@/pages/portal/SessionsPage';
+import QuizSettingsPage from '@/pages/portal/QuizSettingsPage';
+import QuizPreviewPage from '@/pages/portal/QuizPreviewPage';
 
 // Student Game (standalone, no sidebar)
 import StudentGamePage from '@/pages/portal/StudentGamePage';
@@ -28,11 +30,11 @@ export default function App() {
         <Route path="/signup" element={<SignUpPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
-        {/* ── Protected Portal routes ── */}
+        {/* ── Teacher routes ── */}
         <Route
-          path="/portal"
+          path="/teacher"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute allowedRoles={['Teacher']}>
               <PortalLayout />
             </ProtectedRoute>
           }
@@ -40,6 +42,32 @@ export default function App() {
           <Route index element={<HomePage />} />
           <Route path="library" element={<LibraryPage />} />
           <Route path="sessions" element={<SessionsPage />} />
+          <Route path="quiz-settings" element={<QuizSettingsPage />} />
+          <Route path="quiz-preview" element={<QuizPreviewPage />} />
+        </Route>
+
+        {/* ── Student routes ── */}
+        <Route
+          path="/student"
+          element={
+            <ProtectedRoute allowedRoles={['Student']}>
+              <PortalLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<HomePage />} />
+        </Route>
+
+        {/* ── Parent routes ── */}
+        <Route
+          path="/parent"
+          element={
+            <ProtectedRoute allowedRoles={['Parent']}>
+              <PortalLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<HomePage />} />
         </Route>
 
         {/* ── Student Game (standalone, no sidebar) ── */}

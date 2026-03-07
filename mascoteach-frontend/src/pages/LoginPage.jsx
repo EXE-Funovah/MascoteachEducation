@@ -16,10 +16,17 @@ export default function LoginPage() {
     const navigate = useNavigate();
     const location = useLocation();
 
-    // Redirect sau khi đăng nhập
-    const from = location.state?.from?.pathname || '/portal';
+    // Redirect sau khi đăng nhập — dựa trên role
+    const from = location.state?.from?.pathname;
     // Thông báo thành công từ trang đăng ký
     const successMessage = location.state?.message;
+
+    function getRoleRedirect(profile) {
+        const role = (profile?.role || profile?.roleName || '').toLowerCase();
+        if (role === 'student') return '/student';
+        if (role === 'parent') return '/parent';
+        return '/teacher'; // default
+    }
 
     async function handleSubmit(e) {
         e.preventDefault();
@@ -29,8 +36,9 @@ export default function LoginPage() {
 
         setSubmitting(true);
         try {
-            await login(email, password);
-            navigate(from, { replace: true });
+            const profile = await login(email, password);
+            const redirectTo = from || getRoleRedirect(profile);
+            navigate(redirectTo, { replace: true });
         } catch {
             // Error đã được set trong AuthContext
         } finally {

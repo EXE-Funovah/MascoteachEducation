@@ -7,26 +7,26 @@ import { Sparkles, Gamepad2, Upload, ArrowRight } from 'lucide-react';
  */
 const actions = [
     {
-        to: '/portal/create',
+        to: '/teacher/create',
         icon: Sparkles,
-        title: 'Create with AI',
-        description: 'Upload a document and generate questions instantly',
+        title: 'Tạo với AI',
+        description: 'Tải lên tài liệu và tạo câu hỏi tức thì',
         gradient: 'from-violet-500 to-purple-600',
         bgGlow: 'bg-violet-100',
     },
     {
-        to: '/portal/games',
+        to: '/teacher/games',
         icon: Gamepad2,
-        title: 'Start a Game',
-        description: 'Choose a game mode and host a live session',
+        title: 'Bắt đầu trò chơi',
+        description: 'Chọn chế độ chơi và tổ chức phiên trực tiếp',
         gradient: 'from-brand-navy to-brand-blue',
         bgGlow: 'bg-blue-100',
     },
     {
-        to: '/portal/create',
+        to: '/teacher/create',
         icon: Upload,
-        title: 'Upload Questions',
-        description: 'Import your existing question set from a file',
+        title: 'Tải lên câu hỏi',
+        description: 'Nhập bộ câu hỏi có sẵn từ file của bạn',
         gradient: 'from-emerald-500 to-teal-600',
         bgGlow: 'bg-emerald-100',
     },
@@ -35,7 +35,7 @@ const actions = [
 export default function QuickActions() {
     return (
         <section>
-            <h2 className="text-base font-bold text-ink mb-4">Quick Actions</h2>
+            <h2 className="text-base font-bold text-ink mb-4">Hành động nhanh</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {actions.map((action) => (
                     <Link
@@ -62,12 +62,13 @@ export default function QuickActions() {
                             <div className="flex items-center gap-1 mt-3 text-xs font-semibold text-brand-blue opacity-0 
                               group-hover:opacity-100 transition-all duration-300 translate-x-[-8px] 
                               group-hover:translate-x-0">
-                                Get started <ArrowRight className="w-3.5 h-3.5" />
+                                Bắt đầu <ArrowRight className="w-3.5 h-3.5" />
                             </div>
                         </div>
                     </Link>
                 ))}
             </div>
         </section>
+
     );
 }

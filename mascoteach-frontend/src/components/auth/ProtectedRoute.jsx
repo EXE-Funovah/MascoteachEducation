@@ -2,12 +2,12 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 
 /**
- * ProtectedRoute — Wraps routes that require authentication.
- * Redirects to /login if not authenticated.
- * Shows a loading spinner while checking auth state.
+ * ProtectedRoute — Wraps routes that require authentication + role check.
+ * @param {string[]} [allowedRoles] — If provided, only these roles can access.
+ *   Role values from backend: 'Teacher', 'Student', 'Parent'
  */
-export default function ProtectedRoute({ children }) {
-    const { isLoggedIn, loading } = useAuth();
+export default function ProtectedRoute({ children, allowedRoles }) {
+    const { user, isLoggedIn, loading } = useAuth();
     const location = useLocation();
 
     if (loading) {
@@ -22,8 +22,26 @@ export default function ProtectedRoute({ children }) {
     }
 
     if (!isLoggedIn) {
-        // Save the attempted URL for redirect after login
         return <Navigate to="/login" state={{ from: location }} replace />;
+    }
+
+    // Role check — if allowedRoles specified, verify user has the right role
+    if (allowedRoles && allowedRoles.length > 0) {
+        const userRole = user?.role || user?.roleName || '';
+        const hasAccess = allowedRoles.some(
+            role => role.toLowerCase() === userRole.toLowerCase()
+        );
+
+        if (!hasAccess) {
+            // Redirect to appropriate dashboard based on actual role
+            const roleRedirects = {
+                teacher: '/teacher',
+                student: '/student',
+                parent: '/parent',
+            };
+            const redirectTo = roleRedirects[userRole.toLowerCase()] || '/';
+            return <Navigate to={redirectTo} replace />;
+        }
     }
 
     return children;
