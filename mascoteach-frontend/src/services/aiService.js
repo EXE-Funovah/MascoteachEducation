@@ -2,7 +2,7 @@
  * Mascoteach — AI Service
  * Calls the deployed AI Module at ai-mascoteach.com
  * Endpoints:
- *   POST /api/v1/ai/generate-for-backend — Generate MCQ from file
+ *   POST /api/v1/ai/generate-for-backend — Generate MCQ from S3 file URL
  *   GET  /api/v1/ai/health               — Health check
  */
 
@@ -19,9 +19,10 @@ export async function aiHealthCheck() {
 }
 
 /**
- * Generate MCQ questions from an uploaded file
+ * Generate MCQ questions from a file URL (already uploaded to S3).
+ * AI service sẽ download file từ S3 URL và xử lý.
  *
- * @param {File} file — The document file (PDF, DOCX, image)
+ * @param {string} fileUrl — The S3 URL of the uploaded document
  * @param {object} options
  * @param {number} [options.documentId] — Document ID from backend
  * @param {string} [options.quizTitle] — Title for the quiz
@@ -40,43 +41,6 @@ export async function aiHealthCheck() {
  *   },
  *   metadata: { generatedAt: string, questionCount: number, model: string }
  * }>}
- */
-export async function generateMCQFromFile(file, options = {}) {
-    const { documentId, quizTitle, numberOfQuestions = 5 } = options;
-
-    const formData = new FormData();
-    formData.append('document', file);
-
-    if (documentId !== undefined && documentId !== null) {
-        formData.append('documentId', String(documentId));
-    }
-    if (quizTitle) {
-        formData.append('quizTitle', quizTitle);
-    }
-    formData.append('numberOfQuestions', String(numberOfQuestions));
-
-    const res = await fetch(`${AI_BASE_URL}/api/v1/ai/generate-for-backend`, {
-        method: 'POST',
-        body: formData,
-    });
-
-    if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.message || `AI Module trả về lỗi ${res.status}`);
-    }
-
-    return res.json();
-}
-
-/**
- * Generate MCQ questions from a file URL (already uploaded to S3)
- *
- * @param {string} fileUrl — The S3 URL of the uploaded document
- * @param {object} options
- * @param {number} [options.documentId] — Document ID from backend
- * @param {string} [options.quizTitle] — Title for the quiz
- * @param {number} [options.numberOfQuestions=5] — How many questions to generate
- * @returns {Promise<object>} Same shape as generateMCQFromFile
  */
 export async function generateMCQFromUrl(fileUrl, options = {}) {
     const { documentId, quizTitle, numberOfQuestions = 5 } = options;
