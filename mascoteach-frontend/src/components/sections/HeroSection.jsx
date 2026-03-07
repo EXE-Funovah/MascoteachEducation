@@ -87,7 +87,7 @@ export default function HeroSection() {
                   <span>500+ giáo viên tin dùng</span>
                 </div>
                 <span className="hidden sm:inline text-slate-300">|</span>
-                <span>Miễn phí 30 ngày</span>
+                <span>Miễn phí 14 ngày</span>
               </div>
             </FadeInUp>
           </div>

@@ -29,7 +29,7 @@
     priceUnit: '/tháng',
     badge: 'Phổ biến nhất',
     popular: true,
-    cta: 'Dùng thử 30 ngày',
+    cta: 'Dùng thử 14 ngày',
     features: [
       { text: 'Không giới hạn lớp & học sinh', included: true },
       { text: 'Mascot AI nâng cao + tùy chỉnh', included: true },

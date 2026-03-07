@@ -164,7 +164,7 @@ export const TESTIMONIALS = [
 
 export const CTA = {
   headline: 'Sẵn sàng biến lớp học của bạn thành sân khấu?',
-  subheadline: 'Đăng ký ngay để trải nghiệm miễn phí 30 ngày  không cần thẻ tín dụng.',
+  subheadline: 'Đăng ký ngay để trải nghiệm miễn phí 14 ngày  không cần thẻ tín dụng.',
   cta_primary: 'Bắt đầu miễn phí',
   cta_secondary: 'Đặt lịch demo',
 };
@@ -199,5 +199,5 @@ export const FOOTER = {
       ],
     },
   ],
-  copyright: 'Mascoteach 2024. Sản phẩm của tình yêu giáo dục.',
+  copyright: 'Mascoteach 2026. Sản phẩm của tình yêu công nghệ và giáo dục.',
 };
