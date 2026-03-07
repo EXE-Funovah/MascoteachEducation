@@ -6,7 +6,6 @@ import {
     Settings2, ArrowRight, Loader2,
     ChevronDown, CheckCircle2
 } from 'lucide-react';
-import { getPendingFile } from '@/services/fileStore';
 
 /**
  * QuizSettingsPage — Cấu hình trước khi gọi AI Module generate câu hỏi
@@ -56,7 +55,6 @@ export default function QuizSettingsPage() {
     const fileName = location.state?.fileName;
     const fileSize = location.state?.fileSize;
     const documentId = location.state?.documentId;
-    const pendingFile = getPendingFile();
 
     const [settings, setSettings] = useState({
         title: 'Bài kiểm tra',
