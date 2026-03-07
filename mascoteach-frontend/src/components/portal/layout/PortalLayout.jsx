@@ -2,9 +2,9 @@ import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
 
 /**
- * PortalLayout — Redesigned shell layout for teacher portal
- * Sidebar (left) + Main content area
- * Clean, spacious Wayground-inspired layout
+ * PortalLayout — Shell layout cho Cổng Giáo viên (Teacher Portal)
+ * Sidebar (trái) + Main content area
+ * Chỉ giáo viên đã đăng nhập mới truy cập được (đã bảo vệ bởi ProtectedRoute)
  */
 export default function PortalLayout() {
     return (

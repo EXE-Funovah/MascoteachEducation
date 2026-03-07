@@ -1,5 +1,5 @@
 import { Search } from 'lucide-react';
-import { teacherProfile } from '@/data/mockData';
+import { useAuth } from '@/contexts/AuthContext';
 
 /**
  * TopBar — Clean top navigation bar
@@ -7,6 +7,11 @@ import { teacherProfile } from '@/data/mockData';
  * Wayground-inspired minimal design
  */
 export default function TopBar() {
+    const { user } = useAuth();
+
+    const displayName = user?.fullName || user?.name || 'Giáo viên';
+    const displayAvatar = user?.avatar || '👩‍🏫';
+
     return (
         <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-slate-100/60">
             <div className="flex items-center justify-between h-16 px-8">
@@ -32,10 +37,10 @@ export default function TopBar() {
                 >
                     <div className="w-9 h-9 rounded-full bg-sky-100 flex items-center justify-center text-lg
                                     ring-2 ring-sky-200/50">
-                        {teacherProfile.avatar}
+                        {displayAvatar}
                     </div>
                     <span className="text-[14px] font-medium text-slate-600 hidden sm:block">
-                        {teacherProfile.name}
+                        {displayName}
                     </span>
                 </button>
             </div>

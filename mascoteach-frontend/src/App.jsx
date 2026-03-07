@@ -5,18 +5,17 @@ import LoginPage from '@/pages/LoginPage';
 import SignUpPage from '@/pages/SignUpPage';
 import ForgotPasswordPage from '@/pages/ForgotPasswordPage';
 
+// Auth guard
+import ProtectedRoute from '@/components/auth/ProtectedRoute';
+
 // Portal layout + pages
 import PortalLayout from '@/components/portal/layout/PortalLayout';
 import HomePage from '@/pages/portal/HomePage';
 import LibraryPage from '@/pages/portal/LibraryPage';
 import SessionsPage from '@/pages/portal/SessionsPage';
 
-// Legacy pages (still accessible if needed)
-import CreatePage from '@/pages/portal/CreatePage';
-import GameModesPage from '@/pages/portal/GameModesPage';
-import HostGamePage from '@/pages/portal/HostGamePage';
+// Student Game (standalone, no sidebar)
 import StudentGamePage from '@/pages/portal/StudentGamePage';
-import AnalyticsPage from '@/pages/portal/AnalyticsPage';
 
 export default function App() {
   return (
@@ -29,7 +28,15 @@ export default function App() {
         <Route path="/signup" element={<SignUpPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
-        <Route path="/portal" element={<PortalLayout />}>
+        {/* ── Protected Portal routes ── */}
+        <Route
+          path="/portal"
+          element={
+            <ProtectedRoute>
+              <PortalLayout />
+            </ProtectedRoute>
+          }
+        >
           <Route index element={<HomePage />} />
           <Route path="library" element={<LibraryPage />} />
           <Route path="sessions" element={<SessionsPage />} />

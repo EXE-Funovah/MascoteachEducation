@@ -1,19 +1,39 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import AuthLayout from '@/components/auth/AuthLayout';
 import AuthInput from '@/components/auth/AuthInput';
 import GoogleLogo from '@/components/auth/GoogleLogo';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function LoginPage() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [remember, setRemember] = useState(false);
+    const [submitting, setSubmitting] = useState(false);
 
-    function handleSubmit(e) {
+    const { login, error, clearError } = useAuth();
+    const navigate = useNavigate();
+    const location = useLocation();
+
+    // Where to redirect after login
+    const from = location.state?.from?.pathname || '/portal';
+
+    async function handleSubmit(e) {
         e.preventDefault();
-        // TODO: integrate real auth
-        console.log('Login →', { email, password, remember });
+        clearError();
+
+        if (!email || !password) return;
+
+        setSubmitting(true);
+        try {
+            await login(email, password);
+            navigate(from, { replace: true });
+        } catch {
+            // Error is already set in AuthContext
+        } finally {
+            setSubmitting(false);
+        }
     }
 
     return (
@@ -27,6 +47,14 @@ export default function LoginPage() {
                 </p>
             </header>
 
+            {/* Error message */}
+            {error && (
+                <div className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-sm text-rose-600 text-center"
+                    role="alert">
+                    {error}
+                </div>
+            )}
+
             <form onSubmit={handleSubmit} className="space-y-5">
                 <AuthInput
                     id="login-email"
@@ -35,6 +63,7 @@ export default function LoginPage() {
                     placeholder="you@example.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
+                    required
                 />
 
                 <AuthInput
@@ -44,6 +73,7 @@ export default function LoginPage() {
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
+                    required
                 />
 
                 {/* Remember + Forgot */}
@@ -70,11 +100,19 @@ export default function LoginPage() {
                 {/* Primary CTA */}
                 <motion.button
                     type="submit"
-                    className="auth-btn auth-btn--primary"
-                    whileHover={{ scale: 1.015, y: -1 }}
-                    whileTap={{ scale: 0.98 }}
+                    className="auth-btn auth-btn--primary disabled:opacity-60 disabled:cursor-not-allowed"
+                    whileHover={!submitting ? { scale: 1.015, y: -1 } : {}}
+                    whileTap={!submitting ? { scale: 0.98 } : {}}
+                    disabled={submitting}
                 >
-                    Login
+                    {submitting ? (
+                        <span className="flex items-center justify-center gap-2">
+                            <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            Đang đăng nhập...
+                        </span>
+                    ) : (
+                        'Login'
+                    )}
                 </motion.button>
 
                 {/* Divider */}

@@ -5,7 +5,7 @@ import {
     History,
     LogOut,
 } from 'lucide-react';
-import { teacherProfile } from '@/data/mockData';
+import { useAuth } from '@/contexts/AuthContext';
 
 /**
  * Sidebar — Redesigned minimalist left navigation
@@ -19,6 +19,13 @@ const navItems = [
 ];
 
 export default function Sidebar() {
+    const { user, logout } = useAuth();
+
+    // Display name from API or fallback
+    const displayName = user?.fullName || user?.name || 'Giáo viên';
+    const displaySchool = user?.school || user?.email || '';
+    const displayAvatar = user?.avatar || '👩‍🏫';
+
     return (
         <aside
             className="fixed top-0 left-0 h-screen z-40 flex flex-col w-[248px]
@@ -62,16 +69,19 @@ export default function Sidebar() {
             <div className="px-3 py-4 border-t border-slate-100/60">
                 <div className="flex items-center gap-3 px-4 py-3 mb-2">
                     <div className="w-9 h-9 rounded-full bg-sky-100 flex items-center justify-center text-lg flex-shrink-0">
-                        {teacherProfile.avatar}
+                        {displayAvatar}
                     </div>
                     <div className="flex-1 min-w-0">
-                        <p className="text-[14px] font-semibold text-slate-700 truncate">{teacherProfile.name}</p>
-                        <p className="text-[12px] text-slate-400 truncate">{teacherProfile.school}</p>
+                        <p className="text-[14px] font-semibold text-slate-700 truncate">{displayName}</p>
+                        <p className="text-[12px] text-slate-400 truncate">{displaySchool}</p>
                     </div>
                 </div>
 
-                <button className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-[14px] font-medium text-slate-400
-                           hover:bg-rose-50 hover:text-rose-500 w-full transition-all duration-200">
+                <button
+                    onClick={logout}
+                    className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-[14px] font-medium text-slate-400
+                           hover:bg-rose-50 hover:text-rose-500 w-full transition-all duration-200"
+                >
                     <LogOut className="w-[18px] h-[18px] flex-shrink-0" />
                     <span>Đăng xuất</span>
                 </button>

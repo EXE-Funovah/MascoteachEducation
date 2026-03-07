@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Plus, Upload, Clock, Users, Play, FileText, Sparkles, Search, CloudUpload } from 'lucide-react';
-import { teacherProfile, recentActivities } from '@/data/mockData';
+import { recentActivities } from '@/data/mockData';
 import CreateFlowModal from '@/components/portal/create/CreateFlowModal';
+import { useAuth } from '@/contexts/AuthContext';
 
 /**
  * HomePage — "Trang chủ" — Redesigned dashboard
@@ -27,6 +28,9 @@ export default function HomePage() {
     const [activeTab, setActiveTab] = useState('create');
     /* Animation reset key — forces re-mount on tab change */
     const [animKey, setAnimKey] = useState(0);
+
+    const { user } = useAuth();
+    const displayName = user?.fullName || user?.name || 'Giáo viên';
 
     const hour = new Date().getHours();
     const greeting = hour < 12 ? 'Chào buổi sáng' : hour < 17 ? 'Chào buổi chiều' : 'Chào buổi tối';
@@ -177,7 +181,7 @@ export default function HomePage() {
                 {/* ── Centered Hero / Greeting ── */}
                 <header className="flex flex-col items-center text-center pt-4">
                     <h1 className="text-2xl font-bold text-slate-800">
-                        {greeting}, {teacherProfile.name} 👋
+                        {greeting}, {displayName} 👋
                     </h1>
                     <p className="text-sm text-slate-400 mt-1.5 max-w-md">
                         Bắt đầu tạo quiz hoặc xem lại hoạt động gần đây.
