@@ -1,11 +1,12 @@
-import { useState, useCallback } from 'react';
-import { X, Upload, FileText, Sparkles, CheckCircle2, Swords, Zap, Shield, Gem, Heart, ArrowRight, Loader2, File } from 'lucide-react';
-import { gameModes } from '@/data/mockData';
+import { useState, useEffect, useCallback } from 'react';
+import { X, Upload, FileText, Sparkles, CheckCircle2, Swords, Zap, Shield, Gem, Heart, ArrowRight, Loader2, File, AlertCircle } from 'lucide-react';
+import { getAllGameTemplates } from '@/services/gameTemplateService';
+import { createDocument } from '@/services/documentService';
 
 /**
  * CreateFlowModal — Full AI Quiz creation flow
- * Step 1: Upload document (drag-and-drop zone)
- * Step 2: Choose Game Mode (grid of templates)
+ * Step 1: Upload document (drag-and-drop zone) → calls real API
+ * Step 2: Choose Game Mode (from real API game templates)
  * Clean, spacious, Wayground-inspired modal design
  */
 const modeIcons = {
@@ -16,12 +17,49 @@ const modeIcons = {
     'Heart': Heart,
 };
 
+// Fallback icon mapping for templates from API
+function getIconForTemplate(name) {
+    const lower = (name || '').toLowerCase();
+    if (lower.includes('battle') || lower.includes('chiến')) return Swords;
+    if (lower.includes('speed') || lower.includes('nhanh') || lower.includes('đua')) return Zap;
+    if (lower.includes('team') || lower.includes('đội')) return Shield;
+    if (lower.includes('treasure') || lower.includes('kho')) return Gem;
+    if (lower.includes('survival') || lower.includes('sinh tồn')) return Heart;
+    return Sparkles;
+}
+
 export default function CreateFlowModal({ onClose }) {
-    const [step, setStep] = useState(1); // 1 = Upload, 2 = Choose Game Mode
+    const [step, setStep] = useState(1);
     const [dragActive, setDragActive] = useState(false);
     const [uploadedFile, setUploadedFile] = useState(null);
     const [isProcessing, setIsProcessing] = useState(false);
     const [selectedMode, setSelectedMode] = useState(null);
+    const [uploadError, setUploadError] = useState(null);
+
+    // Game templates from API
+    const [gameTemplates, setGameTemplates] = useState([]);
+    const [loadingTemplates, setLoadingTemplates] = useState(false);
+    const [templatesError, setTemplatesError] = useState(null);
+
+    // Fetch game templates when moving to step 2
+    useEffect(() => {
+        if (step === 2) {
+            fetchTemplates();
+        }
+    }, [step]);
+
+    async function fetchTemplates() {
+        try {
+            setLoadingTemplates(true);
+            setTemplatesError(null);
+            const data = await getAllGameTemplates();
+            setGameTemplates(Array.isArray(data) ? data : []);
+        } catch (err) {
+            setTemplatesError(err.message || 'Không thể tải chế độ chơi');
+        } finally {
+            setLoadingTemplates(false);
+        }
+    }
 
     const handleDrag = useCallback((e) => {
         e.preventDefault();
@@ -39,27 +77,36 @@ export default function CreateFlowModal({ onClose }) {
         setDragActive(false);
         if (e.dataTransfer.files && e.dataTransfer.files[0]) {
             setUploadedFile(e.dataTransfer.files[0]);
+            setUploadError(null);
         }
     }, []);
 
     const handleFileInput = (e) => {
         if (e.target.files && e.target.files[0]) {
             setUploadedFile(e.target.files[0]);
+            setUploadError(null);
         }
     };
 
-    const handleContinue = () => {
+    const handleContinue = async () => {
         setIsProcessing(true);
-        // Simulate AI processing
-        setTimeout(() => {
-            setIsProcessing(false);
+        setUploadError(null);
+        try {
+            // Create a document record in the backend
+            // For now, we use the file name as the URL since actual file hosting
+            // would require a separate upload endpoint
+            await createDocument({ fileUrl: uploadedFile.name });
             setStep(2);
-        }, 2000);
+        } catch (err) {
+            setUploadError(err.message || 'Tải lên thất bại. Vui lòng thử lại.');
+        } finally {
+            setIsProcessing(false);
+        }
     };
 
-    const handleSelectMode = (mode) => {
-        setSelectedMode(mode.id);
-        // In real app, this would mount the quiz into the game
+    const handleSelectMode = (template) => {
+        setSelectedMode(template.id);
+        // In real app, this would create a live session with the template
         setTimeout(() => {
             onClose();
         }, 800);
@@ -123,6 +170,13 @@ export default function CreateFlowModal({ onClose }) {
                     {/* ═══ STEP 1: Upload ═══ */}
                     {step === 1 && (
                         <div className="space-y-6">
+                            {/* Error message */}
+                            {uploadError && (
+                                <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-sm text-rose-600 text-center">
+                                    {uploadError}
+                                </div>
+                            )}
+
                             {/* Drag & Drop Zone */}
                             <div
                                 onDragEnter={handleDrag}
@@ -195,12 +249,12 @@ export default function CreateFlowModal({ onClose }) {
                                         {isProcessing ? (
                                             <>
                                                 <Loader2 className="w-4 h-4 animate-spin" />
-                                                AI đang phân tích...
+                                                Đang tải lên...
                                             </>
                                         ) : (
                                             <>
                                                 <Sparkles className="w-4 h-4" />
-                                                Tạo câu hỏi với AI
+                                                Tiếp tục
                                                 <ArrowRight className="w-4 h-4" />
                                             </>
                                         )}
@@ -214,63 +268,89 @@ export default function CreateFlowModal({ onClose }) {
                     {step === 2 && (
                         <div className="space-y-5">
                             <p className="text-[13px] text-slate-500">
-                                AI đã tạo xong câu hỏi. Chọn chế độ chơi để gắn quiz vào trò chơi.
+                                Tài liệu đã được tải lên. Chọn chế độ chơi để tạo phiên.
                             </p>
 
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                {gameModes.map((mode) => {
-                                    const IconComponent = modeIcons[mode.icon] || Swords;
-                                    const isSelected = selectedMode === mode.id;
+                            {loadingTemplates ? (
+                                <div className="flex items-center justify-center py-12">
+                                    <Loader2 className="w-6 h-6 text-sky-500 animate-spin" />
+                                    <span className="ml-3 text-sm text-slate-400">Đang tải chế độ chơi...</span>
+                                </div>
+                            ) : templatesError ? (
+                                <div className="flex flex-col items-center justify-center py-12 text-center">
+                                    <AlertCircle className="w-8 h-8 text-slate-300 mb-3" />
+                                    <p className="text-sm text-slate-400 mb-3">{templatesError}</p>
+                                    <button
+                                        onClick={fetchTemplates}
+                                        className="px-4 py-2 rounded-lg text-sm font-medium text-sky-600 bg-sky-50
+                                                   hover:bg-sky-100 transition-colors"
+                                    >
+                                        Thử lại
+                                    </button>
+                                </div>
+                            ) : gameTemplates.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center py-12 text-center">
+                                    <p className="text-sm text-slate-400">
+                                        Chưa có chế độ chơi nào. Vui lòng liên hệ admin.
+                                    </p>
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    {gameTemplates.map((template) => {
+                                        const IconComponent = modeIcons[template.icon] || getIconForTemplate(template.name);
+                                        const isSelected = selectedMode === template.id;
 
-                                    return (
-                                        <button
-                                            key={mode.id}
-                                            onClick={() => handleSelectMode(mode)}
-                                            className={`group relative flex flex-col p-5 rounded-xl
-                                                        border text-left transition-all duration-200
+                                        return (
+                                            <button
+                                                key={template.id}
+                                                onClick={() => handleSelectMode(template)}
+                                                className={`group relative flex flex-col p-5 rounded-xl
+                                                            border text-left transition-all duration-200
+                                                            ${isSelected
+                                                        ? 'border-sky-400 bg-sky-50/50 ring-2 ring-sky-200/50'
+                                                        : 'border-slate-200/80 bg-white hover:border-sky-300 hover:bg-sky-50/30'
+                                                    }`}
+                                            >
+                                                <div className="flex items-center gap-3 mb-3">
+                                                    <div className={`w-9 h-9 rounded-lg flex items-center justify-center
+                                                                     transition-colors duration-200
+                                                                     ${isSelected ? 'bg-sky-100' : 'bg-slate-50 group-hover:bg-sky-50'}`}>
+                                                        <IconComponent className={`w-[18px] h-[18px] transition-colors duration-200
+                                                            ${isSelected ? 'text-sky-500' : 'text-slate-400 group-hover:text-sky-500'}`} />
+                                                    </div>
+                                                    <h3 className={`text-[13px] font-semibold transition-colors duration-200
+                                                        ${isSelected ? 'text-sky-600' : 'text-slate-700'}`}>
+                                                        {template.name}
+                                                    </h3>
+                                                </div>
+
+                                                {template.thumbnailUrl && (
+                                                    <div className="w-full h-20 rounded-lg bg-slate-50 overflow-hidden mb-3">
+                                                        <img
+                                                            src={template.thumbnailUrl}
+                                                            alt={template.name}
+                                                            className="w-full h-full object-cover"
+                                                        />
+                                                    </div>
+                                                )}
+
+                                                <div className="flex items-center justify-between mt-auto">
+                                                    <span className="text-[11px] text-slate-400">
+                                                        Template #{template.id}
+                                                    </span>
+                                                    <span className={`text-[11px] font-semibold transition-all duration-200
                                                         ${isSelected
-                                                    ? 'border-sky-400 bg-sky-50/50 ring-2 ring-sky-200/50'
-                                                    : 'border-slate-200/80 bg-white hover:border-sky-300 hover:bg-sky-50/30'
-                                                }`}
-                                        >
-                                            <div className="flex items-center gap-3 mb-3">
-                                                <div className={`w-9 h-9 rounded-lg flex items-center justify-center
-                                                                 transition-colors duration-200
-                                                                 ${isSelected ? 'bg-sky-100' : 'bg-slate-50 group-hover:bg-sky-50'}`}>
-                                                    <IconComponent className={`w-[18px] h-[18px] transition-colors duration-200
-                                                        ${isSelected ? 'text-sky-500' : 'text-slate-400 group-hover:text-sky-500'}`} />
-                                                </div>
-                                                <h3 className={`text-[13px] font-semibold transition-colors duration-200
-                                                    ${isSelected ? 'text-sky-600' : 'text-slate-700'}`}>
-                                                    {mode.name}
-                                                </h3>
-                                            </div>
-
-                                            <p className="text-[12px] text-slate-400 leading-relaxed mb-4 line-clamp-2">
-                                                {mode.description}
-                                            </p>
-
-                                            <div className="flex items-center justify-between mt-auto">
-                                                <div className="flex items-center gap-3">
-                                                    <span className="text-[11px] text-slate-400">
-                                                        {mode.duration}
-                                                    </span>
-                                                    <span className="text-[11px] text-slate-400">
-                                                        {mode.players} người
+                                                            ? 'text-sky-500'
+                                                            : 'text-slate-400 group-hover:text-sky-500'
+                                                        }`}>
+                                                        {isSelected ? '✓ Đã chọn' : 'Chọn →'}
                                                     </span>
                                                 </div>
-                                                <span className={`text-[11px] font-semibold transition-all duration-200
-                                                    ${isSelected
-                                                        ? 'text-sky-500'
-                                                        : 'text-slate-400 group-hover:text-sky-500'
-                                                    }`}>
-                                                    {isSelected ? '✓ Đã chọn' : 'Chọn chế độ này →'}
-                                                </span>
-                                            </div>
-                                        </button>
-                                    );
-                                })}
-                            </div>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>

@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
-import { Plus, Upload, Clock, Users, Play, FileText, Sparkles, Search, CloudUpload } from 'lucide-react';
-import { recentActivities } from '@/data/mockData';
+import { Plus, Clock, Users, Play, FileText, Sparkles, Search, CloudUpload, Loader2, AlertCircle } from 'lucide-react';
 import CreateFlowModal from '@/components/portal/create/CreateFlowModal';
 import { useAuth } from '@/contexts/AuthContext';
+import { getMySessions } from '@/services/liveSessionService';
 
 /**
  * HomePage — "Trang chủ" — Redesigned dashboard
  * Layout: Centered Greeting → Compact Tabs (Wayground-style) → Dynamic Content
  * Clean, spacious, minimalist with light sky blue accents
+ * Now fetches real session data from API for "Hoạt động gần đây"
  */
 
 /* ── Tab definitions ── */
@@ -26,14 +27,36 @@ const SEARCH_CATEGORIES = [
 export default function HomePage() {
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [activeTab, setActiveTab] = useState('create');
-    /* Animation reset key — forces re-mount on tab change */
     const [animKey, setAnimKey] = useState(0);
+
+    // Real data from API
+    const [recentSessions, setRecentSessions] = useState([]);
+    const [loadingSessions, setLoadingSessions] = useState(true);
+    const [sessionsError, setSessionsError] = useState(null);
 
     const { user } = useAuth();
     const displayName = user?.fullName || user?.name || 'Giáo viên';
 
     const hour = new Date().getHours();
     const greeting = hour < 12 ? 'Chào buổi sáng' : hour < 17 ? 'Chào buổi chiều' : 'Chào buổi tối';
+
+    // Fetch recent sessions from API
+    useEffect(() => {
+        async function fetchSessions() {
+            try {
+                setLoadingSessions(true);
+                const data = await getMySessions();
+                // Take the most recent 5 sessions
+                const sessions = Array.isArray(data) ? data.slice(0, 5) : [];
+                setRecentSessions(sessions);
+            } catch (err) {
+                setSessionsError(err.message || 'Không thể tải hoạt động gần đây');
+            } finally {
+                setLoadingSessions(false);
+            }
+        }
+        fetchSessions();
+    }, []);
 
     /* Re-trigger mount animation whenever the active tab changes */
     useEffect(() => {
@@ -49,65 +72,96 @@ export default function HomePage() {
                 </h2>
             </div>
 
-            <div className="space-y-2">
-                {recentActivities.map((activity) => (
-                    <article
-                        key={activity.id}
-                        className="flex items-center justify-between p-4 rounded-xl
-                                   border border-slate-100/80 bg-white
-                                   hover:border-slate-200 hover:bg-slate-50/30
-                                   transition-all duration-200 group cursor-pointer"
-                    >
-                        <div className="flex items-center gap-4">
-                            <div className="w-9 h-9 rounded-lg bg-sky-50 flex items-center justify-center flex-shrink-0">
-                                {activity.action === 'đã chơi' ? (
-                                    <Play className="w-4 h-4 text-sky-500" />
-                                ) : activity.action === 'đã tạo' ? (
-                                    <Plus className="w-4 h-4 text-sky-500" />
-                                ) : (
-                                    <FileText className="w-4 h-4 text-sky-500" />
+            {loadingSessions ? (
+                <div className="flex items-center justify-center py-12">
+                    <Loader2 className="w-6 h-6 text-sky-500 animate-spin" />
+                    <span className="ml-3 text-sm text-slate-400">Đang tải...</span>
+                </div>
+            ) : sessionsError ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                    <AlertCircle className="w-8 h-8 text-slate-300 mb-3" />
+                    <p className="text-sm text-slate-400">{sessionsError}</p>
+                </div>
+            ) : recentSessions.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                    <div className="w-14 h-14 rounded-2xl bg-slate-50 flex items-center justify-center mb-4">
+                        <FileText className="w-7 h-7 text-slate-300" />
+                    </div>
+                    <h3 className="text-[14px] font-medium text-slate-500 mb-1">
+                        Chưa có hoạt động nào
+                    </h3>
+                    <p className="text-[13px] text-slate-400">
+                        Bắt đầu bằng cách tạo quiz mới
+                    </p>
+                </div>
+            ) : (
+                <div className="space-y-2">
+                    {recentSessions.map((session) => (
+                        <article
+                            key={session.id}
+                            className="flex items-center justify-between p-4 rounded-xl
+                                       border border-slate-100/80 bg-white
+                                       hover:border-slate-200 hover:bg-slate-50/30
+                                       transition-all duration-200 group cursor-pointer"
+                        >
+                            <div className="flex items-center gap-4">
+                                <div className="w-9 h-9 rounded-lg bg-sky-50 flex items-center justify-center flex-shrink-0">
+                                    {session.status === 'Active' ? (
+                                        <Play className="w-4 h-4 text-sky-500" />
+                                    ) : (
+                                        <Plus className="w-4 h-4 text-sky-500" />
+                                    )}
+                                </div>
+                                <div>
+                                    <h3 className="text-[13px] font-medium text-slate-700 group-hover:text-slate-800
+                                                   transition-colors">
+                                        {session.title || session.quizTitle || `Phiên #${session.id}`}
+                                    </h3>
+                                    <div className="flex items-center gap-3 mt-1">
+                                        {session.pin && (
+                                            <span className="inline-flex items-center px-2 py-0.5 rounded-md
+                                                             bg-sky-50 text-sky-600 text-[11px] font-medium">
+                                                PIN: {session.pin}
+                                            </span>
+                                        )}
+                                        <span className="inline-flex items-center px-2 py-0.5 rounded-md
+                                                         bg-slate-50 text-slate-500 text-[11px] font-medium">
+                                            {session.status || 'Hoàn thành'}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center gap-5 text-right">
+                                {session.participantCount != null && (
+                                    <div className="flex items-center gap-1.5">
+                                        <Users className="w-3.5 h-3.5 text-slate-400" />
+                                        <span className="text-[12px] text-slate-500 font-medium">
+                                            {session.participantCount}
+                                        </span>
+                                    </div>
+                                )}
+                                {session.createdAt && (
+                                    <div className="flex items-center gap-1.5">
+                                        <Clock className="w-3.5 h-3.5 text-slate-400" />
+                                        <span className="text-[12px] text-slate-400">
+                                            {new Date(session.createdAt).toLocaleDateString('vi-VN', {
+                                                day: 'numeric',
+                                                month: 'short',
+                                            })}
+                                        </span>
+                                    </div>
                                 )}
                             </div>
-                            <div>
-                                <h3 className="text-[13px] font-medium text-slate-700 group-hover:text-slate-800
-                                               transition-colors">
-                                    {activity.title}
-                                </h3>
-                                <div className="flex items-center gap-3 mt-1">
-                                    <span className="inline-flex items-center px-2 py-0.5 rounded-md
-                                                     bg-sky-50 text-sky-600 text-[11px] font-medium">
-                                        {activity.mode}
-                                    </span>
-                                    <span className="text-[11px] text-slate-400">
-                                        {activity.action}
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="flex items-center gap-5 text-right">
-                            {activity.players && (
-                                <div className="flex items-center gap-1.5">
-                                    <Users className="w-3.5 h-3.5 text-slate-400" />
-                                    <span className="text-[12px] text-slate-500 font-medium">{activity.players}</span>
-                                </div>
-                            )}
-                            <div className="flex items-center gap-1.5">
-                                <Clock className="w-3.5 h-3.5 text-slate-400" />
-                                <span className="text-[12px] text-slate-400">
-                                    {activity.time}
-                                </span>
-                            </div>
-                        </div>
-                    </article>
-                ))}
-            </div>
+                        </article>
+                    ))}
+                </div>
+            )}
         </section>
     );
 
     const renderSearchContent = () => (
         <section aria-label="Tìm kiếm" className="space-y-6">
-            {/* Search bar */}
             <div className="relative">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                 <input
@@ -119,8 +173,6 @@ export default function HomePage() {
                                transition-all duration-200"
                 />
             </div>
-
-            {/* Category tags */}
             <div>
                 <p className="text-[13px] text-slate-400 mb-3">Khám phá theo danh mục</p>
                 <div className="flex flex-wrap gap-2">

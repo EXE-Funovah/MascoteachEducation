@@ -1,6 +1,18 @@
 import { useState, useEffect, useCallback } from 'react';
-import { studentGameState } from '@/data/mockData';
 import { Flame, Star, Trophy } from 'lucide-react';
+
+// Placeholder state — will be replaced by real-time session data
+// when the live game flow (WebSocket + PIN) is integrated
+const defaultGameState = {
+    question: 'Đang chờ kết nối phiên chơi...',
+    options: ['Lựa chọn A', 'Lựa chọn B', 'Lựa chọn C', 'Lựa chọn D'],
+    questionNumber: 1,
+    totalQuestions: 10,
+    score: 0,
+    streak: 0,
+    timeLeft: 30,
+    timeTotal: 30,
+};
 
 /**
  * StudentGamePage — Minimal student-facing game view
@@ -18,7 +30,7 @@ const optionColors = [
 const optionLabels = ['A', 'B', 'C', 'D'];
 
 export default function StudentGamePage() {
-    const [state] = useState(studentGameState);
+    const [state] = useState(defaultGameState);
     const [timeLeft, setTimeLeft] = useState(state.timeLeft);
     const [selectedAnswer, setSelectedAnswer] = useState(null);
     const [showMascot, setShowMascot] = useState(true);
