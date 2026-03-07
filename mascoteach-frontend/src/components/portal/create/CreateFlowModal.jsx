@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { X, Upload, FileText, Sparkles, CheckCircle2, Swords, Zap, Shield, Gem, Heart, ArrowRight, Loader2, File, AlertCircle } from 'lucide-react';
 import { getAllGameTemplates } from '@/services/gameTemplateService';
-import { createDocument } from '@/services/documentService';
+import { generateUploadUrl, uploadFileToS3, createDocument } from '@/services/documentService';
 
 /**
  * CreateFlowModal — Full AI Quiz creation flow
@@ -92,10 +92,18 @@ export default function CreateFlowModal({ onClose }) {
         setIsProcessing(true);
         setUploadError(null);
         try {
-            // Create a document record in the backend
-            // For now, we use the file name as the URL since actual file hosting
-            // would require a separate upload endpoint
-            await createDocument({ fileUrl: uploadedFile.name });
+            // Step 1: Get presigned S3 URL from backend
+            const { uploadUrl, fileUrl } = await generateUploadUrl(
+                uploadedFile.name,
+                uploadedFile.type,
+            );
+
+            // Step 2: Upload file directly to S3 (no auth header)
+            await uploadFileToS3(uploadUrl, uploadedFile);
+
+            // Step 3: Save document metadata to backend
+            await createDocument({ fileUrl });
+
             setStep(2);
         } catch (err) {
             setUploadError(err.message || 'Tải lên thất bại. Vui lòng thử lại.');

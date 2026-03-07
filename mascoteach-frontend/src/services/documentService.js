@@ -66,3 +66,33 @@ export async function deleteDocument(id) {
 export async function toggleDeleteDocument(id) {
     return api.patch(`/api/Document/${id}/toggle-delete`);
 }
+
+/**
+ * Step 1: Request a presigned S3 upload URL from the backend
+ * @param {string} fileName - Original file name (e.g. "lecture.pdf")
+ * @param {string} contentType - MIME type (e.g. "application/pdf")
+ * @returns {Promise<{ uploadUrl: string, s3Key: string, fileUrl: string, expiresAt: string }>}
+ */
+export async function generateUploadUrl(fileName, contentType) {
+    return api.post('/api/Document/generate-upload-url', { fileName, contentType });
+}
+
+/**
+ * Step 2: Upload a file directly to S3 using a presigned PUT URL.
+ * IMPORTANT: No Authorization header is sent — S3 rejects requests with extra auth headers.
+ * @param {string} uploadUrl - Presigned S3 URL from generateUploadUrl
+ * @param {File} file - The raw File object to upload
+ * @returns {Promise<void>}
+ */
+export async function uploadFileToS3(uploadUrl, file) {
+    const response = await fetch(uploadUrl, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': file.type,
+        },
+        body: file,
+    });
+    if (!response.ok) {
+        throw new Error(`S3 upload failed: ${response.status} ${response.statusText}`);
+    }
+}
