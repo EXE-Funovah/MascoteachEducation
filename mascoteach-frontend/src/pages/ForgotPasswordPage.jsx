@@ -10,8 +10,8 @@ export default function ForgotPasswordPage() {
 
     function handleSubmit(e) {
         e.preventDefault();
-        // TODO: integrate real auth
-        console.log('Reset password →', email);
+        // TODO: tích hợp API gửi email reset mật khẩu
+        console.log('Gửi yêu cầu đặt lại mật khẩu →', email);
         setSent(true);
     }
 
@@ -25,10 +25,10 @@ export default function ForgotPasswordPage() {
                 </div>
 
                 <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 leading-tight">
-                    Reset your password
+                    Đặt lại mật khẩu
                 </h1>
                 <p className="mt-2 text-sm text-slate-500 max-w-xs mx-auto">
-                    Enter your email and we'll send you a link to reset your password.
+                    Nhập email của bạn, chúng tôi sẽ gửi liên kết để đặt lại mật khẩu.
                 </p>
             </header>
 
@@ -36,9 +36,9 @@ export default function ForgotPasswordPage() {
                 <form onSubmit={handleSubmit} className="space-y-5">
                     <AuthInput
                         id="forgot-email"
-                        label="Email Address"
+                        label="Địa chỉ Email"
                         type="email"
-                        placeholder="you@example.com"
+                        placeholder="email@example.com"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                     />
@@ -49,7 +49,7 @@ export default function ForgotPasswordPage() {
                         whileHover={{ scale: 1.015, y: -1 }}
                         whileTap={{ scale: 0.98 }}
                     >
-                        Send Reset Link
+                        Gửi liên kết đặt lại
                     </motion.button>
                 </form>
             ) : (
@@ -64,14 +64,14 @@ export default function ForgotPasswordPage() {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 19v-8.93a2 2 0 01.89-1.664l7-4.666a2 2 0 012.22 0l7 4.666A2 2 0 0121 10.07V19M3 19a2 2 0 002 2h14a2 2 0 002-2M3 19l6.75-4.5M21 19l-6.75-4.5M3 10l6.75 4.5M21 10l-6.75 4.5m0 0l-1.14.76a2 2 0 01-2.22 0l-1.14-.76" />
                         </svg>
                     </div>
-                    <h2 className="text-lg font-bold text-slate-900">Check your email</h2>
+                    <h2 className="text-lg font-bold text-slate-900">Kiểm tra email của bạn</h2>
                     <p className="mt-2 text-sm text-slate-500 max-w-xs mx-auto">
-                        We've sent a password reset link to <span className="font-medium text-slate-700">{email}</span>.
+                        Chúng tôi đã gửi liên kết đặt lại mật khẩu đến <span className="font-medium text-slate-700">{email}</span>.
                     </p>
                 </motion.div>
             )}
 
-            {/* Back to login */}
+            {/* Quay về đăng nhập */}
             <div className="mt-8 text-center">
                 <Link
                     to="/login"
@@ -80,7 +80,7 @@ export default function ForgotPasswordPage() {
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                     </svg>
-                    Back to Login
+                    Quay về Đăng nhập
                 </Link>
             </div>
         </AuthLayout>

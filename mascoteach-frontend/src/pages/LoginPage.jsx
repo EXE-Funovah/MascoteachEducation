@@ -16,8 +16,10 @@ export default function LoginPage() {
     const navigate = useNavigate();
     const location = useLocation();
 
-    // Where to redirect after login
+    // Redirect sau khi đăng nhập
     const from = location.state?.from?.pathname || '/portal';
+    // Thông báo thành công từ trang đăng ký
+    const successMessage = location.state?.message;
 
     async function handleSubmit(e) {
         e.preventDefault();
@@ -30,7 +32,7 @@ export default function LoginPage() {
             await login(email, password);
             navigate(from, { replace: true });
         } catch {
-            // Error is already set in AuthContext
+            // Error đã được set trong AuthContext
         } finally {
             setSubmitting(false);
         }
@@ -40,14 +42,22 @@ export default function LoginPage() {
         <AuthLayout>
             <header className="text-center mb-8">
                 <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 leading-tight">
-                    Welcome Mascoteach
+                    Chào mừng đến Mascoteach
                 </h1>
                 <p className="mt-2 text-sm text-slate-500">
                     Đăng nhập để tiếp tục trải nghiệm lớp học thông minh.
                 </p>
             </header>
 
-            {/* Error message */}
+            {/* Thông báo đăng ký thành công */}
+            {successMessage && (
+                <div className="mb-4 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-sm text-emerald-600 text-center"
+                    role="status">
+                    {successMessage}
+                </div>
+            )}
+
+            {/* Thông báo lỗi */}
             {error && (
                 <div className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-sm text-rose-600 text-center"
                     role="alert">
@@ -58,9 +68,9 @@ export default function LoginPage() {
             <form onSubmit={handleSubmit} className="space-y-5">
                 <AuthInput
                     id="login-email"
-                    label="Email Address"
+                    label="Địa chỉ Email"
                     type="email"
-                    placeholder="you@example.com"
+                    placeholder="email@example.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
@@ -68,7 +78,7 @@ export default function LoginPage() {
 
                 <AuthInput
                     id="login-password"
-                    label="Password"
+                    label="Mật khẩu"
                     type="password"
                     placeholder="••••••••"
                     value={password}
@@ -76,7 +86,7 @@ export default function LoginPage() {
                     required
                 />
 
-                {/* Remember + Forgot */}
+                {/* Ghi nhớ + Quên mật khẩu */}
                 <div className="flex items-center justify-between">
                     <label htmlFor="remember-me" className="flex items-center gap-2 cursor-pointer select-none">
                         <input
@@ -86,18 +96,18 @@ export default function LoginPage() {
                             onChange={(e) => setRemember(e.target.checked)}
                             className="auth-checkbox"
                         />
-                        <span className="text-sm text-slate-500">Remember me</span>
+                        <span className="text-sm text-slate-500">Ghi nhớ đăng nhập</span>
                     </label>
 
                     <Link
                         to="/forgot-password"
                         className="text-sm font-semibold text-brand-blue hover:text-brand-navy transition-colors"
                     >
-                        Forgot password?
+                        Quên mật khẩu?
                     </Link>
                 </div>
 
-                {/* Primary CTA */}
+                {/* Nút đăng nhập */}
                 <motion.button
                     type="submit"
                     className="auth-btn auth-btn--primary disabled:opacity-60 disabled:cursor-not-allowed"
@@ -111,14 +121,14 @@ export default function LoginPage() {
                             Đang đăng nhập...
                         </span>
                     ) : (
-                        'Login'
+                        'Đăng nhập'
                     )}
                 </motion.button>
 
-                {/* Divider */}
+                {/* Đường phân cách */}
                 <div className="flex items-center gap-4">
                     <span className="flex-1 h-px bg-slate-200" />
-                    <span className="text-xs text-slate-400 font-medium">or</span>
+                    <span className="text-xs text-slate-400 font-medium">hoặc</span>
                     <span className="flex-1 h-px bg-slate-200" />
                 </div>
 
@@ -130,15 +140,15 @@ export default function LoginPage() {
                     whileTap={{ scale: 0.98 }}
                 >
                     <GoogleLogo />
-                    Continue with Google
+                    Tiếp tục với Google
                 </motion.button>
             </form>
 
-            {/* Sign up nudge */}
+            {/* Chuyển sang đăng ký */}
             <p className="mt-8 text-center text-sm text-slate-500">
-                Don't have an account?{' '}
+                Chưa có tài khoản?{' '}
                 <Link to="/signup" className="font-semibold text-brand-blue hover:text-brand-navy transition-colors">
-                    Sign up
+                    Đăng ký ngay
                 </Link>
             </p>
         </AuthLayout>

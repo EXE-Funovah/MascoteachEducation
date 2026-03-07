@@ -13,6 +13,7 @@ export default function SignUpPage() {
         password: '',
         confirmPassword: '',
     });
+    const [selectedRole, setSelectedRole] = useState('Teacher');
     const [submitting, setSubmitting] = useState(false);
     const [localError, setLocalError] = useState('');
 
@@ -32,7 +33,7 @@ export default function SignUpPage() {
         clearError();
         setLocalError('');
 
-        // Client-side validation
+        // Kiểm tra phía client
         if (!form.fullName || !form.email || !form.password) {
             setLocalError('Vui lòng điền đầy đủ thông tin.');
             return;
@@ -54,14 +55,13 @@ export default function SignUpPage() {
                 fullName: form.fullName,
                 email: form.email,
                 password: form.password,
-                role: 'Teacher',
+                role: selectedRole,
             });
-            // Registration successful — navigate to login
+            // Đăng ký thành công — chuyển về trang đăng nhập
             navigate('/login', {
                 state: { message: 'Đăng ký thành công! Vui lòng đăng nhập.' }
             });
         } catch {
-            // Error is already set in AuthContext
         } finally {
             setSubmitting(false);
         }
@@ -73,14 +73,14 @@ export default function SignUpPage() {
         <AuthLayout>
             <header className="text-center mb-8">
                 <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 leading-tight">
-                    Start your journey with Mascoteach
+                    Tạo tài khoản Mascoteach
                 </h1>
                 <p className="mt-2 text-sm text-slate-500">
-                    Tạo tài khoản để trải nghiệm lớp học thông minh.
+                    Đăng ký để trải nghiệm lớp học thông minh.
                 </p>
             </header>
 
-            {/* Error message */}
+            {/* Thông báo lỗi */}
             {displayError && (
                 <div className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-sm text-rose-600 text-center"
                     role="alert">
@@ -89,9 +89,30 @@ export default function SignUpPage() {
             )}
 
             <form onSubmit={handleSubmit} className="space-y-5">
+                <div>
+                    <label htmlFor="signup-role" className="block text-sm font-medium text-slate-700 mb-1.5">
+                        Bạn là? <span className="text-rose-400">*</span>
+                    </label>
+                    <select
+                        id="signup-role"
+                        value={selectedRole}
+                        onChange={(e) => { setSelectedRole(e.target.value); setLocalError(''); clearError(); }}
+                        className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white
+                                   text-sm text-slate-700
+                                   focus:outline-none focus:ring-2 focus:ring-sky-200 focus:border-sky-300
+                                   transition-all duration-200 appearance-none
+                                   bg-[url('data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2012%2012%22%3E%3Cpath%20fill%3D%22%2394a3b8%22%20d%3D%22M2%204l4%204%204-4%22/%3E%3C/svg%3E')]
+                                   bg-[length:12px] bg-[right_16px_center] bg-no-repeat"
+                    >
+                        <option value="Teacher">Giáo viên</option>
+                        <option value="Student">Học sinh</option>
+                        <option value="Parent">Phụ huynh</option>
+                    </select>
+                </div>
+
                 <AuthInput
                     id="signup-fullname"
-                    label="Full Name"
+                    label="Họ và tên"
                     placeholder="Nguyễn Văn A"
                     value={form.fullName}
                     onChange={update('fullName')}
@@ -100,9 +121,9 @@ export default function SignUpPage() {
 
                 <AuthInput
                     id="signup-email"
-                    label="Email"
+                    label="Địa chỉ Email"
                     type="email"
-                    placeholder="you@example.com"
+                    placeholder="email@example.com"
                     value={form.email}
                     onChange={update('email')}
                     required
@@ -110,7 +131,7 @@ export default function SignUpPage() {
 
                 <AuthInput
                     id="signup-password"
-                    label="Password"
+                    label="Mật khẩu"
                     type="password"
                     placeholder="••••••••"
                     value={form.password}
@@ -120,7 +141,7 @@ export default function SignUpPage() {
 
                 <AuthInput
                     id="signup-confirm"
-                    label="Confirm Password"
+                    label="Xác nhận mật khẩu"
                     type="password"
                     placeholder="••••••••"
                     value={form.confirmPassword}
@@ -128,7 +149,7 @@ export default function SignUpPage() {
                     required
                 />
 
-                {/* Primary CTA */}
+                {/* Nút tạo tài khoản */}
                 <motion.button
                     type="submit"
                     className="auth-btn auth-btn--primary disabled:opacity-60 disabled:cursor-not-allowed"
@@ -142,14 +163,14 @@ export default function SignUpPage() {
                             Đang tạo tài khoản...
                         </span>
                     ) : (
-                        'Create Account'
+                        'Tạo tài khoản'
                     )}
                 </motion.button>
 
-                {/* Divider */}
+                {/* Đường phân cách */}
                 <div className="flex items-center gap-4">
                     <span className="flex-1 h-px bg-slate-200" />
-                    <span className="text-xs text-slate-400 font-medium">or</span>
+                    <span className="text-xs text-slate-400 font-medium">hoặc</span>
                     <span className="flex-1 h-px bg-slate-200" />
                 </div>
 
@@ -161,23 +182,23 @@ export default function SignUpPage() {
                     whileTap={{ scale: 0.98 }}
                 >
                     <GoogleLogo />
-                    Continue with Google
+                    Tiếp tục với Google
                 </motion.button>
             </form>
 
-            {/* Terms */}
+            {/* Điều khoản */}
             <p className="mt-6 text-center text-xs text-slate-400 leading-relaxed max-w-xs mx-auto">
-                By signing up, you agree to our{' '}
-                <a href="#" className="underline hover:text-brand-blue transition-colors">Terms of Service</a>{' '}
-                and{' '}
-                <a href="#" className="underline hover:text-brand-blue transition-colors">Privacy Policy</a>.
+                Bằng việc đăng ký, bạn đồng ý với{' '}
+                <a href="#" className="underline hover:text-brand-blue transition-colors">Điều khoản dịch vụ</a>{' '}
+                và{' '}
+                <a href="#" className="underline hover:text-brand-blue transition-colors">Chính sách bảo mật</a>.
             </p>
 
-            {/* Login nudge */}
+            {/* Chuyển về đăng nhập */}
             <p className="mt-4 text-center text-sm text-slate-500">
-                Already have an account?{' '}
+                Đã có tài khoản?{' '}
                 <Link to="/login" className="font-semibold text-brand-blue hover:text-brand-navy transition-colors">
-                    Login
+                    Đăng nhập
                 </Link>
             </p>
         </AuthLayout>
