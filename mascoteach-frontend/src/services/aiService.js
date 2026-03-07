@@ -67,3 +67,41 @@ export async function generateMCQFromFile(file, options = {}) {
 
     return res.json();
 }
+
+/**
+ * Generate MCQ questions from a file URL (already uploaded to S3)
+ *
+ * @param {string} fileUrl — The S3 URL of the uploaded document
+ * @param {object} options
+ * @param {number} [options.documentId] — Document ID from backend
+ * @param {string} [options.quizTitle] — Title for the quiz
+ * @param {number} [options.numberOfQuestions=5] — How many questions to generate
+ * @returns {Promise<object>} Same shape as generateMCQFromFile
+ */
+export async function generateMCQFromUrl(fileUrl, options = {}) {
+    const { documentId, quizTitle, numberOfQuestions = 5 } = options;
+
+    const body = {
+        fileUrl,
+        numberOfQuestions,
+    };
+    if (documentId !== undefined && documentId !== null) {
+        body.documentId = documentId;
+    }
+    if (quizTitle) {
+        body.quizTitle = quizTitle;
+    }
+
+    const res = await fetch(`${AI_BASE_URL}/api/v1/ai/generate-for-backend`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+    });
+
+    if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.message || `AI Module trả về lỗi ${res.status}`);
+    }
+
+    return res.json();
+}

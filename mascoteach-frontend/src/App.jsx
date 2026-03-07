@@ -15,6 +15,7 @@ import LibraryPage from '@/pages/portal/LibraryPage';
 import SessionsPage from '@/pages/portal/SessionsPage';
 import QuizSettingsPage from '@/pages/portal/QuizSettingsPage';
 import QuizPreviewPage from '@/pages/portal/QuizPreviewPage';
+import GameTemplateSelectionPage from '@/pages/portal/GameTemplateSelectionPage';
 
 // Student Game (standalone, no sidebar)
 import StudentGamePage from '@/pages/portal/StudentGamePage';
@@ -44,6 +45,7 @@ export default function App() {
           <Route path="sessions" element={<SessionsPage />} />
           <Route path="quiz-settings" element={<QuizSettingsPage />} />
           <Route path="quiz-preview" element={<QuizPreviewPage />} />
+          <Route path="select-game-template" element={<GameTemplateSelectionPage />} />
         </Route>
 
         {/* ── Student routes ── */}

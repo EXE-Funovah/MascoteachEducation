@@ -6,17 +6,18 @@ import {
     Loader2, Send, Clock, Star, BookOpen,
     LayoutList, FileText, BarChart3, AlertCircle
 } from 'lucide-react';
-import { generateMCQFromFile } from '@/services/aiService';
+import { generateMCQFromUrl } from '@/services/aiService';
 import { generateQuizFromAI } from '@/services/quizService';
 
 /**
  * QuizPreviewPage — Preview AI-generated MCQ questions before publishing
  *
  * Flow:
- *   QuizSettingsPage passes { file, documentId, settings } via route state
- *   → This page calls AI Module (ai-mascoteach.com) to generate questions
+ *   QuizSettingsPage passes { fileName, fileSize, documentId, fileUrl, settings } via route state
+ *   → This page sends the S3 fileUrl to the AI Module to generate questions
  *   → User previews, edits, deletes questions
  *   → "Xuất bản" saves to Backend via POST /api/Quiz/generate-from-ai
+ *   → Navigates to /teacher/select-game-template with quizId
  */
 
 const TABS = [
@@ -34,7 +35,7 @@ export default function QuizPreviewPage() {
     const fileName = location.state?.fileName;
     const fileSize = location.state?.fileSize;
     const documentId = location.state?.documentId;
-    const pendingFile = getPendingFile();
+    const fileUrl = location.state?.fileUrl;
 
     const [questions, setQuestions] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -48,7 +49,7 @@ export default function QuizPreviewPage() {
         if (calledRef.current) return;
         calledRef.current = true;
 
-        if (!pendingFile) {
+        if (!fileUrl) {
             setError('Không tìm thấy file tài liệu. Vui lòng quay lại và tải lên.');
             setLoading(false);
             return;
@@ -62,7 +63,7 @@ export default function QuizPreviewPage() {
                 const questionCount = settingsData?.questionCount || 5;
                 const quizTitle = settingsData?.title || 'Bài kiểm tra';
 
-                const result = await generateMCQFromFile(pendingFile, {
+                const result = await generateMCQFromUrl(fileUrl, {
                     documentId,
                     quizTitle,
                     numberOfQuestions: questionCount === 0 ? 5 : questionCount, // 0 = auto → default 5
@@ -97,9 +98,9 @@ export default function QuizPreviewPage() {
         }
 
         callAI();
-    }, [pendingFile, documentId, settingsData]);
+    }, [documentId, settingsData]);
 
-    // Publish quiz to Backend
+    // Publish quiz to Backend, then navigate to game template selection
     async function handlePublish() {
         if (questions.length === 0) return;
 
@@ -121,10 +122,17 @@ export default function QuizPreviewPage() {
                 })),
             };
 
-            await generateQuizFromAI(payload);
+            const quizResult = await generateQuizFromAI(payload);
 
-            // Success — navigate to library
-            navigate('/teacher/library');
+            // Navigate to game template selection with quizId
+            const quizId = quizResult?.id ?? quizResult?.quizId ?? null;
+            navigate('/teacher/select-game-template', {
+                state: {
+                    quizId,
+                    quizTitle: settingsData?.title || 'Bài kiểm tra',
+                    questionCount: questions.length,
+                },
+            });
         } catch (err) {
             console.error('[QuizPreview] Publish error:', err);
             setPublishError(err.message || 'Không thể xuất bản quiz. Vui lòng thử lại.');
@@ -134,7 +142,7 @@ export default function QuizPreviewPage() {
 
     function handleBack() {
         navigate('/teacher/quiz-settings', {
-            state: { fileName, fileSize, documentId, settings: settingsData },
+            state: { fileName, fileSize, documentId, fileUrl, settings: settingsData },
         });
     }
 

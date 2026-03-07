@@ -9,9 +9,9 @@ import {
 
 /**
  * QuizSettingsPage — Cấu hình trước khi gọi AI Module generate câu hỏi
- * Inspired by Wayground resource settings modal
  *
- * Flow: Upload file (CreateFlowModal) → navigate('/portal/quiz-settings', { state: { file, documentId } })
+ * Flow: Upload file (CreateFlowModal) → navigate('/teacher/quiz-settings', { state: { fileName, fileSize, documentId, fileUrl } })
+ *       → User configures settings → navigate to /teacher/quiz-preview
  */
 
 const STRUCTURE_OPTIONS = [
@@ -55,6 +55,7 @@ export default function QuizSettingsPage() {
     const fileName = location.state?.fileName;
     const fileSize = location.state?.fileSize;
     const documentId = location.state?.documentId;
+    const fileUrl = location.state?.fileUrl;
 
     const [settings, setSettings] = useState({
         title: 'Bài kiểm tra',
@@ -70,10 +71,10 @@ export default function QuizSettingsPage() {
 
     // Redirect if no file data
     useEffect(() => {
-        if (!pendingFile && !documentId) {
+        if (!fileName && !documentId) {
             navigate('/teacher');
         }
-    }, [pendingFile, documentId, navigate]);
+    }, [fileName, documentId, navigate]);
 
     function toggleDifficulty(id) {
         setSettings(prev => {
@@ -98,13 +99,14 @@ export default function QuizSettingsPage() {
                     fileName,
                     fileSize,
                     documentId,
+                    fileUrl,
                     settings,
                 },
             });
         }, 600);
     }
 
-    if (!pendingFile && !documentId) return null;
+    if (!fileName && !documentId) return null;
 
     return (
         <section className="max-w-2xl mx-auto px-4 py-8">
