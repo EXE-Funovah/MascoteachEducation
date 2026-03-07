@@ -1,12 +1,12 @@
 /**
  * Mascoteach — AI Service
- * Calls the deployed AI Module at ai-mascoteach.com
+ * Calls the deployed AI Module at ai.mascoteach.com
  * Endpoints:
  *   POST /api/v1/ai/generate-for-backend — Generate MCQ from S3 file URL
  *   GET  /api/v1/ai/health               — Health check
  */
 
-const AI_BASE_URL = import.meta.env.VITE_AI_BASE_URL || 'https://ai-mascoteach.com';
+const AI_BASE_URL = import.meta.env.VITE_AI_BASE_URL || 'https://ai.mascoteach.com';
 
 /**
  * Health check — verify AI Module is running
