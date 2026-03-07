@@ -8,7 +8,6 @@ import {
 } from 'lucide-react';
 import { generateMCQFromFile } from '@/services/aiService';
 import { generateQuizFromAI } from '@/services/quizService';
-import { getPendingFile, clearPendingFile } from '@/services/fileStore';
 
 /**
  * QuizPreviewPage — Preview AI-generated MCQ questions before publishing
@@ -123,9 +122,6 @@ export default function QuizPreviewPage() {
             };
 
             await generateQuizFromAI(payload);
-
-            // Clear file from memory store
-            clearPendingFile();
 
             // Success — navigate to library
             navigate('/teacher/library');

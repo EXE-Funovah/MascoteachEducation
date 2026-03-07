@@ -4,13 +4,6 @@ import CreateFlowModal from '@/components/portal/create/CreateFlowModal';
 import { useAuth } from '@/contexts/AuthContext';
 import { getMySessions } from '@/services/liveSessionService';
 
-/**
- * HomePage — "Trang chủ" — Redesigned dashboard
- * Layout: Centered Greeting → Compact Tabs (Wayground-style) → Dynamic Content
- * Clean, spacious, minimalist with light sky blue accents
- * Now fetches real session data from API for "Hoạt động gần đây"
- */
-
 /* ── Tab definitions ── */
 const TABS = [
     { id: 'create', label: 'Tạo mới', Icon: Sparkles },
