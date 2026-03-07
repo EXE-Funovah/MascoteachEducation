@@ -4,7 +4,6 @@ import HeroSection from '@/components/sections/HeroSection';
 import SocialProofMarquee from '@/components/sections/SocialProofMarquee';
 import FeatureBentoGrid from '@/components/sections/FeatureBentoGrid';
 import InteractiveShowcase from '@/components/sections/InteractiveShowcase';
-import PricingTable from '@/components/sections/PricingTable';
 import Testimonials from '@/components/sections/Testimonials';
 import CTASection from '@/components/sections/CTASection';
 
@@ -18,7 +17,6 @@ export default function LandingPage() {
                 <FeatureBentoGrid />
                 {/* Showcase on clean white background */}
                 <InteractiveShowcase />
-                <PricingTable />
                 <Testimonials />
                 <CTASection />
             </main>

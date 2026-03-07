@@ -7,7 +7,7 @@
 export const NAV_LINKS = [
   { label: 'Tính năng', href: '#features' },
   { label: 'Giải pháp', href: '#showcase' },
-  { label: 'Bảng giá', href: '#pricing' },
+  { label: 'Bảng giá', href: '/pricing' },
   { label: 'Đánh giá', href: '#testimonials' },
 ];
 
@@ -22,12 +22,9 @@ export const HERO = {
 };
 
 export const LOGOS = [
-  { name: 'THCS Nguyễn Du', src: '/images/logo-placeholder-1.svg' },
-  { name: 'THPT Chuyên Lê Quý Đôn', src: '/images/logo-placeholder-2.svg' },
-  { name: 'iSchool', src: '/images/logo-placeholder-3.svg' },
-  { name: 'VinSchool', src: '/images/logo-placeholder-4.svg' },
-  { name: 'British International School', src: '/images/logo-placeholder-5.svg' },
-  { name: 'FPT Education', src: '/images/logo-placeholder-6.svg' },
+  { name: 'PMP', src: '/images/PMP_Logo.png' },
+  { name: 'FPT University', src: '/images/FPTU_Logo.png' },
+  { name: 'NSG', src: '/images/NSG_Logo.png' },
 ];
 
 export const FEATURES = [

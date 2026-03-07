@@ -92,8 +92,13 @@ export default {
         'spin-slow': 'spin 20s linear infinite',
         'blob': 'blob 7s ease-in-out infinite',
         'scroll-hint': 'scroll-hint 1.5s ease-in-out infinite',
+        'fade-slide-up': 'fadeSlideUp 0.35s ease-out forwards',
       },
       keyframes: {
+        fadeSlideUp: {
+          '0%': { opacity: '0', transform: 'translateY(16px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
         marquee: {
           '0%': { transform: 'translateX(0%)' },
           '100%': { transform: 'translateX(-50%)' },

@@ -2,7 +2,7 @@
 import FadeInUp from '@/components/animations/FadeInUp';
 
 export default function SocialProofMarquee() {
-  const duplicatedLogos = [...LOGOS, ...LOGOS, ...LOGOS, ...LOGOS];
+  const duplicatedLogos = [...LOGOS, ...LOGOS, ...LOGOS, ...LOGOS, ...LOGOS, ...LOGOS];
 
   return (
     <section className="py-12 md:py-16 bg-white/80 backdrop-blur-sm border-y border-slate-100/60" aria-label="Đối tác tin cậy">
@@ -14,22 +14,17 @@ export default function SocialProofMarquee() {
         </FadeInUp>
 
         <div className="marquee-container overflow-hidden">
-          <div className="flex gap-12 md:gap-20 animate-marquee">
+          <div className="flex gap-16 md:gap-24 animate-marquee items-center">
             {duplicatedLogos.map((logo, idx) => (
               <div
                 key={idx}
-                className="flex-shrink-0 flex items-center justify-center h-10 px-4 opacity-30 hover:opacity-60 transition-all duration-500 grayscale hover:grayscale-0"
+                className="flex-shrink-0 flex items-center justify-center px-4 opacity-70 hover:opacity-100 transition-all duration-500"
               >
-                <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center shadow-sm">
-                    <span className="text-xs font-bold text-slate-500">
-                      {logo.name.charAt(0)}
-                    </span>
-                  </div>
-                  <span className="text-sm font-medium text-slate-500 whitespace-nowrap tracking-tight">
-                    {logo.name}
-                  </span>
-                </div>
+                <img
+                  src={logo.src}
+                  alt={logo.name}
+                  className="h-14 md:h-16 w-auto object-contain"
+                />
               </div>
             ))}
           </div>
