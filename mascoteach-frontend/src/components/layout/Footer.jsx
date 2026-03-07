@@ -1,4 +1,5 @@
-﻿import { SITE, FOOTER } from '@/lib/constants';
+﻿import { Link } from 'react-router-dom';
+import { SITE, FOOTER } from '@/lib/constants';
 
 export default function Footer() {
   return (
@@ -6,7 +7,10 @@ export default function Footer() {
       <div className="max-w-7xl mx-auto px-6 py-16">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-10">
           <div className="col-span-2 md:col-span-1">
-            <p className="text-lg font-bold text-ink tracking-tight mb-4">{SITE.name}</p>
+            {/* Logo thay cho text */}
+            <Link to="/" className="inline-block mb-4">
+              <img src="/images/Logo.png" alt={SITE.name} className="h-7 object-contain" />
+            </Link>
             <p className="text-sm text-ink-muted leading-relaxed max-w-[240px]">
               {SITE.description}
             </p>
