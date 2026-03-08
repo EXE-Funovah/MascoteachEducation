@@ -32,11 +32,11 @@ export async function getDocumentById(id) {
 
 /**
  * Create a new document
- * @param {{ fileUrl: string }} data
- * @returns {Promise<object>}
+ * @param {{ s3Key: string }} data
+ * @returns {Promise<{ id: number, s3Key: string, presignedUrl: string }>}
  */
 export async function createDocument(data) {
-    return api.post('/api/Document', { fileUrl: data.fileUrl });
+    return api.post('/api/Document', { s3Key: data.s3Key });
 }
 
 /**
@@ -71,7 +71,7 @@ export async function toggleDeleteDocument(id) {
  * Step 1: Request a presigned S3 upload URL from the backend
  * @param {string} fileName - Original file name (e.g. "lecture.pdf")
  * @param {string} contentType - MIME type (e.g. "application/pdf")
- * @returns {Promise<{ uploadUrl: string, s3Key: string, fileUrl: string, expiresAt: string }>}
+ * @returns {Promise<{ uploadUrl: string, s3Key: string, expiresAt: string }>}
  */
 export async function generateUploadUrl(fileName, contentType) {
     return api.post('/api/Document/generate-upload-url', { fileName, contentType });

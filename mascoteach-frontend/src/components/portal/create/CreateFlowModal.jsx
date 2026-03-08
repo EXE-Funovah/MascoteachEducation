@@ -46,8 +46,8 @@ export default function CreateFlowModal({ onClose }) {
         setIsProcessing(true);
         setUploadError(null);
         try {
-            // 1. Get presigned S3 URL from backend
-            const { uploadUrl, fileUrl } = await generateUploadUrl(
+            // 1. Get presigned S3 upload URL + permanent S3 key from backend
+            const { uploadUrl, s3Key } = await generateUploadUrl(
                 uploadedFile.name,
                 uploadedFile.type,
             );
@@ -55,17 +55,19 @@ export default function CreateFlowModal({ onClose }) {
             // 2. Upload file directly to S3
             await uploadFileToS3(uploadUrl, uploadedFile);
 
-            // 3. Save document metadata to backend
-            const doc = await createDocument({ fileUrl });
+            // 3. Save document metadata to backend using the permanent S3 key
+            //    Response includes a fresh presignedUrl for immediate use by the AI service
+            const doc = await createDocument({ s3Key });
 
             // 4. Close modal & navigate to settings page
+            //    Pass the fresh presignedUrl as fileUrl so the AI service can read the file
             onClose();
             navigate('/teacher/quiz-settings', {
                 state: {
                     fileName: uploadedFile.name,
                     fileSize: uploadedFile.size,
                     documentId: doc?.id ?? doc?.documentId ?? null,
-                    fileUrl,
+                    fileUrl: doc?.presignedUrl ?? null,
                 },
             });
         } catch (err) {
