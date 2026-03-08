@@ -18,11 +18,14 @@ export default defineConfig({
     outDir: 'dist',
     sourcemap: false,
     minify: 'esbuild',
+    chunkSizeWarningLimit: 700,
     rollupOptions: {
       output: {
         manualChunks: {
-          vendor: ['react', 'react-dom'],
+          vendor: ['react', 'react-dom', 'react-router-dom'],
           motion: ['framer-motion'],
+          charts: ['recharts'],
+          kaplay: ['kaplay'],
         },
       },
     },

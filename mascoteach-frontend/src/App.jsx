@@ -20,6 +20,10 @@ import GameTemplateSelectionPage from '@/pages/portal/GameTemplateSelectionPage'
 // Student Game (standalone, no sidebar)
 import StudentGamePage from '@/pages/portal/StudentGamePage';
 
+// Adventure Game — new game mode
+import GameLobby from '@/pages/student/GameLobby';
+import AdventureGamePage from '@/pages/student/games/AdventureGame';
+
 // Interactive Mascot
 import MascotWidget from '@/components/mascot/MascotWidget';
 
@@ -76,7 +80,11 @@ export default function App() {
         </Route>
 
         {/* ── Student Game (standalone, no sidebar) ── */}
-        <Route path="/play" element={<StudentGamePage />} />
+        <Route path="/play" element={<GameLobby />} />
+        <Route path="/play/adventure" element={<AdventureGamePage />} />
+
+        {/* Legacy student game placeholder */}
+        <Route path="/play/legacy" element={<StudentGamePage />} />
       </Routes>
 
       {/* ── Interactive Mascot (persists across all pages) ── */}
