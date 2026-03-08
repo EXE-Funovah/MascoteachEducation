@@ -32,10 +32,10 @@ export default function AdventureGamePage() {
     const location = useLocation();
     const navigate = useNavigate();
 
-    const canvasRef = useRef(null);
+    const containerRef = useRef(null);
     const gameRef = useRef(null);   // Kaplay game API handle
 
-    // Pull data passed from GameLobby
+    // Pull data passed from GameLobby / direct play
     const questions = location.state?.questions ?? [];
     const session = location.state?.session ?? null;
 
@@ -48,7 +48,7 @@ export default function AdventureGamePage() {
     const [wrongCount, setWrongCount] = useState(0);
     const [questionsDone, setQuestionsDone] = useState(0);
 
-    // Guard: redirect if no questions (direct URL access)
+    // Guard: redirect to lobby if no questions
     useEffect(() => {
         if (!questions.length) {
             navigate('/play', { replace: true });
@@ -57,12 +57,12 @@ export default function AdventureGamePage() {
 
     // ── Initialize Kaplay game ────────────────────────────────────────────────
     const initGame = useCallback(() => {
-        if (!canvasRef.current || !questions.length) return;
+        if (!containerRef.current || !questions.length) return;
 
         // Destroy previous instance if replaying
         gameRef.current?.destroy();
 
-        gameRef.current = createAdventureGame(canvasRef.current, questions, {
+        gameRef.current = createAdventureGame(containerRef.current, questions, {
             onQuestionTrigger(questionIndex) {
                 setActiveQuestionIdx(questionIndex);
                 setPhase('question');
@@ -123,6 +123,14 @@ export default function AdventureGamePage() {
     return (
         <div className="relative w-full h-screen bg-[#0a1230] flex flex-col overflow-hidden">
 
+            {/* ── Back button ── */}
+            <button
+                onClick={() => navigate(-1)}
+                className="absolute top-14 left-3 z-50 text-white/40 hover:text-white/80 text-xs px-2 py-1 rounded transition-colors"
+            >
+                ← Thoát
+            </button>
+
             {/* ── HUD overlay (top bar) ── */}
             {phase !== 'result' && (
                 <GameHUD
@@ -133,11 +141,10 @@ export default function AdventureGamePage() {
                 />
             )}
 
-            {/* ── Kaplay canvas ── */}
-            <canvas
-                ref={canvasRef}
-                className="flex-1 w-full h-full"
-                style={{ display: 'block', touchAction: 'none' }}
+            {/* Game container — canvas created internally by Kaplay */}
+            <div
+                ref={containerRef}
+                style={{ flex: 1, overflow: 'hidden' }}
             />
 
             {/* ── Keyboard hint (fades out after 4s) ── */}

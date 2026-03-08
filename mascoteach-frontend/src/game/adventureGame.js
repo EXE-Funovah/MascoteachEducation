@@ -12,9 +12,9 @@
 import kaplay from 'kaplay';
 
 // ── Layout constants ──────────────────────────────────────────────────────────
-const W = 800;
-const H = 400;
-const GROUND_Y = 315;
+const W = window.innerWidth || 1280;
+const H = window.innerHeight || 720;
+const GROUND_Y = Math.round(H * 0.78);
 const GRAVITY = 1500;
 const JUMP_FORCE = 620;
 const RUN_SPEED = 170;
@@ -33,15 +33,24 @@ const BLOCK_SPACING = 580;
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * @param {HTMLCanvasElement} canvas
+ * @param {HTMLElement} container  A container element (div) — a fresh canvas will be created inside it.
  * @param {object[]} questions  Normalized questions (from gameService.normalizeQuestion)
  * @param {object} callbacks
  * @param {(index: number) => void} callbacks.onQuestionTrigger
  * @param {() => void} callbacks.onGameComplete
  * @returns {{ resumeAfterAnswer(isCorrect: boolean): void, destroy(): void }}
  */
-export function createAdventureGame(canvas, questions, { onQuestionTrigger, onGameComplete }) {
+export function createAdventureGame(container, questions, { onQuestionTrigger, onGameComplete }) {
     let k = null;
+
+    // Create a fresh canvas for Kaplay each time (avoids "already initialized" issue)
+    const canvas = document.createElement('canvas');
+    canvas.style.display = 'block';
+    canvas.style.width = '100%';
+    canvas.style.height = '100%';
+    canvas.style.touchAction = 'none';
+    container.innerHTML = '';  // clear previous canvas if any
+    container.appendChild(canvas);
 
     // Shared mutable state (accessed inside Kaplay scene closures)
     const state = {
@@ -58,7 +67,8 @@ export function createAdventureGame(canvas, questions, { onQuestionTrigger, onGa
         canvas,
         width: W,
         height: H,
-        letterbox: true,
+        stretch: true,
+        letterbox: false,
         background: [10, 18, 48],
         debug: false,
         global: false,          // do NOT pollute window
@@ -218,30 +228,72 @@ export function createAdventureGame(canvas, questions, { onQuestionTrigger, onGa
             // Nose
             k.drawCircle({ pos: k.vec2(PW / 2, 24), radius: 4, color: k.rgb(90, 44, 12) });
             // Cheeks
-            k.drawCircle({ pos: k.vec2(7, 27), radius: 5, color: k.rgba(255, 150, 150, 0.45) });
-            k.drawCircle({ pos: k.vec2(PW - 7, 27), radius: 5, color: k.rgba(255, 150, 150, 0.45) });
+            k.drawCircle({ pos: k.vec2(7, 27), radius: 5, color: k.rgb(255, 150, 150), opacity: 0.45 });
+            k.drawCircle({ pos: k.vec2(PW - 7, 27), radius: 5, color: k.rgb(255, 150, 150), opacity: 0.45 });
             // Raccoon mask
-            k.drawRect({ pos: k.vec2(5, 9), width: 15, height: 9, radius: 4, color: k.rgba(40, 20, 0, 0.35) });
-            k.drawRect({ pos: k.vec2(PW - 20, 9), width: 15, height: 9, radius: 4, color: k.rgba(40, 20, 0, 0.35) });
+            k.drawRect({ pos: k.vec2(5, 9), width: 15, height: 9, radius: 4, color: k.rgb(40, 20, 0), opacity: 0.35 });
+            k.drawRect({ pos: k.vec2(PW - 20, 9), width: 15, height: 9, radius: 4, color: k.rgb(40, 20, 0), opacity: 0.35 });
             // Tail stripe (visible at bottom)
             k.drawRect({ pos: k.vec2(PW / 2 - 5, PH - 6), width: 10, height: 6, radius: 3, color: k.rgb(255, 230, 160) });
         });
 
-        // ── Jump controls ─────────────────────────────────────────────────────
-        k.onKeyPress('space', () => {
-            if (!state.isPaused && !state.isEnded && player.isGrounded()) {
+        // ── Jump controls (with coyote time + jump buffer) ──────────────────
+        let coyoteTimer = 0;        // time since last grounded (ms)
+        let jumpBufferTimer = 0;    // time since last jump request (ms)
+        const COYOTE_TIME = 150;    // allow jump 150ms after leaving ground
+        const JUMP_BUFFER = 200;    // buffer jump input for 200ms
+
+        function tryJump() {
+            if (state.isPaused || state.isEnded) return;
+            const grounded = player.isGrounded();
+            const canCoyote = grounded || coyoteTimer < COYOTE_TIME;
+
+            if (canCoyote) {
                 player.jump(JUMP_FORCE);
+                coyoteTimer = COYOTE_TIME; // prevent double-jump
+                jumpBufferTimer = JUMP_BUFFER;
+            } else {
+                // Buffer the jump — will execute on next ground contact
+                jumpBufferTimer = 0;
             }
+        }
+
+        // Track coyote time
+        player.onUpdate(() => {
+            const dt = k.dt() * 1000;
+            if (player.isGrounded()) {
+                coyoteTimer = 0;
+                // Execute buffered jump
+                if (jumpBufferTimer < JUMP_BUFFER && !state.isPaused && !state.isEnded) {
+                    player.jump(JUMP_FORCE);
+                    jumpBufferTimer = JUMP_BUFFER;
+                }
+            } else {
+                coyoteTimer += dt;
+            }
+            jumpBufferTimer += dt;
         });
-        k.onKeyPress('up', () => {
-            if (!state.isPaused && !state.isEnded && player.isGrounded()) {
-                player.jump(JUMP_FORCE);
+
+        // Kaplay key listeners
+        k.onKeyPress('space', tryJump);
+        k.onKeyPress('up', tryJump);
+        k.onTouchStart(tryJump);
+
+        // Document-level keyboard fallback (ensures jump works even after
+        // clicking React UI elements like the QuestionPopup)
+        function onDocKeyDown(e) {
+            if (e.repeat) return;  // ignore key-hold repeats
+            if (e.code === 'Space' || e.code === 'ArrowUp') {
+                e.preventDefault();
+                tryJump();
             }
-        });
-        k.onTouchStart(() => {
-            if (!state.isPaused && !state.isEnded && player.isGrounded()) {
-                player.jump(JUMP_FORCE);
-            }
+        }
+        document.addEventListener('keydown', onDocKeyDown);
+        state._cleanupDocKeyDown = () => document.removeEventListener('keydown', onDocKeyDown);
+
+        // Also handle click on the game container as jump
+        container.addEventListener('click', () => {
+            if (!state.isPaused && !state.isEnded) tryJump();
         });
 
         // ── HUD — progress bar (bottom of canvas) ────────────────────────────
@@ -267,7 +319,7 @@ export function createAdventureGame(canvas, questions, { onQuestionTrigger, onGa
 
             // Camera: keep player at ~1/3 from left
             const targetCamX = player.pos.x + W * 0.1;
-            k.camPos(targetCamX, H / 2);
+            k.setCamPos(targetCamX, H / 2);
 
             // Parallax clouds (fixed layer, drift slowly)
             const camDelta = targetCamX - lastCamX;
@@ -330,7 +382,7 @@ export function createAdventureGame(canvas, questions, { onQuestionTrigger, onGa
                     width: BW + 12,
                     height: BH + 12,
                     radius: 15,
-                    color: k.rgba(255, 200, 0, glow),
+                    color: k.rgb(255, 200, 0), opacity: glow,
                 });
                 k.drawText({
                     text: '?',
@@ -413,9 +465,17 @@ export function createAdventureGame(canvas, questions, { onQuestionTrigger, onGa
         /** Cleanup: called on React component unmount */
         destroy() {
             try {
+                // Remove document-level keyboard listener
+                if (state._cleanupDocKeyDown) {
+                    state._cleanupDocKeyDown();
+                }
                 if (k) {
                     k.quit();
                     k = null;
+                }
+                // Remove the canvas from the container to prevent stale callbacks
+                if (canvas.parentNode) {
+                    canvas.parentNode.removeChild(canvas);
                 }
             } catch (_) { /* ignore */ }
         },
