@@ -78,9 +78,18 @@ export async function apiRequest(endpoint, options = {}) {
     try {
         const response = await fetch(url, config);
 
-        // Handle 401 — redirect to login
+        // Handle 401 — Unauthorized
         if (response.status === 401) {
+            const isAuthRequest = endpoint.toLowerCase().includes('/auth/') || skipAuth;
+
+            if (isAuthRequest) {
+                // For login/register, 401 means bad credentials
+                throw new ApiError('Email hoặc mật khẩu không chính xác. Vui lòng thử lại.', 401);
+            }
+
+            // Otherwise, it means the token is invalid or expired
             clearAuth();
+
             // Only redirect if not already on auth pages
             if (!window.location.pathname.startsWith('/login') &&
                 !window.location.pathname.startsWith('/signup')) {
