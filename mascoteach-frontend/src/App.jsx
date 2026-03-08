@@ -20,6 +20,9 @@ import GameTemplateSelectionPage from '@/pages/portal/GameTemplateSelectionPage'
 // Student Game (standalone, no sidebar)
 import StudentGamePage from '@/pages/portal/StudentGamePage';
 
+// Interactive Mascot
+import MascotWidget from '@/components/mascot/MascotWidget';
+
 export default function App() {
   return (
     <BrowserRouter>
@@ -75,6 +78,9 @@ export default function App() {
         {/* ── Student Game (standalone, no sidebar) ── */}
         <Route path="/play" element={<StudentGamePage />} />
       </Routes>
+
+      {/* ── Interactive Mascot (persists across all pages) ── */}
+      <MascotWidget />
     </BrowserRouter>
   );
 }
