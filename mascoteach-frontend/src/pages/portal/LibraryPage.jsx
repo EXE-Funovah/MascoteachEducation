@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import {
     FileText, Edit3, Plus, Loader2, AlertCircle, Trash2,
     BookOpen, ChevronDown, ChevronRight, CheckCircle2,
-    Clock, HelpCircle, Eye, EyeOff
+    Clock, HelpCircle, Eye, EyeOff, Gamepad2
 } from 'lucide-react';
 import CreateFlowModal from '@/components/portal/create/CreateFlowModal';
 import { getMyDocuments, deleteDocument } from '@/services/documentService';
@@ -23,6 +24,7 @@ const LIBRARY_TABS = [
 ];
 
 export default function LibraryPage() {
+    const navigate = useNavigate();
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [activeTab, setActiveTab] = useState('documents');
 
@@ -101,6 +103,16 @@ export default function LibraryPage() {
         } catch (err) {
             alert(err.message || 'Xóa thất bại');
         }
+    }
+
+    function handlePlayQuiz(quiz) {
+        navigate('/teacher/select-game-template', {
+            state: {
+                quizId: quiz.id,
+                quizTitle: quiz.title || `Quiz #${quiz.id}`,
+                questionCount: quiz.questionCount ?? expandedQuestions.length ?? 0,
+            },
+        });
     }
 
     async function toggleExpandQuiz(quizId) {
@@ -423,6 +435,16 @@ export default function LibraryPage() {
                                                                     Xem
                                                                 </>
                                                             )}
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handlePlayQuiz(quiz)}
+                                                            className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg
+                                                                       bg-violet-500 hover:bg-violet-600 text-white
+                                                                       text-[12px] font-semibold
+                                                                       transition-all duration-200 shadow-sm hover:shadow-md"
+                                                        >
+                                                            <Gamepad2 className="w-3.5 h-3.5" />
+                                                            Chơi ngay
                                                         </button>
                                                         <button
                                                             onClick={() => handleDeleteQuiz(quiz.id)}

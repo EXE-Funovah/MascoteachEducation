@@ -94,19 +94,13 @@ export async function apiRequest(endpoint, options = {}) {
             return null;
         }
 
-        // Try to parse JSON — always decode as UTF-8 to preserve Vietnamese characters
+        // Try to parse JSON
         let data;
         const contentType = response.headers.get('content-type');
-        const buffer = await response.arrayBuffer();
-        const text = new TextDecoder('utf-8').decode(buffer);
         if (contentType && contentType.includes('application/json')) {
-            try {
-                data = JSON.parse(text);
-            } catch {
-                data = text;
-            }
+            data = await response.json();
         } else {
-            data = text;
+            data = await response.text();
         }
 
         // Handle error responses

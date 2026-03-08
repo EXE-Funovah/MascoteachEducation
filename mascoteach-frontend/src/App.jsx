@@ -48,8 +48,17 @@ export default function App() {
           <Route path="sessions" element={<SessionsPage />} />
           <Route path="quiz-settings" element={<QuizSettingsPage />} />
           <Route path="quiz-preview" element={<QuizPreviewPage />} />
-          <Route path="select-game-template" element={<GameTemplateSelectionPage />} />
         </Route>
+
+        {/* ── Game Template Selection (standalone full-screen, no sidebar) ── */}
+        <Route
+          path="/teacher/select-game-template"
+          element={
+            <ProtectedRoute allowedRoles={['Teacher']}>
+              <GameTemplateSelectionPage />
+            </ProtectedRoute>
+          }
+        />
 
         {/* ── Student routes ── */}
         <Route
