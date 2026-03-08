@@ -42,11 +42,11 @@ export default function AdventureGamePage() {
     // ── Game UI state ─────────────────────────────────────────────────────────
     const [phase, setPhase] = useState('playing');        // 'playing' | 'question' | 'result'
     const [activeQuestionIdx, setActiveQuestionIdx] = useState(null);
-    const [lives, setLives] = useState(3);
     const [score, setScore] = useState(0);
     const [correctCount, setCorrectCount] = useState(0);
     const [wrongCount, setWrongCount] = useState(0);
     const [questionsDone, setQuestionsDone] = useState(0);
+    const [answerHistory, setAnswerHistory] = useState([]); // { questionIdx, isCorrect }
 
     // Guard: redirect to lobby if no questions
     useEffect(() => {
@@ -84,38 +84,29 @@ export default function AdventureGamePage() {
     // ── Handle student answer ─────────────────────────────────────────────────
     const handleAnswer = useCallback(
         (isCorrect) => {
+            setAnswerHistory((h) => [...h, { questionIdx: activeQuestionIdx, isCorrect }]);
             if (isCorrect) {
                 setScore((s) => s + 100);
                 setCorrectCount((c) => c + 1);
             } else {
                 setWrongCount((w) => w + 1);
-                setLives((l) => {
-                    const next = Math.max(0, l - 1);
-                    if (next === 0) {
-                        // No lives left → force end
-                        gameRef.current?.destroy();
-                        gameRef.current = null;
-                        setPhase('result');
-                    }
-                    return next;
-                });
             }
             setQuestionsDone((d) => d + 1);
             setPhase('playing');
             gameRef.current?.resumeAfterAnswer(isCorrect);
         },
-        [],
+        [activeQuestionIdx],
     );
 
     // ── Play again: reset all state and reinitialise game ────────────────────
     const handlePlayAgain = useCallback(() => {
         setPhase('playing');
-        setLives(3);
         setScore(0);
         setCorrectCount(0);
         setWrongCount(0);
         setQuestionsDone(0);
         setActiveQuestionIdx(null);
+        setAnswerHistory([]);
         // Small timeout so React flushes state before we re-init the canvas
         setTimeout(initGame, 80);
     }, [initGame]);
@@ -134,7 +125,6 @@ export default function AdventureGamePage() {
             {/* ── HUD overlay (top bar) ── */}
             {phase !== 'result' && (
                 <GameHUD
-                    lives={lives}
                     score={score}
                     questionsDone={questionsDone}
                     questionsTotal={questions.length}
@@ -176,6 +166,8 @@ export default function AdventureGamePage() {
                         correctCount={correctCount}
                         wrongCount={wrongCount}
                         questionsTotal={questions.length}
+                        questions={questions}
+                        answerHistory={answerHistory}
                         onPlayAgain={handlePlayAgain}
                     />
                 )}

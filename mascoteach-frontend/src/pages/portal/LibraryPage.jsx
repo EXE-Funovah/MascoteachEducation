@@ -12,15 +12,15 @@ import { getQuizzesByDocuments, deleteQuiz } from '@/services/quizService';
 import { getQuestionsByQuiz } from '@/services/questionService';
 
 /**
- * LibraryPage ΓÇö "Th╞░ viß╗çn cß╗ºa t├┤i" ΓÇö Main resource management
+ * LibraryPage — "Thư viện của tôi" — Main resource management
  * Two tabs:
- *   1. "T├ái liß╗çu" ΓÇö uploaded documents
- *   2. "Bß╗Ö c├óu hß╗Åi" ΓÇö saved quizzes (from AI generation / publish)
+ *   1. "Tài liệu" — uploaded documents
+ *   2. "Bộ câu hỏi" — saved quizzes (from AI generation / publish)
  */
 
 const LIBRARY_TABS = [
-    { id: 'documents', label: 'T├ái liß╗çu', icon: FileText },
-    { id: 'quizzes', label: 'Bß╗Ö c├óu hß╗Åi', icon: BookOpen },
+    { id: 'documents', label: 'Tài liệu', icon: FileText },
+    { id: 'quizzes', label: 'Bộ câu hỏi', icon: BookOpen },
 ];
 
 export default function LibraryPage() {
@@ -28,17 +28,17 @@ export default function LibraryPage() {
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [activeTab, setActiveTab] = useState('documents');
 
-    // ΓöÇΓöÇ Document state ΓöÇΓöÇ
+    // —— Document state ——
     const [documents, setDocuments] = useState([]);
     const [loadingDocs, setLoadingDocs] = useState(true);
     const [docError, setDocError] = useState(null);
 
-    // ΓöÇΓöÇ Quiz state ΓöÇΓöÇ
+    // —— Quiz state ——
     const [quizzes, setQuizzes] = useState([]);
     const [loadingQuizzes, setLoadingQuizzes] = useState(false);
     const [quizError, setQuizError] = useState(null);
 
-    // Expanded quiz ID ΓåÆ shows questions inline
+    // Expanded quiz ID → shows questions inline
     const [expandedQuizId, setExpandedQuizId] = useState(null);
     const [expandedQuestions, setExpandedQuestions] = useState([]);
     const [loadingQuestions, setLoadingQuestions] = useState(false);
@@ -62,7 +62,7 @@ export default function LibraryPage() {
             const data = await getMyDocuments();
             setDocuments(Array.isArray(data) ? data : []);
         } catch (err) {
-            setDocError(err.message || 'Kh├┤ng thß╗â tß║úi t├ái liß╗çu');
+            setDocError(err.message || 'Không thể tải tài liệu');
         } finally {
             setLoadingDocs(false);
         }
@@ -75,24 +75,24 @@ export default function LibraryPage() {
             const data = await getQuizzesByDocuments(documents);
             setQuizzes(Array.isArray(data) ? data : []);
         } catch (err) {
-            setQuizError(err.message || 'Kh├┤ng thß╗â tß║úi bß╗Ö c├óu hß╗Åi');
+            setQuizError(err.message || 'Không thể tải bộ câu hỏi');
         } finally {
             setLoadingQuizzes(false);
         }
     }
 
     async function handleDeleteDoc(id) {
-        if (!confirm('Bß║ín c├│ chß║»c chß║»n muß╗æn x├│a t├ái liß╗çu n├áy?')) return;
+        if (!confirm('Bạn có chắc chắn muốn xóa tài liệu này?')) return;
         try {
             await deleteDocument(id);
             setDocuments((prev) => prev.filter((doc) => doc.id !== id));
         } catch (err) {
-            alert(err.message || 'X├│a thß║Ñt bß║íi');
+            alert(err.message || 'Xóa thất bại');
         }
     }
 
     async function handleDeleteQuiz(id) {
-        if (!confirm('Bß║ín c├│ chß║»c chß║»n muß╗æn x├│a bß╗Ö c├óu hß╗Åi n├áy?')) return;
+        if (!confirm('Bạn có chắc chắn muốn xóa bộ câu hỏi này?')) return;
         try {
             await deleteQuiz(id);
             setQuizzes((prev) => prev.filter((q) => q.id !== id));
@@ -101,7 +101,7 @@ export default function LibraryPage() {
                 setExpandedQuestions([]);
             }
         } catch (err) {
-            alert(err.message || 'X├│a thß║Ñt bß║íi');
+            alert(err.message || 'Xóa thất bại');
         }
     }
 
@@ -143,21 +143,21 @@ export default function LibraryPage() {
     // Helper to get document name for a quiz
     function getDocumentName(docId) {
         const doc = documents.find(d => d.id === docId);
-        if (!doc) return `T├ái liß╗çu #${docId}`;
-        return doc.title || doc.fileName || doc.fileUrl?.split('/').pop() || `T├ái liß╗çu #${docId}`;
+        if (!doc) return `Tài liệu #${docId}`;
+        return doc.title || doc.fileName || doc.fileUrl?.split('/').pop() || `Tài liệu #${docId}`;
     }
 
     return (
         <>
             <div className="space-y-8">
-                {/* ΓöÇΓöÇ Page Header ΓöÇΓöÇ */}
+                {/* —— Page Header —— */}
                 <header className="flex items-center justify-between">
                     <div>
                         <h1 className="text-2xl font-bold text-slate-800">
-                            Th╞░ viß╗çn
+                            Thư viện
                         </h1>
                         <p className="text-sm text-slate-400 mt-1">
-                            Quß║ún l├╜ tß║Ñt cß║ú t├ái liß╗çu v├á t├ái nguy├¬n cß╗ºa bß║ín
+                            Quản lý tất cả tài liệu và tài nguyên của bạn
                         </p>
                     </div>
 
@@ -169,11 +169,11 @@ export default function LibraryPage() {
                                    shadow-sm hover:shadow-md"
                     >
                         <Plus className="w-4 h-4" />
-                        Th├¬m t├ái nguy├¬n
+                        Thêm tài nguyên
                     </button>
                 </header>
 
-                {/* ΓöÇΓöÇ Tabs ΓöÇΓöÇ */}
+                {/* —— Tabs —— */}
                 <div className="flex items-center gap-1 border-b border-slate-100 pb-0">
                     {LIBRARY_TABS.map(tab => {
                         const isActive = activeTab === tab.id;
@@ -203,13 +203,13 @@ export default function LibraryPage() {
                     })}
                 </div>
 
-                {/* ΓöÇΓöÇ Documents Tab ΓöÇΓöÇ */}
+                {/* —— Documents Tab —— */}
                 {activeTab === 'documents' && (
                     <>
                         {loadingDocs ? (
                             <div className="flex items-center justify-center py-20">
                                 <Loader2 className="w-6 h-6 text-sky-500 animate-spin" />
-                                <span className="ml-3 text-sm text-slate-400">─Éang tß║úi t├ái liß╗çu...</span>
+                                <span className="ml-3 text-sm text-slate-400">Đang tải tài liệu...</span>
                             </div>
                         ) : docError ? (
                             <div className="flex flex-col items-center justify-center py-20 text-center">
@@ -220,7 +220,7 @@ export default function LibraryPage() {
                                     className="px-4 py-2 rounded-lg text-sm font-medium text-sky-600 bg-sky-50
                                                hover:bg-sky-100 transition-colors"
                                 >
-                                    Thß╗¡ lß║íi
+                                    Thử lại
                                 </button>
                             </div>
                         ) : documents.length === 0 ? (
@@ -229,17 +229,17 @@ export default function LibraryPage() {
                                     <FileText className="w-7 h-7 text-slate-300" />
                                 </div>
                                 <h3 className="text-[14px] font-medium text-slate-500 mb-1">
-                                    Ch╞░a c├│ t├ái nguy├¬n n├áo
+                                    Chưa có tài nguyên nào
                                 </h3>
                                 <p className="text-[13px] text-slate-400 mb-4">
-                                    Bß║»t ─æß║ºu bß║▒ng c├ích tß║úi l├¬n t├ái liß╗çu mß╗¢i
+                                    Bắt đầu bằng cách tải lên tài liệu mới
                                 </p>
                                 <button
                                     onClick={() => setShowCreateModal(true)}
                                     className="px-5 py-2.5 rounded-xl text-[13px] font-semibold
                                                bg-sky-500 text-white hover:bg-sky-600 transition-colors"
                                 >
-                                    Tß║úi l├¬n t├ái liß╗çu
+                                    Tải lên tài liệu
                                 </button>
                             </div>
                         ) : (
@@ -260,7 +260,7 @@ export default function LibraryPage() {
                                             <div className="min-w-0">
                                                 <h3 className="text-[14px] font-medium text-slate-700 truncate
                                                                group-hover:text-slate-800 transition-colors">
-                                                    {doc.title || doc.fileName || doc.fileUrl?.split('/').pop() || `T├ái liß╗çu #${doc.id}`}
+                                                    {doc.title || doc.fileName || doc.fileUrl?.split('/').pop() || `Tài liệu #${doc.id}`}
                                                 </h3>
                                                 <div className="flex items-center gap-3 mt-1.5">
                                                     {doc.fileUrl && (
@@ -271,7 +271,7 @@ export default function LibraryPage() {
                                                     {doc.isDeleted && (
                                                         <span className="inline-flex items-center px-2 py-0.5 rounded-md
                                                                          bg-rose-50 text-rose-500 text-[11px] font-medium">
-                                                            ─É├ú x├│a
+                                                            Đã xóa
                                                         </span>
                                                     )}
                                                 </div>
@@ -297,7 +297,7 @@ export default function LibraryPage() {
                                                            transition-all duration-200"
                                             >
                                                 <Edit3 className="w-3.5 h-3.5" />
-                                                Chß╗ënh sß╗¡a
+                                                Chỉnh sửa
                                             </button>
                                             <button
                                                 onClick={() => handleDeleteDoc(doc.id)}
@@ -306,7 +306,7 @@ export default function LibraryPage() {
                                                            text-[12px] font-medium text-slate-400
                                                            hover:border-rose-300 hover:text-rose-500 hover:bg-rose-50/50
                                                            transition-all duration-200"
-                                                aria-label="X├│a t├ái liß╗çu"
+                                                aria-label="Xóa tài liệu"
                                             >
                                                 <Trash2 className="w-3.5 h-3.5" />
                                             </button>
@@ -318,13 +318,13 @@ export default function LibraryPage() {
                     </>
                 )}
 
-                {/* ΓöÇΓöÇ Quizzes Tab ΓöÇΓöÇ */}
+                {/* —— Quizzes Tab —— */}
                 {activeTab === 'quizzes' && (
                     <>
                         {loadingQuizzes || loadingDocs ? (
                             <div className="flex items-center justify-center py-20">
                                 <Loader2 className="w-6 h-6 text-sky-500 animate-spin" />
-                                <span className="ml-3 text-sm text-slate-400">─Éang tß║úi bß╗Ö c├óu hß╗Åi...</span>
+                                <span className="ml-3 text-sm text-slate-400">Đang tải bộ câu hỏi...</span>
                             </div>
                         ) : quizError ? (
                             <div className="flex flex-col items-center justify-center py-20 text-center">
@@ -335,7 +335,7 @@ export default function LibraryPage() {
                                     className="px-4 py-2 rounded-lg text-sm font-medium text-sky-600 bg-sky-50
                                                hover:bg-sky-100 transition-colors"
                                 >
-                                    Thß╗¡ lß║íi
+                                    Thử lại
                                 </button>
                             </div>
                         ) : quizzes.length === 0 ? (
@@ -344,17 +344,17 @@ export default function LibraryPage() {
                                     <BookOpen className="w-7 h-7 text-slate-300" />
                                 </div>
                                 <h3 className="text-[14px] font-medium text-slate-500 mb-1">
-                                    Ch╞░a c├│ bß╗Ö c├óu hß╗Åi n├áo
+                                    Chưa có bộ câu hỏi nào
                                 </h3>
                                 <p className="text-[13px] text-slate-400 mb-4">
-                                    Tß║úi t├ái liß╗çu v├á tß║ío c├óu hß╗Åi tß╗½ AI ─æß╗â bß║»t ─æß║ºu
+                                    Tải tài liệu và tạo câu hỏi từ AI để bắt đầu
                                 </p>
                                 <button
                                     onClick={() => setShowCreateModal(true)}
                                     className="px-5 py-2.5 rounded-xl text-[13px] font-semibold
                                                bg-sky-500 text-white hover:bg-sky-600 transition-colors"
                                 >
-                                    Tß║ío bß╗Ö c├óu hß╗Åi
+                                    Tạo bộ câu hỏi
                                 </button>
                             </div>
                         ) : (
@@ -399,7 +399,7 @@ export default function LibraryPage() {
                                                                             ? 'bg-emerald-50 text-emerald-600 border border-emerald-100'
                                                                             : 'bg-slate-50 text-slate-500 border border-slate-100'
                                                                     }`}>
-                                                                    {quiz.status === 'AI_Drafted' ? 'AI Nh├íp' : quiz.status || 'Nh├íp'}
+                                                                    {quiz.status === 'AI_Drafted' ? 'AI Nháp' : quiz.status || 'Nháp'}
                                                                 </span>
                                                             </div>
                                                         </div>
@@ -427,7 +427,7 @@ export default function LibraryPage() {
                                                             {isExpanded ? (
                                                                 <>
                                                                     <EyeOff className="w-3.5 h-3.5" />
-                                                                    ß║¿n
+                                                                    Ẩn
                                                                 </>
                                                             ) : (
                                                                 <>
@@ -444,7 +444,7 @@ export default function LibraryPage() {
                                                                        transition-all duration-200 shadow-sm hover:shadow-md"
                                                         >
                                                             <Gamepad2 className="w-3.5 h-3.5" />
-                                                            Ch╞íi ngay
+                                                            Chơi ngay
                                                         </button>
                                                         <button
                                                             onClick={() => handleDeleteQuiz(quiz.id)}
@@ -453,7 +453,7 @@ export default function LibraryPage() {
                                                                        text-[12px] font-medium text-slate-400
                                                                        hover:border-rose-300 hover:text-rose-500 hover:bg-rose-50/50
                                                                        transition-all duration-200"
-                                                            aria-label="X├│a bß╗Ö c├óu hß╗Åi"
+                                                            aria-label="Xóa bộ câu hỏi"
                                                         >
                                                             <Trash2 className="w-3.5 h-3.5" />
                                                         </button>
@@ -474,11 +474,11 @@ export default function LibraryPage() {
                                                                 {loadingQuestions ? (
                                                                     <div className="flex items-center justify-center py-6">
                                                                         <Loader2 className="w-5 h-5 text-sky-500 animate-spin" />
-                                                                        <span className="ml-2 text-[12px] text-slate-400">─Éang tß║úi c├óu hß╗Åi...</span>
+                                                                        <span className="ml-2 text-[12px] text-slate-400">Đang tải câu hỏi...</span>
                                                                     </div>
                                                                 ) : expandedQuestions.length === 0 ? (
                                                                     <p className="text-[13px] text-slate-400 text-center py-6">
-                                                                        Ch╞░a c├│ c├óu hß╗Åi n├áo trong bß╗Ö c├óu hß╗Åi n├áy
+                                                                        Chưa có câu hỏi nào trong bộ câu hỏi này
                                                                     </p>
                                                                 ) : (
                                                                     <div className="space-y-3">
@@ -534,7 +534,7 @@ export default function LibraryPage() {
                                                                         <div className="flex items-center gap-4 pt-2 text-[11px] text-slate-400">
                                                                             <span className="flex items-center gap-1">
                                                                                 <HelpCircle className="w-3 h-3" />
-                                                                                {expandedQuestions.length} c├óu hß╗Åi
+                                                                                {expandedQuestions.length} câu hỏi
                                                                             </span>
                                                                         </div>
                                                                     </div>
@@ -553,7 +553,7 @@ export default function LibraryPage() {
                 )}
             </div>
 
-            {/* ΓöÇΓöÇ Create Flow Modal ΓöÇΓöÇ */}
+            {/* —— Create Flow Modal —— */}
             {showCreateModal && (
                 <CreateFlowModal onClose={handleModalClose} />
             )}

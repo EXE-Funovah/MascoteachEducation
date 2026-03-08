@@ -1,36 +1,14 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { Heart, Star } from 'lucide-react';
+import { Star } from 'lucide-react';
 
 /**
- * GameHUD — Lives, score, and question progress overlay
+ * GameHUD — Score and question progress overlay
  * Rendered as an absolute overlay on top of the Kaplay canvas.
  */
-export default function GameHUD({ lives, score, questionsDone, questionsTotal }) {
+export default function GameHUD({ score, questionsDone, questionsTotal }) {
     return (
         <div className="absolute inset-x-0 top-0 z-20 pointer-events-none">
             <div className="flex items-center justify-between px-4 py-2.5 bg-black/55 backdrop-blur-sm border-b border-white/5">
-
-                {/* ── Lives ── */}
-                <div className="flex items-center gap-1.5">
-                    {Array.from({ length: 3 }).map((_, i) => (
-                        <motion.div
-                            key={i}
-                            animate={{
-                                scale: i < lives ? [1, 1.15, 1] : 0.65,
-                                opacity: i < lives ? 1 : 0.25,
-                            }}
-                            transition={{ duration: 0.3 }}
-                        >
-                            <Heart
-                                className={`w-5 h-5 ${
-                                    i < lives
-                                        ? 'text-rose-500 fill-rose-500 drop-shadow-[0_0_4px_rgba(244,63,94,0.6)]'
-                                        : 'text-slate-600 fill-slate-600'
-                                }`}
-                            />
-                        </motion.div>
-                    ))}
-                </div>
 
                 {/* ── Question progress dots ── */}
                 <div className="flex flex-col items-center gap-1.5">
