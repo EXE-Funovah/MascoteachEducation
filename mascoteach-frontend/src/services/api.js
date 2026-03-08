@@ -90,9 +90,11 @@ export async function apiRequest(endpoint, options = {}) {
             // Otherwise, it means the token is invalid or expired
             clearAuth();
 
-            // Only redirect if not already on auth pages
-            if (!window.location.pathname.startsWith('/login') &&
-                !window.location.pathname.startsWith('/signup')) {
+            // Only redirect if currently on a protected route (not public pages)
+            const publicPaths = ['/', '/pricing', '/login', '/signup', '/forgot-password'];
+            const isPublicPage = publicPaths.includes(window.location.pathname)
+                || window.location.pathname.startsWith('/play');
+            if (!isPublicPage) {
                 window.location.href = '/login';
             }
             throw new ApiError('Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.', 401);
