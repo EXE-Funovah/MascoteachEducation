@@ -519,3 +519,12 @@ img {
   border: 1px solid #E2E8F0 !important;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08) !important;
 }
+
+/* ── Game Template Selection — hide scrollbar ── */
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}

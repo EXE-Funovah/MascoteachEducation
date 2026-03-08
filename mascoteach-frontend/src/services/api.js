@@ -78,9 +78,18 @@ export async function apiRequest(endpoint, options = {}) {
     try {
         const response = await fetch(url, config);
 
-        // Handle 401 — redirect to login
+        // Handle 401 — Unauthorized
         if (response.status === 401) {
+            const isAuthRequest = endpoint.toLowerCase().includes('/auth/') || skipAuth;
+
+            if (isAuthRequest) {
+                // For login/register, 401 means bad credentials
+                throw new ApiError('Email hoặc mật khẩu không chính xác. Vui lòng thử lại.', 401);
+            }
+
+            // Otherwise, it means the token is invalid or expired
             clearAuth();
+
             // Only redirect if not already on auth pages
             if (!window.location.pathname.startsWith('/login') &&
                 !window.location.pathname.startsWith('/signup')) {
@@ -94,19 +103,13 @@ export async function apiRequest(endpoint, options = {}) {
             return null;
         }
 
-        // Try to parse JSON — always decode as UTF-8 to preserve Vietnamese characters
+        // Try to parse JSON
         let data;
         const contentType = response.headers.get('content-type');
-        const buffer = await response.arrayBuffer();
-        const text = new TextDecoder('utf-8').decode(buffer);
         if (contentType && contentType.includes('application/json')) {
-            try {
-                data = JSON.parse(text);
-            } catch {
-                data = text;
-            }
+            data = await response.json();
         } else {
-            data = text;
+            data = await response.text();
         }
 
         // Handle error responses

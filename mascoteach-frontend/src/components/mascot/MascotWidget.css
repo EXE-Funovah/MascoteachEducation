@@ -58,7 +58,8 @@
 /* ── Mascot Area (no box, lives on the page) ── */
 .mascot-area {
     position: fixed;
-    bottom: 0;
+    bottom: 12px;
+    /* Lifted slightly from bottom to prevent clipping */
     right: 24px;
     z-index: 10000;
     display: flex;
@@ -74,6 +75,8 @@
     -webkit-user-select: none;
     z-index: 2;
     transition: filter 0.2s ease;
+    /* Added padding to ensure shadow isn't clipped */
+    padding: 10px;
 }
 
 .mascot-character:hover {
@@ -85,8 +88,14 @@
 }
 
 .mascot-sprite {
-    width: 180px;
-    height: auto;
+    width: 200px;
+    /* Fixed width */
+    height: 200px;
+    /* Fixed height for uniformity */
+    object-fit: contain;
+    /* Ensure full image is visible */
+    object-position: bottom center;
+    /* Align to bottom */
     display: block;
     filter: drop-shadow(0 6px 20px rgba(0, 0, 0, 0.15));
     image-rendering: auto;
@@ -277,8 +286,17 @@
 }
 
 @keyframes mascot-live-pulse {
-    0%, 100% { opacity: 1; transform: scale(1); }
-    50% { opacity: 0.5; transform: scale(0.8); }
+
+    0%,
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+    50% {
+        opacity: 0.5;
+        transform: scale(0.8);
+    }
 }
 
 /* ── Live-active bubble accent ── */
@@ -291,8 +309,7 @@
 
 /* ── Live-active mascot glow ── */
 .mascot-character--live .mascot-sprite {
-    filter: drop-shadow(0 0 16px rgba(72, 187, 120, 0.35))
-            drop-shadow(0 6px 20px rgba(0, 0, 0, 0.15));
+    filter: drop-shadow(0 0 16px rgba(72, 187, 120, 0.35)) drop-shadow(0 6px 20px rgba(0, 0, 0, 0.15));
 }
 
 /* ── Mobile Responsiveness ── */
@@ -302,7 +319,9 @@
     }
 
     .mascot-sprite {
-        width: 130px;
+        width: 150px;
+        height: 150px;
+        object-fit: contain;
     }
 
     .mascot-trigger-btn {
@@ -330,6 +349,8 @@
 
 @media (max-width: 360px) {
     .mascot-sprite {
-        width: 100px;
+        width: 120px;
+        height: 120px;
+        object-fit: contain;
     }
 }

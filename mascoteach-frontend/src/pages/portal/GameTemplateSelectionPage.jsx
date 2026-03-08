@@ -1,74 +1,149 @@
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
-    Swords, Zap, Shield, Gem, Heart, Sparkles,
-    Loader2, AlertCircle, ChevronLeft, Play,
-    BookOpen, CheckCircle2
+    Play, Info, Users, Clock, BrainCircuit,
+    Loader2, AlertCircle, Hash,
+    CheckCircle2, Lock, X, BookOpen, Zap
 } from 'lucide-react';
 import { getAllGameTemplates } from '@/services/gameTemplateService';
 import { createSession } from '@/services/liveSessionService';
 
 /**
- * GameTemplateSelectionPage — Final step: choose a game template and create a live session
+ * GameTemplateSelectionPage — Netflix/streaming-style game template picker
  *
- * Flow: QuizPreviewPage → publish quiz → navigate here with { quizId, quizTitle, questionCount }
- *       → User picks a game template
- *       → POST /api/LiveSession { quizId, templateId }
- *       → Navigate to sessions or host page
+ * Layout:
+ *   • Full-screen dark bg with blurred in-game screenshot as hero
+ *   • Left hero: game title, tags, description, action buttons
+ *   • Bottom carousel: horizontal scrollable template cards
+ *   • On "Tạo Game": POST /api/LiveSession → PIN modal
  */
 
-const modeIcons = {
-    'Swords': Swords,
-    'Zap': Zap,
-    'Shield': Shield,
-    'Gem': Gem,
-    'Heart': Heart,
-};
+// ─── Built-in template data ──────────────────────────────────────────────────
+const BUILTIN_TEMPLATES = [
+    {
+        id: '__treasure_hunt__',
+        name: 'Treasure Hunt',
+        logoUrl: '/images/Game1.png',
+        bgImage: '/images/Game1.png',
+        description:
+            'Phiêu lưu săn kho báu với các câu hỏi của bạn! Học sinh trả lời đúng để tiến bước trên bản đồ, vượt qua cạm bẫy và giành lấy rương vàng.',
+        difficulty: 'Đơn giản',
+        difficultyColor: 'text-emerald-400',
+        time: '7 phút',
+        skills: 'May mắn & Tốc độ',
+        players: '2 – 60',
+        isPlus: false,
+        fallbackTemplateId: 1,
+    },
+];
 
-function getIconForTemplate(name) {
-    const lower = (name || '').toLowerCase();
-    if (lower.includes('battle') || lower.includes('chiến')) return Swords;
-    if (lower.includes('speed') || lower.includes('nhanh') || lower.includes('đua')) return Zap;
-    if (lower.includes('team') || lower.includes('đội')) return Shield;
-    if (lower.includes('treasure') || lower.includes('kho')) return Gem;
-    if (lower.includes('survival') || lower.includes('sinh tồn')) return Heart;
-    return Sparkles;
+/** Enrich an API template object with display defaults */
+function enrichApiTemplate(t) {
+    return {
+        id: t.id,
+        name: t.name || `Game #${t.id}`,
+        logoUrl: t.thumbnailUrl || null,
+        bgImage: t.thumbnailUrl || null,
+        description: t.description || 'Chế độ chơi hấp dẫn dành cho lớp học của bạn.',
+        difficulty: t.difficulty || 'Trung bình',
+        difficultyColor: 'text-amber-400',
+        time: t.idealTime || '10 phút',
+        skills: t.skills || 'Tư duy & Tốc độ',
+        players: t.players || '2 – 60',
+        isPlus: t.isPlus ?? false,
+        fallbackTemplateId: t.id,
+    };
 }
 
+// ─── Difficulty badge helper ─────────────────────────────────────────────────
+function diffBadgeClass(diff) {
+    if (!diff) return 'text-white/60 border-white/20 bg-white/10';
+    const d = diff.toLowerCase();
+    if (d.includes('đơn') || d.includes('simple') || d.includes('easy'))
+        return 'text-emerald-300 border-emerald-500/40 bg-emerald-500/10';
+    if (d.includes('trung') || d.includes('medium'))
+        return 'text-amber-300 border-amber-500/40 bg-amber-500/10';
+    return 'text-rose-300 border-rose-500/40 bg-rose-500/10';
+}
+
+// ─── Back Button with spring animation ───────────────────────────────────────
+function BackButton({ onClick }) {
+    const [hovered, setHovered] = useState(false);
+    return (
+        <motion.button
+            onClick={onClick}
+            onHoverStart={() => setHovered(true)}
+            onHoverEnd={() => setHovered(false)}
+            className="relative flex items-center gap-3 px-6 py-3 rounded-full overflow-hidden
+                       border border-white/25 bg-white/10 backdrop-blur-sm
+                       text-white font-semibold text-[15px] cursor-pointer"
+            whileTap={{ scale: 0.96 }}
+            animate={{ scale: hovered ? 1.04 : 1 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+        >
+            {/* Sliding fill on hover — y chang HeroSection */}
+            <motion.span
+                className="absolute inset-0 bg-white/20 rounded-full"
+                initial={{ x: '-100%' }}
+                animate={{ x: hovered ? '0%' : '-100%' }}
+                transition={{ type: 'spring', stiffness: 260, damping: 28 }}
+            />
+
+            {/* Arrow slides in từ trái */}
+            <motion.span
+                className="relative z-10 flex items-center overflow-hidden"
+                animate={{
+                    opacity: hovered ? 1 : 0,
+                    width: hovered ? 16 : 0,
+                    marginRight: hovered ? 0 : -12,
+                }}
+                transition={{ duration: 0.2 }}
+            >
+                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
+                </svg>
+            </motion.span>
+
+            <span className="relative z-10">Quay lại</span>
+        </motion.button>
+    );
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
 export default function GameTemplateSelectionPage() {
     const location = useLocation();
     const navigate = useNavigate();
 
-    const quizId = location.state?.quizId;
-    const quizTitle = location.state?.quizTitle || 'Bài kiểm tra';
+    const quizId        = location.state?.quizId;
+    const quizTitle     = location.state?.quizTitle     || 'Bài kiểm tra';
     const questionCount = location.state?.questionCount || 0;
 
-    const [gameTemplates, setGameTemplates] = useState([]);
+    const [apiTemplates, setApiTemplates]         = useState([]);
     const [loadingTemplates, setLoadingTemplates] = useState(true);
-    const [templatesError, setTemplatesError] = useState(null);
+    const [templatesError, setTemplatesError]     = useState(null);
 
-    const [selectedTemplate, setSelectedTemplate] = useState(null);
-    const [creating, setCreating] = useState(false);
-    const [createError, setCreateError] = useState(null);
+    const [activeGame, setActiveGame] = useState(BUILTIN_TEMPLATES[0]);
+    const [showInfo, setShowInfo]     = useState(false);
+
+    const [creating, setCreating]             = useState(false);
+    const [createError, setCreateError]       = useState(null);
+    const [createdSession, setCreatedSession] = useState(null);
 
     // Redirect if no quizId
     useEffect(() => {
-        if (!quizId) {
-            navigate('/teacher');
-        }
+        if (!quizId) navigate('/teacher/library');
     }, [quizId, navigate]);
 
-    // Fetch game templates on mount
+    // Fetch API templates
     useEffect(() => {
         async function fetchTemplates() {
             try {
                 setLoadingTemplates(true);
-                setTemplatesError(null);
                 const data = await getAllGameTemplates();
-                setGameTemplates(Array.isArray(data) ? data : []);
-            } catch (err) {
-                setTemplatesError(err.message || 'Không thể tải chế độ chơi');
+                setApiTemplates(Array.isArray(data) ? data.map(enrichApiTemplate) : []);
+            } catch {
+                setTemplatesError('Không thể tải danh sách game');
             } finally {
                 setLoadingTemplates(false);
             }
@@ -76,217 +151,407 @@ export default function GameTemplateSelectionPage() {
         fetchTemplates();
     }, []);
 
-    async function handleCreateSession() {
-        if (!selectedTemplate || !quizId) return;
+    const allTemplates = [...BUILTIN_TEMPLATES, ...apiTemplates];
 
+    async function handleCreateGame() {
+        if (!activeGame || !quizId || activeGame.isPlus) return;
         setCreating(true);
         setCreateError(null);
-
         try {
-            const session = await createSession({
-                quizId: quizId,
-                templateId: selectedTemplate,
-            });
+            const templateId =
+                typeof activeGame.id === 'string' && activeGame.id.startsWith('__')
+                    ? (apiTemplates[0]?.id ?? activeGame.fallbackTemplateId ?? 1)
+                    : activeGame.id;
 
-            // Navigate to sessions page (or host page if available)
-            navigate('/teacher/sessions', {
-                state: { newSessionId: session?.id },
-            });
+            const session = await createSession({ quizId, templateId });
+            setCreatedSession(session);
         } catch (err) {
-            console.error('[GameTemplate] Create session error:', err);
             setCreateError(err.message || 'Không thể tạo phiên chơi. Vui lòng thử lại.');
+        } finally {
             setCreating(false);
         }
     }
 
-    function handleSkip() {
-        // User can skip game selection and go to library
-        navigate('/teacher/library');
+    function handleGoToSession() {
+        navigate('/teacher/sessions', { state: { newSessionId: createdSession?.id } });
     }
 
     if (!quizId) return null;
 
+    const game = activeGame;
+
     return (
-        <section className="max-w-3xl mx-auto px-4 py-8">
-            <motion.div
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4 }}
-            >
-                {/* ── Back & Header ── */}
-                <header className="mb-8">
-                    <button
-                        onClick={() => navigate(-1)}
-                        className="flex items-center gap-1.5 text-[13px] text-slate-400
-                                   hover:text-slate-600 transition-colors mb-4"
+        <div className="relative w-full h-screen overflow-hidden text-white flex flex-col" style={{ fontFamily: 'Inter, -apple-system, sans-serif', background: 'linear-gradient(135deg, #0f0720 0%, #160d35 40%, #0d1a3a 100%)' }}>
+
+            {/* ══ LAYER 1 — Blurred full-bleed background ══ */}
+            <div className="absolute inset-0 z-0">
+                <AnimatePresence mode="wait">
+                    <motion.div
+                        key={game.id}
+                        initial={{ opacity: 0, scale: 1.06 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.75, ease: 'easeOut' }}
+                        className="absolute inset-0"
                     >
-                        <ChevronLeft className="w-4 h-4" />
-                        Quay lại
-                    </button>
+                        {game.bgImage ? (
+                            <img
+                                src={game.bgImage}
+                                alt=""
+                                className="w-full h-full object-cover"
+                                style={{ filter: 'blur(4px) brightness(0.35) saturate(1.4)' }}
+                            />
+                        ) : (
+                            <div className="w-full h-full bg-gradient-to-br from-[#2d0b6b] to-[#0d1a3a]" />
+                        )}
+                    </motion.div>
+                </AnimatePresence>
 
-                    <div className="flex items-center gap-3 mb-2">
-                        <div className="w-10 h-10 rounded-xl bg-violet-50 flex items-center justify-center">
-                            <Play className="w-5 h-5 text-violet-500" />
-                        </div>
-                        <div>
-                            <h1 className="text-[18px] font-bold text-slate-800">
-                                Chọn chế độ chơi
-                            </h1>
-                            <p className="text-[13px] text-slate-400">
-                                Bước cuối — Chọn template game cho phiên chơi
-                            </p>
-                        </div>
-                    </div>
+                {/* Left vignette — purple-tinted fade covering hero area */}
+                <div className="absolute inset-0 bg-gradient-to-r from-[#0f0720] via-[#160d35]/80 to-transparent" />
+                {/* Bottom vignette */}
+                <div className="absolute inset-0 bg-gradient-to-t from-[#0d1a3a]/70 to-transparent" />
+                {/* Subtle purple ambient glow top-left */}
+                <div className="absolute -top-32 -left-32 w-[600px] h-[600px] rounded-full opacity-20"
+                     style={{ background: 'radial-gradient(circle, #7c3aed 0%, transparent 70%)' }} />
+            </div>
 
-                    {/* Quiz summary */}
-                    <div className="mt-4 flex items-center gap-3 p-3 rounded-xl bg-emerald-50/60 border border-emerald-100">
-                        <CheckCircle2 className="w-5 h-5 text-emerald-500 flex-shrink-0" />
-                        <div className="flex-1 min-w-0">
-                            <p className="text-[13px] font-medium text-emerald-700 truncate">
-                                {quizTitle}
-                            </p>
-                            <p className="text-[11px] text-emerald-500">
-                                {questionCount} câu hỏi đã được tạo thành công
-                            </p>
-                        </div>
-                    </div>
-                </header>
+            {/* ══ LAYER 2 — Top nav bar ══ */}
+            <header className="relative z-20 flex items-center justify-between px-10 pt-6 pb-2 flex-shrink-0">
+                <BackButton onClick={() => navigate(-1)} />
 
-                {/* ── Error ── */}
-                {createError && (
-                    <div className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-sm text-rose-600 flex items-center gap-2">
-                        <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                        {createError}
-                    </div>
-                )}
+                {/* Quiz context pill */}
+                <div className="flex items-center gap-3 px-5 py-2.5 rounded-full
+                                bg-violet-500/20 border border-violet-400/30 backdrop-blur-md">
+                    <BookOpen className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                    <span className="text-[14px] text-white/85 font-semibold max-w-[260px] truncate">
+                        {quizTitle}
+                    </span>
+                    <span className="text-[13px] text-white/35 select-none">·</span>
+                    <span className="text-[13px] text-white/55 flex-shrink-0 font-medium">{questionCount} câu</span>
+                </div>
 
-                {/* ── Templates Grid ── */}
-                {loadingTemplates ? (
-                    <div className="flex items-center justify-center py-20">
-                        <Loader2 className="w-6 h-6 text-sky-500 animate-spin" />
-                        <span className="ml-3 text-sm text-slate-400">Đang tải chế độ chơi...</span>
-                    </div>
-                ) : templatesError ? (
-                    <div className="flex flex-col items-center justify-center py-20 text-center">
-                        <AlertCircle className="w-8 h-8 text-slate-300 mb-3" />
-                        <p className="text-sm text-slate-400 mb-3">{templatesError}</p>
-                        <button
-                            onClick={() => window.location.reload()}
-                            className="px-4 py-2 rounded-lg text-sm font-medium text-sky-600 bg-sky-50
-                                       hover:bg-sky-100 transition-colors"
+                <div className="w-24" />
+            </header>
+
+            {/* ══ LAYER 3 — Body: 50/50 split ══ */}
+            <div className="relative z-10 flex-1 flex overflow-hidden">
+
+                {/* ────────────────────────────────────────
+                    LEFT 50% — Game detail / hero
+                ──────────────────────────────────────── */}
+                <main className="w-1/2 flex flex-col justify-center px-14 pb-8">
+                    <AnimatePresence mode="wait">
+                        <motion.div
+                            key={game.id}
+                            initial={{ opacity: 0, y: 18 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -10 }}
+                            transition={{ duration: 0.4, ease: 'easeOut' }}
                         >
-                            Thử lại
-                        </button>
-                    </div>
-                ) : gameTemplates.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-20 text-center">
-                        <p className="text-sm text-slate-400 mb-4">
-                            Chưa có chế độ chơi nào. Bạn có thể bỏ qua và quay lại sau.
-                        </p>
-                        <button
-                            onClick={handleSkip}
-                            className="px-5 py-2.5 rounded-xl text-[13px] font-semibold text-slate-600
-                                       border border-slate-200 hover:bg-slate-50 transition-colors"
-                        >
-                            Đi đến thư viện
-                        </button>
-                    </div>
-                ) : (
-                    <>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
-                            {gameTemplates.map((template) => {
-                                const IconComponent = modeIcons[template.icon] || getIconForTemplate(template.name);
-                                const isSelected = selectedTemplate === template.id;
+                            {/* Logo badge */}
+                            {game.logoUrl && (
+                                <div className="mb-6 w-20 h-20 rounded-2xl overflow-hidden
+                                                border border-white/20 shadow-2xl">
+                                    <img src={game.logoUrl} alt={game.name} className="w-full h-full object-cover" />
+                                </div>
+                            )}
 
-                                return (
-                                    <motion.button
-                                        key={template.id}
-                                        onClick={() => setSelectedTemplate(template.id)}
-                                        className={`group relative flex flex-col p-5 rounded-xl
-                                                    border text-left transition-all duration-200
-                                                    ${isSelected
-                                                ? 'border-violet-400 bg-violet-50/50 ring-2 ring-violet-200/50'
-                                                : 'border-slate-200/80 bg-white hover:border-violet-300 hover:bg-violet-50/20'
-                                            }`}
-                                        whileHover={{ scale: 1.01 }}
-                                        whileTap={{ scale: 0.99 }}
-                                    >
-                                        <div className="flex items-center gap-3 mb-3">
-                                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center
-                                                             transition-colors duration-200
-                                                             ${isSelected ? 'bg-violet-100' : 'bg-slate-50 group-hover:bg-violet-50'}`}>
-                                                <IconComponent className={`w-5 h-5 transition-colors duration-200
-                                                    ${isSelected ? 'text-violet-500' : 'text-slate-400 group-hover:text-violet-500'}`} />
-                                            </div>
-                                            <h3 className={`text-[14px] font-semibold transition-colors duration-200
-                                                ${isSelected ? 'text-violet-600' : 'text-slate-700'}`}>
-                                                {template.name}
-                                            </h3>
-                                        </div>
-
-                                        {template.thumbnailUrl && (
-                                            <div className="w-full h-24 rounded-lg bg-slate-50 overflow-hidden mb-3">
-                                                <img
-                                                    src={template.thumbnailUrl}
-                                                    alt={template.name}
-                                                    className="w-full h-full object-cover"
-                                                />
-                                            </div>
-                                        )}
-
-                                        <div className="flex items-center justify-between mt-auto">
-                                            <span className="text-[11px] text-slate-400">
-                                                Template #{template.id}
-                                            </span>
-                                            <span className={`text-[12px] font-semibold transition-all duration-200
-                                                ${isSelected
-                                                    ? 'text-violet-500'
-                                                    : 'text-slate-400 group-hover:text-violet-500'
-                                                }`}>
-                                                {isSelected ? '✓ Đã chọn' : 'Chọn →'}
-                                            </span>
-                                        </div>
-                                    </motion.button>
-                                );
-                            })}
-                        </div>
-
-                        {/* ── Actions ── */}
-                        <div className="flex items-center justify-between pt-4 border-t border-slate-100/60">
-                            <button
-                                onClick={handleSkip}
-                                className="text-[13px] font-medium text-slate-400 hover:text-slate-600 transition-colors"
+                            {/* Title */}
+                            <h1
+                                className="text-6xl font-black mb-6 tracking-tight leading-none"
+                                style={{ textShadow: '0 4px 32px rgba(0,0,0,0.8)' }}
                             >
-                                Bỏ qua, đi đến thư viện
+                                {game.name}
+                            </h1>
+
+                            {/* Meta tags */}
+                            <div className="flex flex-wrap items-center gap-3 mb-6">
+                                <span className={`border px-4 py-1.5 rounded-lg text-[15px] font-semibold ${diffBadgeClass(game.difficulty)}`}>
+                                    {game.difficulty}
+                                </span>
+                                <span className="flex items-center gap-2 text-[15px] text-white/70 font-medium">
+                                    <Users size={16} className="opacity-70 flex-shrink-0" />
+                                    {game.players}
+                                </span>
+                                <span className="flex items-center gap-2 text-[15px] text-white/70 font-medium">
+                                    <Clock size={16} className="opacity-70 flex-shrink-0" />
+                                    {game.time}
+                                </span>
+                                <span className="flex items-center gap-2 text-[15px] text-white/70 font-medium">
+                                    <BrainCircuit size={16} className="opacity-70 flex-shrink-0" />
+                                    {game.skills}
+                                </span>
+                            </div>
+
+                            {/* Description */}
+                            <p
+                                className="text-[17px] text-gray-200 leading-relaxed mb-9 line-clamp-3"
+                                style={{ textShadow: '0 2px 12px rgba(0,0,0,0.5)' }}
+                            >
+                                {game.description}
+                            </p>
+
+                            {/* Create error */}
+                            {createError && (
+                                <div className="flex items-center gap-2 mb-5 text-[14px] text-rose-300
+                                                bg-rose-500/15 border border-rose-500/30 px-5 py-3 rounded-xl">
+                                    <AlertCircle className="w-5 h-5 flex-shrink-0" />
+                                    {createError}
+                                </div>
+                            )}
+
+                            {/* CTA buttons */}
+                            <div className="flex items-center gap-4">
+                                <motion.button
+                                    onClick={handleCreateGame}
+                                    disabled={creating || game.isPlus}
+                                    className={`flex items-center gap-3 px-10 py-4 rounded-full font-bold
+                                                text-[17px] transition-all duration-200 shadow-xl
+                                                ${game.isPlus
+                                            ? 'bg-white/20 text-white/40 cursor-not-allowed'
+                                            : 'bg-white text-black hover:bg-gray-100'
+                                        }`}
+                                    whileHover={!creating && !game.isPlus ? { scale: 1.03 } : {}}
+                                    whileTap={!creating && !game.isPlus ? { scale: 0.97 } : {}}
+                                >
+                                    {creating ? (
+                                        <><Loader2 className="w-6 h-6 animate-spin" />Đang tạo...</>
+                                    ) : game.isPlus ? (
+                                        <><Lock className="w-6 h-6" />Yêu cầu Plus</>
+                                    ) : (
+                                        <><Play fill="black" className="w-6 h-6" />Tạo Game</>
+                                    )}
+                                </motion.button>
+
+                                <button
+                                    onClick={() => setShowInfo(v => !v)}
+                                    className={`p-4 rounded-full backdrop-blur border transition-all duration-200
+                                                ${showInfo
+                                            ? 'bg-white/25 border-white/40 text-white'
+                                            : 'bg-gray-600/40 border-gray-500/30 text-white/70 hover:bg-gray-600/60 hover:text-white'
+                                        }`}
+                                >
+                                    <Info size={26} />
+                                </button>
+                            </div>
+
+                            {/* Expandable info panel */}
+                            <AnimatePresence>
+                                {showInfo && (
+                                    <motion.div
+                                        initial={{ opacity: 0, height: 0, marginTop: 0 }}
+                                        animate={{ opacity: 1, height: 'auto', marginTop: 24 }}
+                                        exit={{ opacity: 0, height: 0, marginTop: 0 }}
+                                        transition={{ duration: 0.28 }}
+                                        className="overflow-hidden max-w-[500px]"
+                                    >
+                                        <div className="grid grid-cols-2 gap-4 p-6 rounded-2xl
+                                                        bg-violet-950/50 backdrop-blur-md border border-violet-400/20">
+                                            <InfoTile icon={<Users size={17} />}        label="Người chơi" value={game.players} />
+                                            <InfoTile icon={<Clock size={17} />}        label="Thời gian"  value={game.time} />
+                                            <InfoTile icon={<BrainCircuit size={17} />} label="Kỹ năng"    value={game.skills} />
+                                            <InfoTile icon={<Zap size={17} />}          label="Độ khó"     value={game.difficulty} />
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </motion.div>
+                    </AnimatePresence>
+                </main>
+
+                {/* ────────────────────────────────────────
+                    RIGHT 50% — Frosted-glass panel, 3-col square grid
+                ──────────────────────────────────────── */}
+                <aside className="w-1/2 flex flex-col py-8 px-8">
+
+                    {/* Frosted glass container */}
+                    <div className="flex-1 flex flex-col rounded-3xl overflow-hidden
+                                    bg-white/[0.07] backdrop-blur-xl border border-violet-400/[0.15]
+                                    shadow-[inset_0_1px_0_rgba(167,139,250,0.12),0_0_40px_rgba(109,40,217,0.15)]">
+
+                        {/* Header inside the glass box */}
+                        <div className="flex items-center justify-between px-6 pt-5 pb-4 flex-shrink-0
+                                        border-b border-violet-400/[0.12]">
+                            <h3 className="text-[13px] font-bold text-white/60 uppercase tracking-[0.18em]">
+                                Chế độ chơi
+                                {!loadingTemplates && (
+                                    <span className="ml-2 text-white/35 font-normal normal-case tracking-normal">
+                                        ({allTemplates.length})
+                                    </span>
+                                )}
+                            </h3>
+                            {loadingTemplates && (
+                                <Loader2 className="w-4 h-4 text-white/35 animate-spin" />
+                            )}
+                        </div>
+
+                        {templatesError && (
+                            <div className="flex items-center gap-2 px-6 py-2.5 text-[13px] text-amber-400
+                                            flex-shrink-0 border-b border-white/[0.06]">
+                                <AlertCircle size={14} className="flex-shrink-0" />
+                                {templatesError}
+                            </div>
+                        )}
+
+                        {/* 3-col square grid — scrollable, shows 3 per row */}
+                        <div className="flex-1 overflow-y-auto hide-scrollbar px-5 py-5">
+                            <div className="grid grid-cols-3 gap-4">
+                                {allTemplates.map((template) => {
+                                    const isActive = activeGame.id === template.id;
+                                    return (
+                                        <motion.button
+                                            key={template.id}
+                                            onClick={() => {
+                                                setActiveGame(template);
+                                                setShowInfo(false);
+                                                setCreateError(null);
+                                            }}
+                                            whileHover={{ scale: 1.04 }}
+                                            whileTap={{ scale: 0.96 }}
+                                            className={`relative w-full rounded-2xl overflow-hidden cursor-pointer
+                                                        text-left transition-all duration-300
+                                                        ${isActive
+                                                    ? 'border-2 border-white shadow-[0_0_24px_rgba(255,255,255,0.18)]'
+                                                    : 'border border-white/12 opacity-55 hover:opacity-95 hover:border-white/30'
+                                                }`}
+                                            style={{ aspectRatio: '1 / 1' }}
+                                        >
+                                            {/* Thumbnail */}
+                                            {template.logoUrl ? (
+                                                <img
+                                                    src={template.logoUrl}
+                                                    alt={template.name}
+                                                    className="absolute inset-0 w-full h-full object-cover"
+                                                />
+                                            ) : (
+                                                <div className="absolute inset-0 bg-gradient-to-br
+                                                                from-violet-900 to-indigo-950
+                                                                flex items-center justify-center text-4xl select-none">
+                                                    🎮
+                                                </div>
+                                            )}
+
+                                            {/* Bottom scrim + name */}
+                                            <div className="absolute inset-0 bg-gradient-to-t from-black/90
+                                                            via-black/20 to-transparent
+                                                            flex flex-col justify-end px-3 py-3">
+                                                <span className="font-bold text-white text-[13px] leading-tight
+                                                                 line-clamp-2">
+                                                    {template.name}
+                                                </span>
+                                                {template.isPlus && (
+                                                    <span className="text-[11px] text-amber-300 font-semibold mt-1">
+                                                        ✦ Plus
+                                                    </span>
+                                                )}
+                                            </div>
+
+                                            {/* Active badge */}
+                                            {isActive && (
+                                                <motion.div
+                                                    initial={{ scale: 0 }}
+                                                    animate={{ scale: 1 }}
+                                                    className="absolute top-2 right-2 w-6 h-6 rounded-full bg-white
+                                                               flex items-center justify-center shadow-lg"
+                                                >
+                                                    <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                                                </motion.div>
+                                            )}
+                                        </motion.button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    </div>
+                </aside>
+
+            </div>{/* end body flex-row */}
+
+            {/* ══ PIN success modal ══ */}
+            <AnimatePresence>
+                {createdSession && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm"
+                    >
+                        <motion.div
+                            initial={{ scale: 0.82, y: 24 }}
+                            animate={{ scale: 1, y: 0 }}
+                            exit={{ scale: 0.82, y: 24 }}
+                            transition={{ type: 'spring', stiffness: 340, damping: 28 }}
+                            className="relative w-full max-w-sm mx-4 rounded-3xl p-8 text-center
+                                       bg-gradient-to-br from-[#1e0a3a] to-[#0a0a1f]
+                                       border border-white/10 shadow-2xl"
+                        >
+                            <button
+                                onClick={() => setCreatedSession(null)}
+                                className="absolute top-4 right-4 text-white/35 hover:text-white transition-colors"
+                            >
+                                <X className="w-5 h-5" />
                             </button>
 
-                            <motion.button
-                                onClick={handleCreateSession}
-                                disabled={!selectedTemplate || creating}
-                                className="flex items-center gap-2 px-6 py-3 rounded-xl
-                                           bg-gradient-to-r from-violet-500 to-purple-500 text-white text-[13px] font-bold
-                                           hover:from-violet-600 hover:to-purple-600 transition-all duration-200
-                                           shadow-md hover:shadow-lg
-                                           disabled:opacity-60 disabled:cursor-not-allowed"
-                                whileHover={!creating && selectedTemplate ? { scale: 1.02, y: -1 } : {}}
-                                whileTap={!creating && selectedTemplate ? { scale: 0.98 } : {}}
-                            >
-                                {creating ? (
-                                    <>
-                                        <Loader2 className="w-4 h-4 animate-spin" />
-                                        Đang tạo phiên...
-                                    </>
-                                ) : (
-                                    <>
-                                        <Play className="w-4 h-4" />
-                                        Tạo phiên chơi
-                                    </>
-                                )}
-                            </motion.button>
-                        </div>
-                    </>
+                            <div className="w-16 h-16 mx-auto mb-5 rounded-2xl
+                                            bg-emerald-500/20 border border-emerald-400/30
+                                            flex items-center justify-center">
+                                <CheckCircle2 className="w-8 h-8 text-emerald-400" />
+                            </div>
+
+                            <h2 className="text-2xl font-extrabold text-white mb-2">
+                                Phiên chơi đã sẵn sàng!
+                            </h2>
+                            <p className="text-[15px] text-white/55 mb-7">
+                                Chia sẻ mã PIN bên dưới cho học sinh tham gia
+                            </p>
+
+                            <div className="inline-flex items-center gap-3 px-8 py-5 mb-7
+                                            rounded-2xl bg-white/8 border-2 border-white/20 backdrop-blur">
+                                <Hash className="w-6 h-6 text-amber-300 flex-shrink-0" />
+                                <span className="text-5xl font-black tracking-[0.25em] font-mono text-white">
+                                    {createdSession.gamePin
+                                        || createdSession.pin
+                                        || createdSession.pinCode
+                                        || '------'}
+                                </span>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3">
+                                <button
+                                    onClick={() => setCreatedSession(null)}
+                                    className="py-3.5 rounded-xl border border-white/20 text-white/75
+                                               text-[15px] font-semibold hover:bg-white/10 transition-colors"
+                                >
+                                    Đóng
+                                </button>
+                                <button
+                                    onClick={handleGoToSession}
+                                    className="py-3.5 rounded-xl bg-white text-black text-[15px] font-bold
+                                               hover:bg-gray-100 transition-colors flex items-center
+                                               justify-center gap-2"
+                                >
+                                    <Play fill="black" className="w-5 h-5" />
+                                    Vào phòng chờ
+                                </button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
                 )}
-            </motion.div>
-        </section>
+            </AnimatePresence>
+        </div>
+    );
+}
+
+// ─── Info tile ────────────────────────────────────────────────────────────────
+function InfoTile({ icon, label, value }) {
+    return (
+        <div className="flex items-start gap-3">
+            <div className="mt-0.5 text-white/55 flex-shrink-0">{icon}</div>
+            <div>
+                <p className="text-[12px] text-white/45 uppercase tracking-wider font-semibold mb-0.5">{label}</p>
+                <p className="text-[15px] text-white font-bold">{value}</p>
+            </div>
+        </div>
     );
 }

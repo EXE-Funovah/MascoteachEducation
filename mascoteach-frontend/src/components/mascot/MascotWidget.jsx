@@ -1,12 +1,15 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useMascot } from '@/contexts/MascotContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { mascotLiveService } from '@/services/mascotChatService';
 import './MascotWidget.css';
 
 // Mascot sprite images (swap PNGs keeping these names)
 const MASCOT_IDLE = '/images/mascot-idle.png';
 const MASCOT_SPEAKING = '/images/mascot-speaking.png';
+const MASCOT_HEAD = '/images/mascot-head.png';
 
 /**
  * Radial menu options — arranged in a Sims-style fan.
@@ -91,6 +94,8 @@ const STATUS_LABELS = {
 };
 
 export default function MascotWidget() {
+    const { isLoggedIn } = useAuth();
+    const { pathname } = useLocation();
     const {
         isOpen,
         isSpeaking,
@@ -105,7 +110,10 @@ export default function MascotWidget() {
     const [speechBubble, setSpeechBubble] = useState('');
     const [bubbleVisible, setBubbleVisible] = useState(false);
     const bubbleTimeoutRef = useRef(null);
+    const speakTimeoutRef = useRef(null);
     const liveServiceRef = useRef(mascotLiveService);
+    // Tracks whether a dismiss was triggered so onExitComplete can fire closeMascot
+    const isPendingCloseRef = useRef(false);
 
     // ── Wire up the live audio service callbacks ──
     useEffect(() => {
@@ -172,6 +180,7 @@ export default function MascotWidget() {
     useEffect(() => {
         return () => {
             clearTimeout(bubbleTimeoutRef.current);
+            clearTimeout(speakTimeoutRef.current);
             liveServiceRef.current.disconnect();
         };
     }, []);
@@ -266,14 +275,29 @@ export default function MascotWidget() {
      * TODO: Play a static goodbye sound file here later.
      */
     const handleDismiss = useCallback(() => {
-        setMenuOpen(false);
         liveServiceRef.current.disconnect();
         setIsSessionActive(false);
         setIsListening(false);
         setIsSpeaking(false);
         setBubbleVisible(false);
-        closeMascot();
-    }, [closeMascot, setIsSpeaking]);
+        if (menuOpen) {
+            // Menu is open — let it animate out first, then drop mascot via onExitComplete
+            setMenuOpen(false);
+            isPendingCloseRef.current = true;
+        } else {
+            closeMascot();
+        }
+    }, [closeMascot, menuOpen, setIsSpeaking]);
+
+    /**
+     * Briefly put the mascot into speaking mode for `ms` milliseconds.
+     * Used by non-live menu actions to animate the sprite while the bubble shows.
+     */
+    const speakForDuration = useCallback((ms = 2000) => {
+        clearTimeout(speakTimeoutRef.current);
+        setIsSpeaking(true);
+        speakTimeoutRef.current = setTimeout(() => setIsSpeaking(false), ms);
+    }, [setIsSpeaking]);
 
     /**
      * Handle radial menu option selection
@@ -285,12 +309,15 @@ export default function MascotWidget() {
                 toggleLiveSession();
                 break;
             case 'help':
+                speakForDuration(2000);
                 showBubble('Mình là Tanuki! 🦝 Bấm Nói chuyện để trò chuyện bằng giọng nói nhé!', 4000);
                 break;
             case 'quiz':
+                speakForDuration(2000);
                 showBubble('Vào Thư viện, tải tài liệu lên, mình sẽ tạo câu hỏi quiz cho bạn! 📝', 4000);
                 break;
             case 'tip':
+                speakForDuration(2000);
                 showBubble('Mẹo: Tạo phiên chơi trực tiếp từ quiz để học vui hơn! 🎮', 4000);
                 break;
             case 'dismiss':
@@ -299,7 +326,7 @@ export default function MascotWidget() {
             default:
                 break;
         }
-    }, [toggleLiveSession, showBubble, handleDismiss]);
+    }, [toggleLiveSession, speakForDuration, showBubble, handleDismiss]);
 
     const handleMascotClick = () => {
         if (isSessionActive) {
@@ -314,13 +341,17 @@ export default function MascotWidget() {
 
     const mascotImage = isSpeaking ? MASCOT_SPEAKING : MASCOT_IDLE;
 
+    // Hide on public/auth pages and when not logged in
+    const PUBLIC_PATHS = ['/', '/login', '/signup', '/forgot-password'];
+    if (!isLoggedIn || PUBLIC_PATHS.includes(pathname)) return null;
+
     // ── Hardcoded positions for Sims-style fan (left of mascot) ──
     const RADIAL_POSITIONS = [
-        { x: -80, y: -190 },   // Talk — upper, slightly left
-        { x: -160, y: -150 },  // Help — upper-left
-        { x: -195, y: -80 },   // Quiz Me — mid-left
-        { x: -185, y: 0 },     // Give Tip — left
-        { x: -140, y: 70 },    // Bye! — lower-left
+        { x: -130, y: -190 },  // Talk — upper, slightly left
+        { x: -210, y: -150 },  // Help — upper-left
+        { x: -245, y: -80 },   // Quiz Me — mid-left
+        { x: -235, y: 0 },     // Give Tip — left
+        { x: -190, y: 70 },    // Bye! — lower-left
     ];
 
     return (
@@ -332,16 +363,20 @@ export default function MascotWidget() {
                         className="mascot-trigger-btn"
                         id="mascot-trigger-button"
                         onClick={toggleMascot}
-                        initial={{ scale: 0, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        exit={{ scale: 0, opacity: 0 }}
+                        variants={{
+                            hidden: { scale: 0, opacity: 0 },
+                            visible: { scale: 1, opacity: 1, transition: { type: 'spring', stiffness: 400, damping: 20 } },
+                            exit: { scale: [1, 1.18, 0], opacity: [1, 1, 0], transition: { duration: 0.35, times: [0, 0.32, 1], ease: 'easeInOut' } },
+                        }}
+                        initial="hidden"
+                        animate="visible"
+                        exit="exit"
                         whileHover={{ scale: 1.08 }}
                         whileTap={{ scale: 0.92 }}
-                        transition={{ type: 'spring', stiffness: 400, damping: 20 }}
                         aria-label="Gọi Tanuki"
                     >
                         <img
-                            src={MASCOT_IDLE}
+                            src={MASCOT_HEAD}
                             alt="Mascoteach"
                             className="mascot-trigger-img"
                         />
@@ -392,7 +427,12 @@ export default function MascotWidget() {
                         </AnimatePresence>
 
                         {/* Sims-style radial menu */}
-                        <AnimatePresence>
+                        <AnimatePresence onExitComplete={() => {
+                            if (isPendingCloseRef.current) {
+                                isPendingCloseRef.current = false;
+                                closeMascot();
+                            }
+                        }}>
                             {menuOpen && (
                                 <div className="mascot-radial-menu">
                                     {MENU_OPTIONS.map((opt, i) => {
@@ -433,14 +473,14 @@ export default function MascotWidget() {
                         <motion.div
                             className={`mascot-character ${isSessionActive ? 'mascot-character--live' : ''}`}
                             id="mascot-character"
-                            initial={{ y: 300, opacity: 0 }}
-                            animate={{ y: 0, opacity: 1 }}
-                            exit={{ y: 300, opacity: 0 }}
-                            transition={{
-                                type: 'spring',
-                                stiffness: 160,
-                                damping: 14,
+                            variants={{
+                                hidden: { y: 300, opacity: 0 },
+                                visible: { y: 0, opacity: 1, transition: { type: 'spring', stiffness: 160, damping: 14 } },
+                                exit: { y: [0, -18, 300], opacity: [1, 1, 0], transition: { duration: 0.45, times: [0, 0.2, 1], ease: 'easeIn' } },
                             }}
+                            initial="hidden"
+                            animate="visible"
+                            exit="exit"
                             onClick={handleMascotClick}
                             role="button"
                             tabIndex={0}
