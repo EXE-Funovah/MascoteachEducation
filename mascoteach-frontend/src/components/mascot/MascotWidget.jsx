@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useMascot } from '@/contexts/MascotContext';
-import { sendMascotMessage } from '@/services/mascotChatService';
+import { mascotLiveService } from '@/services/mascotChatService';
 import './MascotWidget.css';
 
 // Mascot sprite images (swap PNGs keeping these names)
@@ -15,7 +15,7 @@ const MASCOT_SPEAKING = '/images/mascot-speaking.png';
 const MENU_OPTIONS = [
     {
         id: 'talk',
-        label: 'Talk',
+        label: 'Nói chuyện',
         action: 'talk',
         icon: (
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -28,7 +28,7 @@ const MENU_OPTIONS = [
     },
     {
         id: 'help',
-        label: 'Help',
+        label: 'Trợ giúp',
         action: 'help',
         icon: (
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -40,7 +40,7 @@ const MENU_OPTIONS = [
     },
     {
         id: 'quiz',
-        label: 'Quiz Me',
+        label: 'Làm Quiz',
         action: 'quiz',
         icon: (
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -54,7 +54,7 @@ const MENU_OPTIONS = [
     },
     {
         id: 'tip',
-        label: 'Give Tip',
+        label: 'Mẹo hay',
         action: 'tip',
         icon: (
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -66,7 +66,7 @@ const MENU_OPTIONS = [
     },
     {
         id: 'dismiss',
-        label: 'Bye!',
+        label: 'Tạm biệt',
         action: 'dismiss',
         icon: (
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -77,43 +77,113 @@ const MENU_OPTIONS = [
     },
 ];
 
+/**
+ * Status labels for the live audio session
+ */
+const STATUS_LABELS = {
+    idle: '',
+    connecting: 'Đang kết nối...',
+    connected: 'Sẵn sàng!',
+    listening: '🎤 Đang nghe...',
+    speaking: '🔊 Đang nói...',
+    error: '⚠️ Lỗi',
+    disconnected: 'Đã ngắt kết nối',
+};
+
 export default function MascotWidget() {
     const {
         isOpen,
         isSpeaking,
-        messages,
         toggleMascot,
         closeMascot,
-        addMessage,
         setIsSpeaking,
     } = useMascot();
 
     const [menuOpen, setMenuOpen] = useState(false);
     const [isListening, setIsListening] = useState(false);
+    const [isSessionActive, setIsSessionActive] = useState(false);
     const [speechBubble, setSpeechBubble] = useState('');
     const [bubbleVisible, setBubbleVisible] = useState(false);
-    const recognitionRef = useRef(null);
-    const synthRef = useRef(window.speechSynthesis);
-    const speakingTimeoutRef = useRef(null);
     const bubbleTimeoutRef = useRef(null);
+    const liveServiceRef = useRef(mascotLiveService);
 
-    // ── Cleanup ──
+    // ── Wire up the live audio service callbacks ──
+    useEffect(() => {
+        const service = liveServiceRef.current;
+
+        service.onSpeakingStart = () => {
+            setIsSpeaking(true);
+            showBubble('🔊 Đang nói...', 0);
+        };
+
+        service.onSpeakingEnd = () => {
+            setIsSpeaking(false);
+            // Keep the "listening" bubble if session is active
+            if (service.isSessionActive) {
+                showBubble('🎤 Đang nghe...', 0);
+            } else {
+                setBubbleVisible(false);
+            }
+        };
+
+        service.onListeningStart = () => {
+            setIsListening(true);
+        };
+
+        service.onError = (message) => {
+            console.error('[MascotWidget] Error:', message);
+            showBubble(`Ôi! ${message}`, 5000);
+            setIsListening(false);
+            setIsSpeaking(false);
+        };
+
+        service.onConnected = () => {
+            console.log('[MascotWidget] Gemini connected');
+        };
+
+        service.onDisconnected = () => {
+            setIsSessionActive(false);
+            setIsListening(false);
+            setIsSpeaking(false);
+        };
+
+        service.onStatusChange = (status) => {
+            if (status === 'connected' || status === 'listening') {
+                setIsSessionActive(true);
+            } else if (status === 'session_ended' || status === 'disconnected') {
+                setIsSessionActive(false);
+                setIsListening(false);
+            }
+        };
+
+        return () => {
+            // Clean up callbacks
+            service.onSpeakingStart = null;
+            service.onSpeakingEnd = null;
+            service.onListeningStart = null;
+            service.onError = null;
+            service.onConnected = null;
+            service.onDisconnected = null;
+            service.onStatusChange = null;
+        };
+    }, [setIsSpeaking]);
+
+    // ── Cleanup on unmount ──
     useEffect(() => {
         return () => {
-            recognitionRef.current?.abort?.();
-            synthRef.current?.cancel();
-            clearTimeout(speakingTimeoutRef.current);
             clearTimeout(bubbleTimeoutRef.current);
+            liveServiceRef.current.disconnect();
         };
     }, []);
 
     // ── Stop everything when mascot hides ──
+    // TODO: Play a static greeting sound file when isOpen becomes true
     useEffect(() => {
         if (!isOpen) {
-            synthRef.current?.cancel();
-            recognitionRef.current?.abort?.();
+            liveServiceRef.current.stopSession();
             setIsListening(false);
             setIsSpeaking(false);
+            setIsSessionActive(false);
             setMenuOpen(false);
             setBubbleVisible(false);
         }
@@ -146,140 +216,52 @@ export default function MascotWidget() {
     }, []);
 
     /**
-     * Speak text aloud via TTS + show in speech bubble
+     * Toggle the live audio session (Talk button).
+     * If a session is active, stop it. Otherwise, start one.
      */
-    const speak = useCallback((text) => {
-        if (!synthRef.current) return;
-        synthRef.current.cancel();
-
-        showBubble(text, 0); // keep visible until done speaking
-
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.rate = 1;
-        utterance.pitch = 1.1;
-        utterance.volume = 0.9;
-
-        const voices = synthRef.current.getVoices();
-        const preferred = voices.find(
-            (v) =>
-                v.lang.startsWith('en') &&
-                (v.name.includes('Female') ||
-                    v.name.includes('Samantha') ||
-                    v.name.includes('Google') ||
-                    v.name.includes('Microsoft Zira') ||
-                    v.name.includes('Aria'))
-        );
-        if (preferred) utterance.voice = preferred;
-
-        utterance.onstart = () => {
-            setIsSpeaking(true);
-        };
-
-        utterance.onend = () => {
-            speakingTimeoutRef.current = setTimeout(() => {
-                setIsSpeaking(false);
-                // Hide bubble after a short delay post-speaking
-                bubbleTimeoutRef.current = setTimeout(() => {
-                    setBubbleVisible(false);
-                }, 3000);
-            }, 400);
-        };
-
-        utterance.onerror = () => {
-            setIsSpeaking(false);
-            setBubbleVisible(false);
-        };
-
-        synthRef.current.speak(utterance);
-    }, [setIsSpeaking, showBubble]);
-
-    /**
-     * Start voice recognition → AI → TTS response
-     */
-    const startListening = useCallback(() => {
-        const SpeechRecognition =
-            window.SpeechRecognition || window.webkitSpeechRecognition;
-
-        if (!SpeechRecognition) {
-            showBubble('Speech recognition is not supported in this browser.');
-            return;
-        }
-
-        if (isListening && recognitionRef.current) {
-            recognitionRef.current.stop();
-            setIsListening(false);
-            return;
-        }
-
-        synthRef.current?.cancel();
-        setIsSpeaking(false);
+    const toggleLiveSession = useCallback(async () => {
         setMenuOpen(false);
 
-        const recognition = new SpeechRecognition();
-        recognition.continuous = false;
-        recognition.interimResults = true;
-        recognition.lang = 'en-US';
-        recognitionRef.current = recognition;
-
-        setIsListening(true);
-        showBubble('Listening...', 0);
-
-        let finalTranscript = '';
-
-        recognition.onresult = (event) => {
-            let interim = '';
-            for (let i = event.resultIndex; i < event.results.length; i++) {
-                const t = event.results[i][0].transcript;
-                if (event.results[i].isFinal) {
-                    finalTranscript += t;
-                } else {
-                    interim = t;
-                }
-            }
-            showBubble(finalTranscript || interim || 'Listening...', 0);
-        };
-
-        recognition.onend = async () => {
+        if (isSessionActive) {
+            // Stop the active session
+            liveServiceRef.current.stopSession();
+            setIsSessionActive(false);
             setIsListening(false);
-            const userText = finalTranscript.trim();
+            setIsSpeaking(false);
+            showBubble('Đã kết thúc. Bấm Nói chuyện để trò chuyện lại!', 4000);
+            return;
+        }
 
-            if (!userText) {
-                showBubble("I didn't catch that. Click me to try again!", 4000);
-                return;
-            }
+        try {
+            showBubble('Đang kết nối với Tanuki...', 0);
+            setIsSpeaking(true); // Show as "thinking" while connecting
 
-            showBubble('Hmm, let me think...', 0);
-            setIsSpeaking(true);
-            addMessage('user', userText);
+            await liveServiceRef.current.startSession();
 
-            try {
-                const history = messages.slice(-10).map((m) => ({
-                    role: m.role,
-                    content: m.content,
-                }));
-                const reply = await sendMascotMessage(userText, history);
-                addMessage('assistant', reply);
-                speak(reply);
-            } catch {
-                const fallback = "Oops! Something went wrong. Try again!";
-                addMessage('assistant', fallback);
-                speak(fallback);
-            }
-        };
+            setIsSessionActive(true);
+            setIsListening(true);
+            setIsSpeaking(false);
+            showBubble('🎤 Đang nghe... Hãy nói với Tanuki!', 0);
+        } catch (error) {
+            console.error('[MascotWidget] Failed to start session:', error);
+            setIsSpeaking(false);
+            showBubble('Không thể kết nối. Vui lòng thử lại!', 5000);
+        }
+    }, [isSessionActive, setIsSpeaking, showBubble]);
 
-        recognition.onerror = (event) => {
-            setIsListening(false);
-            if (event.error === 'no-speech') {
-                showBubble("I didn't hear anything. Try again!", 4000);
-            } else if (event.error === 'not-allowed') {
-                showBubble('Please allow microphone access!', 4000);
-            } else {
-                showBubble('Something went wrong. Try again!', 4000);
-            }
-        };
-
-        recognition.start();
-    }, [isListening, messages, addMessage, setIsSpeaking, speak, showBubble]);
+    /**
+     * Handle dismiss — simple close, no AI call.
+     * TODO: Play a static goodbye sound file here later.
+     */
+    const handleDismiss = useCallback(() => {
+        setMenuOpen(false);
+        liveServiceRef.current.disconnect();
+        setIsSessionActive(false);
+        setIsListening(false);
+        setIsSpeaking(false);
+        setBubbleVisible(false);
+        closeMascot();
+    }, [closeMascot, setIsSpeaking]);
 
     /**
      * Handle radial menu option selection
@@ -288,35 +270,39 @@ export default function MascotWidget() {
         setMenuOpen(false);
         switch (action) {
             case 'talk':
-                startListening();
+                toggleLiveSession();
                 break;
             case 'help':
-                speak("I'm your Mascoteach buddy! Click Talk to chat with me using your voice, or Quiz Me for a quick quiz!");
+                showBubble('Mình là Tanuki! 🦝 Bấm Nói chuyện để trò chuyện bằng giọng nói nhé!', 4000);
                 break;
             case 'quiz':
-                speak("Let's do a quiz! Head over to the Library, upload a document, and I'll generate questions for you!");
+                showBubble('Vào Thư viện, tải tài liệu lên, mình sẽ tạo câu hỏi quiz cho bạn! 📝', 4000);
                 break;
             case 'tip':
-                speak("Here's a tip: You can create live game sessions from your quizzes to make learning super fun for your students!");
+                showBubble('Mẹo: Tạo phiên chơi trực tiếp từ quiz để học vui hơn! 🎮', 4000);
                 break;
             case 'dismiss':
-                speak("See you later!");
-                setTimeout(() => closeMascot(), 2000);
+                handleDismiss();
                 break;
             default:
                 break;
         }
-    }, [startListening, speak, closeMascot]);
+    }, [toggleLiveSession, showBubble, handleDismiss]);
 
     const handleMascotClick = () => {
-        if (isListening || isSpeaking) return; // don't open menu while active
+        if (isSessionActive) {
+            // If session is active, clicking the mascot stops it
+            toggleLiveSession();
+            return;
+        }
+        // Hide bubble when opening menu so it doesn't overlap
+        setBubbleVisible(false);
         setMenuOpen((prev) => !prev);
     };
 
     const mascotImage = isSpeaking ? MASCOT_SPEAKING : MASCOT_IDLE;
 
     // ── Hardcoded positions for Sims-style fan (left of mascot) ──
-    // Each position is [x, y] offset from mascot center, going LEFT and UP
     const RADIAL_POSITIONS = [
         { x: -80, y: -190 },   // Talk — upper, slightly left
         { x: -160, y: -150 },  // Help — upper-left
@@ -340,7 +326,7 @@ export default function MascotWidget() {
                         whileHover={{ scale: 1.08 }}
                         whileTap={{ scale: 0.92 }}
                         transition={{ type: 'spring', stiffness: 400, damping: 20 }}
-                        aria-label="Summon Mascot"
+                        aria-label="Gọi Tanuki"
                     >
                         <img
                             src={MASCOT_IDLE}
@@ -359,7 +345,7 @@ export default function MascotWidget() {
                         <AnimatePresence>
                             {bubbleVisible && speechBubble && (
                                 <motion.div
-                                    className="mascot-bubble"
+                                    className={`mascot-bubble ${isSessionActive ? 'mascot-bubble--live' : ''}`}
                                     initial={{ opacity: 0, scale: 0.7, y: 10 }}
                                     animate={{ opacity: 1, scale: 1, y: 0 }}
                                     exit={{ opacity: 0, scale: 0.7, y: 10 }}
@@ -368,11 +354,27 @@ export default function MascotWidget() {
                                     <p>{speechBubble}</p>
                                     <div className="mascot-bubble-tail" />
 
-                                    {isListening && (
+                                    {isListening && isSessionActive && (
                                         <div className="mascot-listening-bars">
                                             <span /><span /><span /><span />
                                         </div>
                                     )}
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+
+                        {/* Live session indicator */}
+                        <AnimatePresence>
+                            {isSessionActive && (
+                                <motion.div
+                                    className="mascot-live-indicator"
+                                    initial={{ opacity: 0, scale: 0 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    exit={{ opacity: 0, scale: 0 }}
+                                    transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+                                >
+                                    <span className="mascot-live-dot" />
+                                    <span className="mascot-live-text">LIVE</span>
                                 </motion.div>
                             )}
                         </AnimatePresence>
@@ -417,7 +419,7 @@ export default function MascotWidget() {
 
                         {/* Mascot character sprite */}
                         <motion.div
-                            className="mascot-character"
+                            className={`mascot-character ${isSessionActive ? 'mascot-character--live' : ''}`}
                             id="mascot-character"
                             initial={{ y: 300, opacity: 0 }}
                             animate={{ y: 0, opacity: 1 }}
@@ -430,7 +432,7 @@ export default function MascotWidget() {
                             onClick={handleMascotClick}
                             role="button"
                             tabIndex={0}
-                            aria-label="Interact with mascot"
+                            aria-label={isSessionActive ? "Dừng nói chuyện với Tanuki" : "Tương tác với Tanuki"}
                         >
                             <motion.img
                                 key={mascotImage}

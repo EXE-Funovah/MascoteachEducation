@@ -244,6 +244,57 @@
     pointer-events: none;
 }
 
+/* ── Live Session Indicator ── */
+.mascot-live-indicator {
+    position: absolute;
+    bottom: 100%;
+    right: 10px;
+    margin-bottom: -8px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 10px 3px 8px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #e53e3e, #c53030);
+    box-shadow: 0 2px 8px rgba(229, 62, 62, 0.4);
+    z-index: 15;
+}
+
+.mascot-live-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: white;
+    animation: mascot-live-pulse 1.2s ease-in-out infinite;
+}
+
+.mascot-live-text {
+    font-size: 10px;
+    font-weight: 700;
+    color: white;
+    letter-spacing: 0.05em;
+    font-family: 'Montserrat', 'Inter', system-ui, sans-serif;
+}
+
+@keyframes mascot-live-pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.8); }
+}
+
+/* ── Live-active bubble accent ── */
+.mascot-bubble--live {
+    border-color: rgba(72, 187, 120, 0.6);
+    box-shadow:
+        0 4px 24px rgba(72, 187, 120, 0.15),
+        0 1px 4px rgba(0, 0, 0, 0.04);
+}
+
+/* ── Live-active mascot glow ── */
+.mascot-character--live .mascot-sprite {
+    filter: drop-shadow(0 0 16px rgba(72, 187, 120, 0.35))
+            drop-shadow(0 6px 20px rgba(0, 0, 0, 0.15));
+}
+
 /* ── Mobile Responsiveness ── */
 @media (max-width: 480px) {
     .mascot-area {

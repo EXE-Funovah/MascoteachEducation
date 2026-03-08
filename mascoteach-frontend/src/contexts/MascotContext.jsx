@@ -19,7 +19,7 @@ export function MascotProvider({ children }) {
     const [messages, setMessages] = useState([
         {
             role: 'assistant',
-            content: 'Hi there! 👋 I\'m your Mascoteach buddy! Ask me anything about the platform, or just say hello!',
+            content: 'Xin chào! 👋 Mình là Tanuki, bạn đồng hành của bạn trên Mascoteach! Hỏi mình bất cứ điều gì nhé!',
         },
     ]);
 
@@ -43,7 +43,7 @@ export function MascotProvider({ children }) {
         setMessages([
             {
                 role: 'assistant',
-                content: 'Chat cleared! How can I help you? 🌟',
+                content: 'Đã xóa cuộc trò chuyện! Mình giúp gì cho bạn nhé? 🌟',
             },
         ]);
     }, []);
