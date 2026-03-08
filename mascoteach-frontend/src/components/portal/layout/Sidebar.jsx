@@ -22,8 +22,8 @@ export default function Sidebar() {
     const { user, logout } = useAuth();
 
     // Display name from API or fallback
-    const displayName = user?.fullName || user?.name || 'Giáo viên';
-    const displaySchool = user?.school || user?.email || '';
+    const displayName = user?.fullName || user?.FullName || user?.full_name || user?.name || user?.userName || 'Giáo viên';
+    const displaySchool = user?.school || user?.School || user?.email || '';
     const displayAvatar = user?.avatar || '👩‍🏫';
 
     return (
