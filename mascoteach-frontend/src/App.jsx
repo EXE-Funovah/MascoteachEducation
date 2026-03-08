@@ -16,6 +16,7 @@ import SessionsPage from '@/pages/portal/SessionsPage';
 import QuizSettingsPage from '@/pages/portal/QuizSettingsPage';
 import QuizPreviewPage from '@/pages/portal/QuizPreviewPage';
 import GameTemplateSelectionPage from '@/pages/portal/GameTemplateSelectionPage';
+import TreasureHuntGame from '@/pages/portal/TreasureHuntGame';
 
 // Student Game (standalone, no sidebar)
 import StudentGamePage from '@/pages/portal/StudentGamePage';
@@ -56,6 +57,16 @@ export default function App() {
           element={
             <ProtectedRoute allowedRoles={['Teacher']}>
               <GameTemplateSelectionPage />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* ── Treasure Hunt Game (standalone full-screen, no sidebar) ── */}
+        <Route
+          path="/teacher/treasure-hunt"
+          element={
+            <ProtectedRoute allowedRoles={['Teacher']}>
+              <TreasureHuntGame />
             </ProtectedRoute>
           }
         />
