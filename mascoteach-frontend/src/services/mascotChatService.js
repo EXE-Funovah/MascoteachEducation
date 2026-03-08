@@ -9,7 +9,7 @@
  *   Gemini Live API → Backend → WebSocket → AudioContext (PCM 24kHz) → Speaker
  */
 
-const AI_WS_URL = import.meta.env.VITE_AI_WS_URL || 'wss://ai.mascoteach.com';
+const AI_WS_URL = import.meta.env.VITE_AI_WS_URL || 'https://ai.mascoteach.com';
 
 // PCM Audio Worklet processor code (inline, loaded as a blob URL)
 const AUDIO_WORKLET_CODE = `
