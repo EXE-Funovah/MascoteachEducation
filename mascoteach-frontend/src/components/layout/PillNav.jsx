@@ -195,8 +195,8 @@ const PillNav = ({
           {item.label}
         </span>
         <span
-          className="pill-label-hover absolute left-0 top-0 z-[3] inline-block will-change-[transform,opacity] font-semibold"
-          style={{ color: hoveredPillTextColor }}
+          className="pill-label-hover absolute left-0 top-0 z-[3] inline-block will-change-[transform,opacity] font-bold tracking-tight"
+          style={{ color: hoveredPillTextColor, fontSize: '15.5px' }}
           aria-hidden="true"
         >
           {item.label}
