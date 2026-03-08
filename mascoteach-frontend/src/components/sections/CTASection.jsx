@@ -24,8 +24,8 @@ export default function CTASection() {
           <FadeInUp>
 
             <h2 className="text-display-sm md:text-display-md lg:text-display-lg text-white mx-auto leading-tight">
-              <span className="block whitespace-nowrap">Biến học tập thành Trải nghiệm,</span>
-              <span className="block whitespace-nowrap">Biến giảng dạy thành</span>
+              <span className="block sm:whitespace-nowrap">Biến học tập thành Trải nghiệm,</span>
+              <span className="block sm:whitespace-nowrap">Biến giảng dạy thành</span>
               <span className="flex justify-center mt-2">
                 <RotatingText
                 texts={['Nghệ thuật', 'Đam mê', 'Sự thăng hoa', 'Nguồn cảm hứng']}

@@ -32,13 +32,19 @@ export default function Header() {
     { label: 'Bảng giá', href: '/pricing' },
   ];
 
+  /* Extra items shown only in the mobile dropdown */
+  const mobileAuthItems = [
+    { label: 'Đăng nhập', href: '/login' },
+    { label: 'Bắt đầu miễn phí', href: '/signup' },
+  ];
+
   const activeHref = location.pathname === '/pricing' ? '/pricing' : undefined;
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 px-4 pt-4">
       <div
         className={[
-          'mx-auto max-w-7xl grid grid-cols-[auto_1fr_auto] items-center gap-4',
+          'mx-auto max-w-7xl flex items-center justify-between gap-3',
           'px-4 py-2 rounded-full transition-all duration-500',
           scrolled
             ? 'bg-black/50 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.4)] border border-white/10'
@@ -51,10 +57,11 @@ export default function Header() {
         </Link>
 
         {/* ── Center: Nav links ── */}
-        <div className="flex justify-center">
+        <div className="flex justify-end md:justify-center flex-1 min-w-0">
           <PillNav
             items={navItems}
             activeHref={activeHref}
+            mobileExtraItems={mobileAuthItems}
             baseColor="#ffffff"
             pillColor="rgba(255,255,255,0.15)"
             pillTextColor="rgba(255,255,255,0.95)"
@@ -64,7 +71,7 @@ export default function Header() {
           />
         </div>
 
-        {/* ── Right: Auth Buttons (desktop) ── */}
+        {/* ── Right: Auth Buttons (desktop only — mobile uses hamburger menu) ── */}
         <div className="hidden md:flex items-center gap-2 shrink-0">
           <Link
             to="/login"

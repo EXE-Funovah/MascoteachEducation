@@ -12,6 +12,7 @@ const PillNav = ({
   pillColor = '#060010',
   hoveredPillTextColor = '#060010',
   pillTextColor,
+  mobileExtraItems = [],
   onMobileMenuClick,
   initialLoadAnimation = true,
 }) => {
@@ -163,6 +164,17 @@ const PillNav = ({
     onMobileMenuClick?.();
   };
 
+  /* Auto-close mobile menu on scroll */
+  useEffect(() => {
+    if (!isMobileMenuOpen) return;
+    const onScroll = () => {
+      toggleMobileMenu();
+      window.removeEventListener('scroll', onScroll);
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, [isMobileMenuOpen]);
+
   const isExternalLink = href =>
     href.startsWith('http://') ||
     href.startsWith('https://') ||
@@ -214,9 +226,9 @@ const PillNav = ({
   const pillStyle = { background: pillColor, color: resolvedPillTextColor };
 
   const mobileLinkCls = (isActive) =>
-    `block w-full text-left px-4 py-3 rounded-full text-base font-medium cursor-pointer
-     transition-colors duration-200 border-0
-     ${isActive ? 'opacity-90' : ''}`;
+    `block w-full text-left px-5 py-3.5 rounded-2xl text-[15px] font-medium cursor-pointer
+     transition-colors duration-200 border-0 text-white/90 hover:bg-white/10
+     ${isActive ? 'bg-white/10' : ''}`;
 
   return (
     <div className={`relative flex items-center ${containerClassName}`}>
@@ -290,18 +302,17 @@ const PillNav = ({
 
       {/* Mobile dropdown */}
       <div
-        className="absolute top-14 left-4 right-4 rounded-[27px] shadow-xl z-[998] invisible opacity-0"
-        style={{ background: pillColor }}
+        className="fixed top-[72px] left-4 right-4 rounded-3xl shadow-2xl z-[998] invisible opacity-0 md:hidden
+                   bg-[#0f172a]/90 backdrop-blur-xl border border-white/10"
         ref={mobileMenuRef}
       >
-        <ul className="flex flex-col gap-[3px] m-0 p-[3px] list-none">
+        <ul className="flex flex-col gap-1 m-0 p-2 list-none">
           {items.map((item, i) => (
             <li key={item.href || `mobile-item-${i}`}>
               {item.onClick ? (
                 <button
                   className={mobileLinkCls(activeHref === item.href)}
-                  style={{ color: resolvedPillTextColor, background: pillColor }}
-                  onClick={() => { item.onClick(); setIsMobileMenuOpen(false); }}
+                  onClick={() => { item.onClick(); toggleMobileMenu(); }}
                 >
                   {item.label}
                 </button>
@@ -309,8 +320,7 @@ const PillNav = ({
                 <Link
                   to={item.href}
                   className={mobileLinkCls(activeHref === item.href)}
-                  style={{ color: resolvedPillTextColor, background: pillColor }}
-                  onClick={() => setIsMobileMenuOpen(false)}
+                  onClick={() => toggleMobileMenu()}
                 >
                   {item.label}
                 </Link>
@@ -318,14 +328,39 @@ const PillNav = ({
                 <a
                   href={item.href}
                   className={mobileLinkCls(activeHref === item.href)}
-                  style={{ color: resolvedPillTextColor, background: pillColor }}
-                  onClick={() => setIsMobileMenuOpen(false)}
+                  onClick={() => toggleMobileMenu()}
                 >
                   {item.label}
                 </a>
               )}
             </li>
           ))}
+          {mobileExtraItems.length > 0 && (
+            <>
+              <li className="mx-4 my-1.5 border-t border-white/15" aria-hidden="true" />
+              {mobileExtraItems.map((item, i) => (
+                <li key={item.href || `mobile-extra-${i}`}>
+                  {isRouterLink(item.href) ? (
+                    <Link
+                      to={item.href}
+                      className={mobileLinkCls(false)}
+                      onClick={() => toggleMobileMenu()}
+                    >
+                      {item.label}
+                    </Link>
+                  ) : (
+                    <a
+                      href={item.href}
+                      className={mobileLinkCls(false)}
+                      onClick={() => toggleMobileMenu()}
+                    >
+                      {item.label}
+                    </a>
+                  )}
+                </li>
+              ))}
+            </>
+          )}
         </ul>
       </div>
     </div>

@@ -1,6 +1,7 @@
-﻿import { useState, useEffect } from 'react';
+﻿import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Grainient from '@/components/animations/Grainient';
+import SplitText from '@/components/animations/SplitText';
 
 const SLIDES = [
   { id: 1, text: 'SOẠN BÀI NHANH' },
@@ -12,13 +13,17 @@ const INTERVAL = 3000;
 
 export default function HeroSection() {
   const [index, setIndex] = useState(0);
+  const [splitKey, setSplitKey] = useState(0);
+
+  const advance = useCallback(() => {
+    setIndex(prev => (prev + 1) % SLIDES.length);
+    setSplitKey(k => k + 1);
+  }, []);
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      setIndex(prev => (prev + 1) % SLIDES.length);
-    }, INTERVAL);
+    const timer = setInterval(advance, INTERVAL);
     return () => clearInterval(timer);
-  }, []);
+  }, [advance]);
 
   const current = SLIDES[index];
 
@@ -56,26 +61,36 @@ export default function HeroSection() {
       </div>
 
       {/* ── Slide text — vertically centred ── */}
-      <div className="relative z-10 flex-1 flex items-center w-full px-8 md:px-16 lg:px-24">
+      <div className="relative z-10 flex-1 flex items-center justify-center w-full px-4 sm:px-8 md:px-16 lg:px-24">
         <AnimatePresence mode="wait">
           <motion.div
             key={current.id}
             className="w-full"
-            initial={{ opacity: 0, y: 50, scale: 0.97 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -50, scale: 1.02 }}
-            transition={{ type: 'spring', bounce: 0.15, duration: 0.5 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
           >
-            <span
-              className="font-black uppercase text-white leading-none block w-full text-center whitespace-nowrap"
+            <SplitText
+              key={splitKey}
+              text={current.text}
+              tag="span"
+              className="font-black uppercase text-white leading-none block w-full text-center sm:whitespace-nowrap"
               style={{
-                fontSize: 'clamp(2.5rem, 8.5vw, 10rem)',
+                fontSize: 'clamp(2rem, 8.5vw, 10rem)',
                 letterSpacing: '-0.04em',
                 textShadow: '0 4px 40px rgba(0,0,0,0.4)',
               }}
-            >
-              {current.text}
-            </span>
+              splitType="chars"
+              delay={30}
+              duration={0.6}
+              ease="power3.out"
+              from={{ opacity: 0, y: 60, rotateX: -40 }}
+              to={{ opacity: 1, y: 0, rotateX: 0 }}
+              threshold={0}
+              rootMargin="0px"
+              textAlign="center"
+            />
           </motion.div>
         </AnimatePresence>
       </div>
