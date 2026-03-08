@@ -254,7 +254,7 @@ export default function MascotWidget() {
         }
 
         try {
-            showBubble('Đang kết nối với Tanuki...', 0);
+            showBubble('Đang kết nối với Sumadi...', 0);
             setIsSpeaking(true); // Show as "thinking" while connecting
 
             await liveServiceRef.current.startSession();
@@ -262,7 +262,7 @@ export default function MascotWidget() {
             setIsSessionActive(true);
             setIsListening(true);
             setIsSpeaking(false);
-            showBubble('🎤 Đang nghe... Hãy nói với Tanuki!', 0);
+            showBubble('🎤 Đang nghe... Hãy nói với Sumadi!', 0);
         } catch (error) {
             console.error('[MascotWidget] Failed to start session:', error);
             setIsSpeaking(false);
