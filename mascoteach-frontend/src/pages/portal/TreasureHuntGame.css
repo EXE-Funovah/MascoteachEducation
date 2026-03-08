@@ -1,0 +1,897 @@
+/* ================================================================
+   TreasureHuntGame — Pirate / Adventure Theme
+   Color palette: Parchment, Deep Brown, Gold, Navy
+   ================================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Pirata+One&display=swap');
+
+/* ── Variables ── */
+:root {
+    --th-parchment: #f5e6c8;
+    --th-parchment-dark: #d4b896;
+    --th-brown: #4a2c17;
+    --th-brown-light: #6b3e23;
+    --th-gold: #ffd700;
+    --th-gold-dark: #b8860b;
+    --th-navy: #1a1a2e;
+    --th-navy-light: #16213e;
+    --th-red: #c0392b;
+    --th-green: #27ae60;
+}
+
+/* ── Loading Screen ── */
+.th-loading-screen {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, var(--th-navy) 0%, var(--th-navy-light) 100%);
+    gap: 16px;
+}
+
+.th-loading-spinner {
+    width: 48px;
+    height: 48px;
+    border: 4px solid rgba(255, 215, 0, 0.2);
+    border-top-color: var(--th-gold);
+    border-radius: 50%;
+    animation: th-spin 0.8s linear infinite;
+}
+
+@keyframes th-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.th-loading-text {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--th-parchment);
+}
+
+.th-loading-sub {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 13px;
+    color: rgba(245, 230, 200, 0.5);
+}
+
+.th-btn-back {
+    margin-top: 12px;
+    padding: 10px 24px;
+    border: 2px solid var(--th-gold-dark);
+    border-radius: 12px;
+    background: transparent;
+    color: var(--th-gold);
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.th-btn-back:hover {
+    background: var(--th-gold-dark);
+    color: var(--th-navy);
+}
+
+/* ── Intro Screen ── */
+.th-intro-screen {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background:
+        radial-gradient(ellipse at 30% 20%, rgba(255, 215, 0, 0.08) 0%, transparent 50%),
+        linear-gradient(135deg, var(--th-navy) 0%, #0a0a1e 50%, var(--th-navy-light) 100%);
+    padding: 20px;
+}
+
+.th-intro-card {
+    max-width: 420px;
+    width: 100%;
+    padding: 48px 36px;
+    border-radius: 24px;
+    background:
+        linear-gradient(145deg,
+            rgba(245, 230, 200, 0.12) 0%,
+            rgba(245, 230, 200, 0.04) 100%);
+    border: 1px solid rgba(255, 215, 0, 0.2);
+    backdrop-filter: blur(16px);
+    text-align: center;
+    box-shadow:
+        0 24px 80px rgba(0, 0, 0, 0.5),
+        inset 0 1px 0 rgba(255, 215, 0, 0.1);
+}
+
+.th-intro-icon {
+    font-size: 56px;
+    margin-bottom: 16px;
+    filter: drop-shadow(0 4px 12px rgba(255, 215, 0, 0.3));
+}
+
+.th-intro-title {
+    font-family: 'Pirata One', 'Georgia', serif;
+    font-size: 42px;
+    color: var(--th-gold);
+    margin: 0 0 8px 0;
+    text-shadow: 0 2px 16px rgba(255, 215, 0, 0.3);
+    letter-spacing: 1px;
+}
+
+.th-intro-subtitle {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--th-parchment);
+    opacity: 0.7;
+    margin: 0 0 28px 0;
+}
+
+.th-intro-stats {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 24px;
+    margin-bottom: 24px;
+}
+
+.th-intro-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+.th-intro-stat-num {
+    font-family: 'Pirata One', serif;
+    font-size: 32px;
+    color: var(--th-gold);
+}
+
+.th-intro-stat-label {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--th-parchment);
+    opacity: 0.5;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.th-intro-stat-divider {
+    width: 1px;
+    height: 40px;
+    background: rgba(255, 215, 0, 0.2);
+}
+
+.th-intro-desc {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--th-parchment);
+    opacity: 0.6;
+    margin: 0 0 12px 0;
+}
+
+.th-intro-limit {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--th-gold);
+    opacity: 0.5;
+    margin: 0 0 28px 0;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.th-intro-start-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 16px 40px;
+    border: none;
+    border-radius: 16px;
+    background: linear-gradient(135deg, var(--th-gold-dark) 0%, var(--th-gold) 100%);
+    color: var(--th-navy);
+    font-family: 'Pirata One', serif;
+    font-size: 22px;
+    cursor: pointer;
+    box-shadow:
+        0 4px 24px rgba(255, 215, 0, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    transition: box-shadow 0.2s;
+}
+
+.th-intro-start-btn:hover {
+    box-shadow:
+        0 8px 40px rgba(255, 215, 0, 0.45),
+        inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+/* ── Game Container ── */
+.th-game-container {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background: var(--th-navy);
+    position: relative;
+    overflow: hidden;
+}
+
+/* ── HUD ── */
+.th-hud {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 20px;
+    background: linear-gradient(180deg, rgba(26, 26, 46, 0.95) 0%, rgba(26, 26, 46, 0.8) 100%);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid rgba(255, 215, 0, 0.15);
+    z-index: 10;
+    flex-shrink: 0;
+}
+
+.th-hud-back {
+    padding: 6px 14px;
+    border: 1px solid rgba(245, 230, 200, 0.2);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--th-parchment);
+    font-family: 'Montserrat', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.th-hud-back:hover {
+    background: rgba(245, 230, 200, 0.1);
+    border-color: rgba(245, 230, 200, 0.35);
+}
+
+.th-hud-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'Pirata One', serif;
+    font-size: 20px;
+    color: var(--th-gold);
+    text-shadow: 0 1px 8px rgba(255, 215, 0, 0.2);
+}
+
+.th-hud-icon {
+    font-size: 22px;
+}
+
+.th-hud-stats {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.th-hud-stat {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.th-hud-stat-icon {
+    font-size: 16px;
+}
+
+.th-hud-stat-value {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--th-parchment);
+}
+
+/* ── Map ── */
+.th-map-wrapper {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.th-map-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    position: absolute;
+    inset: 0;
+    filter: brightness(0.88) saturate(1.1);
+    user-select: none;
+    pointer-events: none;
+}
+
+.th-path-svg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+    pointer-events: none;
+}
+
+.th-path-line {
+    stroke: rgba(245, 230, 200, 0.35);
+    stroke-width: 0.4;
+    stroke-dasharray: 1.2 0.8;
+    stroke-linecap: round;
+}
+
+.th-path-line--done {
+    stroke: var(--th-gold);
+    stroke-width: 0.5;
+    stroke-dasharray: none;
+    filter: drop-shadow(0 0 3px rgba(255, 215, 0, 0.5));
+}
+
+/* ── Map Nodes ── */
+.th-node {
+    position: absolute;
+    z-index: 2;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transform: translate(-50%, -50%);
+    cursor: default;
+    transition: all 0.3s ease;
+    border: 3px solid rgba(245, 230, 200, 0.3);
+    background: rgba(26, 26, 46, 0.7);
+    backdrop-filter: blur(4px);
+}
+
+.th-node--current {
+    cursor: pointer;
+    border-color: var(--th-gold);
+    background: rgba(74, 44, 23, 0.85);
+    box-shadow:
+        0 0 20px rgba(255, 215, 0, 0.4),
+        0 0 40px rgba(255, 215, 0, 0.15);
+}
+
+.th-node--current:hover {
+    box-shadow:
+        0 0 28px rgba(255, 215, 0, 0.6),
+        0 0 60px rgba(255, 215, 0, 0.2);
+}
+
+.th-node--done {
+    border-color: var(--th-green);
+    background: rgba(39, 174, 96, 0.25);
+}
+
+.th-node--locked {
+    opacity: 0.4;
+}
+
+.th-node--treasure {
+    width: 52px;
+    height: 52px;
+    border-color: var(--th-gold);
+    background: rgba(184, 134, 11, 0.3);
+}
+
+.th-node-icon {
+    font-size: 20px;
+}
+
+.th-node--treasure .th-node-icon {
+    font-size: 26px;
+}
+
+.th-node-mascot {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    object-fit: cover;
+    filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.3));
+}
+
+.th-node-number {
+    font-family: 'Pirata One', serif;
+    font-size: 16px;
+    color: var(--th-parchment);
+    opacity: 0.6;
+}
+
+/* ── Question Modal ── */
+.th-modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(6px);
+    padding: 20px;
+}
+
+.th-modal {
+    max-width: 600px;
+    width: 100%;
+    padding: 0 0 28px 0;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+}
+
+.th-modal--shake {
+    animation: th-shake 0.5s ease-in-out;
+}
+
+@keyframes th-shake {
+
+    0%,
+    100% {
+        transform: translateX(0);
+    }
+
+    15% {
+        transform: translateX(-12px) rotate(-1deg);
+    }
+
+    30% {
+        transform: translateX(10px) rotate(1deg);
+    }
+
+    45% {
+        transform: translateX(-8px) rotate(-0.5deg);
+    }
+
+    60% {
+        transform: translateX(6px) rotate(0.5deg);
+    }
+
+    75% {
+        transform: translateX(-3px);
+    }
+}
+
+/* ── Wooden Plank Question Board ── */
+.th-plank-board {
+    position: relative;
+    width: 100%;
+    margin-bottom: 16px;
+    /* The plank image defines the shape */
+}
+
+.th-plank-bg {
+    width: 100%;
+    height: auto;
+    display: block;
+    filter: brightness(0.85) saturate(1.1);
+    user-select: none;
+    pointer-events: none;
+}
+
+.th-plank-content {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 12% 14%;
+    text-align: center;
+}
+
+.th-modal-qnum {
+    font-family: 'Pirata One', serif;
+    font-size: 15px;
+    font-weight: 400;
+    color: var(--th-gold);
+    text-shadow:
+        0 1px 2px rgba(0, 0, 0, 0.6),
+        0 0 8px rgba(255, 215, 0, 0.3);
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+}
+
+.th-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 14px;
+}
+
+.th-modal-streak {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--th-gold);
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+    background: rgba(74, 44, 23, 0.6);
+    padding: 4px 14px;
+    border-radius: 20px;
+    border: 1px solid rgba(255, 215, 0, 0.2);
+}
+
+.th-modal-question {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    color: #3d2510;
+    line-height: 1.45;
+    margin: 0;
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+.th-modal-options {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 0 4px;
+}
+
+/* ── Option Buttons — Wooden Plank Style ── */
+.th-option {
+    position: relative;
+    display: block;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: 'Montserrat', sans-serif;
+    text-align: left;
+    overflow: hidden;
+    padding: 0;
+    border-radius: 6px;
+}
+
+.th-option-plank-bg {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    inset: 0;
+    object-fit: cover;
+    filter: brightness(0.92) saturate(1.05);
+    user-select: none;
+    pointer-events: none;
+    z-index: 0;
+    border-radius: 6px;
+}
+
+.th-option-inner {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 18px;
+    color: #3d2510;
+    min-height: 56px;
+}
+
+.th-option:hover {
+    transform: translateY(-1px);
+    filter: brightness(1.08);
+    box-shadow:
+        0 6px 20px rgba(0, 0, 0, 0.35),
+        0 0 12px rgba(255, 215, 0, 0.15);
+}
+
+.th-option:disabled {
+    cursor: not-allowed;
+}
+
+.th-option--correct {
+    box-shadow: 0 0 24px rgba(39, 174, 96, 0.6) !important;
+    outline: 3px solid var(--th-green);
+    outline-offset: -1px;
+}
+
+.th-option--correct .th-option-plank-bg {
+    filter: brightness(0.7) saturate(0.5) sepia(0.3) hue-rotate(80deg) !important;
+}
+
+.th-option--correct .th-option-inner {
+    color: #fff;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+}
+
+.th-option--wrong {
+    box-shadow: 0 0 24px rgba(192, 57, 43, 0.6) !important;
+    outline: 3px solid var(--th-red);
+    outline-offset: -1px;
+}
+
+.th-option--wrong .th-option-plank-bg {
+    filter: brightness(0.6) saturate(0.4) sepia(0.5) hue-rotate(-10deg) !important;
+}
+
+.th-option--wrong .th-option-inner {
+    color: #fff;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+}
+
+.th-option-label {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: var(--opt-bg);
+    color: white;
+    font-size: 14px;
+    font-weight: 800;
+    flex-shrink: 0;
+    box-shadow:
+        0 2px 6px rgba(0, 0, 0, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.th-option-text {
+    font-size: 15px;
+    font-weight: 700;
+    line-height: 1.4;
+    flex: 1;
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.th-option-feedback {
+    font-size: 22px;
+    font-weight: 900;
+    flex-shrink: 0;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
+
+/* ── Feedback Text ── */
+.th-feedback {
+    text-align: center;
+    padding: 12px 16px;
+    margin-top: 14px;
+    border-radius: 12px;
+    font-family: 'Pirata One', serif;
+    font-size: 16px;
+    font-weight: 400;
+    letter-spacing: 0.5px;
+}
+
+.th-feedback--correct {
+    background: rgba(39, 174, 96, 0.2);
+    border: 2px solid rgba(39, 174, 96, 0.4);
+    color: #6fcf97;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+.th-feedback--wrong {
+    background: rgba(192, 57, 43, 0.2);
+    border: 2px solid rgba(192, 57, 43, 0.4);
+    color: #e88080;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* ── Victory Screen ── */
+.th-victory-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(8px);
+    overflow: hidden;
+}
+
+.th-confetti {
+    position: absolute;
+    top: -20px;
+    z-index: 1;
+    pointer-events: none;
+}
+
+.th-victory-card {
+    position: relative;
+    z-index: 10;
+    max-width: 440px;
+    width: 100%;
+    padding: 48px 36px;
+    border-radius: 28px;
+    background:
+        linear-gradient(145deg,
+            rgba(74, 44, 23, 0.95) 0%,
+            rgba(26, 26, 46, 0.97) 100%);
+    border: 2px solid var(--th-gold);
+    text-align: center;
+    box-shadow:
+        0 0 60px rgba(255, 215, 0, 0.2),
+        0 24px 80px rgba(0, 0, 0, 0.6);
+}
+
+.th-victory-chest {
+    font-size: 72px;
+    margin-bottom: 16px;
+    filter: drop-shadow(0 8px 24px rgba(255, 215, 0, 0.4));
+    animation: th-bounce 1.5s ease-in-out infinite;
+}
+
+@keyframes th-bounce {
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-12px);
+    }
+}
+
+.th-victory-title {
+    font-family: 'Pirata One', serif;
+    font-size: 38px;
+    color: var(--th-gold);
+    margin: 0 0 8px 0;
+    text-shadow: 0 2px 16px rgba(255, 215, 0, 0.4);
+}
+
+.th-victory-subtitle {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--th-parchment);
+    opacity: 0.6;
+    margin: 0 0 28px 0;
+}
+
+.th-victory-stats {
+    display: flex;
+    justify-content: center;
+    gap: 40px;
+    margin-bottom: 32px;
+}
+
+.th-victory-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+.th-victory-stat-num {
+    font-family: 'Pirata One', serif;
+    font-size: 32px;
+    color: var(--th-gold);
+}
+
+.th-victory-stat-label {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--th-parchment);
+    opacity: 0.5;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.th-victory-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+}
+
+.th-victory-btn {
+    padding: 14px 28px;
+    border-radius: 14px;
+    border: none;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.th-victory-btn--primary {
+    background: linear-gradient(135deg, var(--th-gold-dark), var(--th-gold));
+    color: var(--th-navy);
+    box-shadow: 0 4px 20px rgba(255, 215, 0, 0.3);
+}
+
+.th-victory-btn--primary:hover {
+    box-shadow: 0 8px 32px rgba(255, 215, 0, 0.45);
+}
+
+.th-victory-btn--secondary {
+    background: rgba(245, 230, 200, 0.1);
+    color: var(--th-parchment);
+    border: 1px solid rgba(245, 230, 200, 0.2);
+}
+
+.th-victory-btn--secondary:hover {
+    background: rgba(245, 230, 200, 0.2);
+}
+
+/* ── Responsive ── */
+@media (max-width: 640px) {
+    .th-hud {
+        flex-wrap: wrap;
+        gap: 8px;
+        padding: 10px 14px;
+    }
+
+    .th-hud-title {
+        font-size: 16px;
+        order: -1;
+        width: 100%;
+        justify-content: center;
+    }
+
+    .th-hud-stats {
+        gap: 10px;
+    }
+
+    .th-hud-stat-value {
+        font-size: 12px;
+    }
+
+    .th-node {
+        width: 36px;
+        height: 36px;
+    }
+
+    .th-node--treasure {
+        width: 44px;
+        height: 44px;
+    }
+
+    .th-node-mascot {
+        width: 28px;
+        height: 28px;
+    }
+
+    .th-modal {
+        padding: 0 0 20px 0;
+    }
+
+    .th-modal-question {
+        font-size: 14px;
+    }
+
+    .th-plank-content {
+        padding: 10% 12%;
+    }
+
+    .th-option-inner {
+        padding: 10px 14px;
+        gap: 10px;
+        min-height: 44px;
+    }
+
+    .th-option-text {
+        font-size: 13px;
+    }
+
+    .th-option-label {
+        width: 28px;
+        height: 28px;
+        font-size: 12px;
+    }
+
+    .th-intro-title {
+        font-size: 32px;
+    }
+
+    .th-victory-title {
+        font-size: 28px;
+    }
+
+    .th-victory-card {
+        padding: 36px 24px;
+        margin: 0 16px;
+    }
+}

@@ -115,19 +115,19 @@ export default function GameTemplateSelectionPage() {
     const location = useLocation();
     const navigate = useNavigate();
 
-    const quizId        = location.state?.quizId;
-    const quizTitle     = location.state?.quizTitle     || 'Bài kiểm tra';
+    const quizId = location.state?.quizId;
+    const quizTitle = location.state?.quizTitle || 'Bài kiểm tra';
     const questionCount = location.state?.questionCount || 0;
 
-    const [apiTemplates, setApiTemplates]         = useState([]);
+    const [apiTemplates, setApiTemplates] = useState([]);
     const [loadingTemplates, setLoadingTemplates] = useState(true);
-    const [templatesError, setTemplatesError]     = useState(null);
+    const [templatesError, setTemplatesError] = useState(null);
 
     const [activeGame, setActiveGame] = useState(BUILTIN_TEMPLATES[0]);
-    const [showInfo, setShowInfo]     = useState(false);
+    const [showInfo, setShowInfo] = useState(false);
 
-    const [creating, setCreating]             = useState(false);
-    const [createError, setCreateError]       = useState(null);
+    const [creating, setCreating] = useState(false);
+    const [createError, setCreateError] = useState(null);
     const [createdSession, setCreatedSession] = useState(null);
 
     // Redirect if no quizId
@@ -155,6 +155,19 @@ export default function GameTemplateSelectionPage() {
 
     async function handleCreateGame() {
         if (!activeGame || !quizId || activeGame.isPlus) return;
+
+        // Built-in Treasure Hunt → navigate directly to single-player game
+        if (activeGame.id === '__treasure_hunt__') {
+            navigate('/teacher/treasure-hunt', {
+                state: {
+                    quizId,
+                    quizTitle,
+                    questionCount,
+                },
+            });
+            return;
+        }
+
         setCreating(true);
         setCreateError(null);
         try {
@@ -213,7 +226,7 @@ export default function GameTemplateSelectionPage() {
                 <div className="absolute inset-0 bg-gradient-to-t from-[#0d1a3a]/70 to-transparent" />
                 {/* Subtle purple ambient glow top-left */}
                 <div className="absolute -top-32 -left-32 w-[600px] h-[600px] rounded-full opacity-20"
-                     style={{ background: 'radial-gradient(circle, #7c3aed 0%, transparent 70%)' }} />
+                    style={{ background: 'radial-gradient(circle, #7c3aed 0%, transparent 70%)' }} />
             </div>
 
             {/* ══ LAYER 2 — Top nav bar ══ */}
@@ -348,10 +361,10 @@ export default function GameTemplateSelectionPage() {
                                     >
                                         <div className="grid grid-cols-2 gap-4 p-6 rounded-2xl
                                                         bg-violet-950/50 backdrop-blur-md border border-violet-400/20">
-                                            <InfoTile icon={<Users size={17} />}        label="Người chơi" value={game.players} />
-                                            <InfoTile icon={<Clock size={17} />}        label="Thời gian"  value={game.time} />
-                                            <InfoTile icon={<BrainCircuit size={17} />} label="Kỹ năng"    value={game.skills} />
-                                            <InfoTile icon={<Zap size={17} />}          label="Độ khó"     value={game.difficulty} />
+                                            <InfoTile icon={<Users size={17} />} label="Người chơi" value={game.players} />
+                                            <InfoTile icon={<Clock size={17} />} label="Thời gian" value={game.time} />
+                                            <InfoTile icon={<BrainCircuit size={17} />} label="Kỹ năng" value={game.skills} />
+                                            <InfoTile icon={<Zap size={17} />} label="Độ khó" value={game.difficulty} />
                                         </div>
                                     </motion.div>
                                 )}
