@@ -75,14 +75,14 @@ export default function HeroSection() {
               key={splitKey}
               text={current.text}
               tag="span"
-              className="font-black uppercase text-white leading-none block w-full text-center sm:whitespace-nowrap"
+              className="font-black uppercase text-white leading-tight block w-full text-center sm:whitespace-nowrap"
               style={{
                 fontSize: 'clamp(2rem, 8.5vw, 10rem)',
                 letterSpacing: '-0.04em',
                 textShadow: '0 4px 40px rgba(0,0,0,0.4)',
               }}
               splitType="chars"
-              delay={30}
+              delay={60}
               duration={0.6}
               ease="power3.out"
               from={{ opacity: 0, y: 60, rotateX: -40 }}

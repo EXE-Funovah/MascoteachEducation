@@ -151,7 +151,7 @@ const SplitText = ({
       willChange: 'transform, opacity',
       ...styleProp
     };
-    const classes = `split-parent overflow-hidden inline-block whitespace-normal ${className}`;
+    const classes = `split-parent inline-block whitespace-normal ${className}`;
     const Tag = tag || 'p';
 
     return (
