@@ -232,6 +232,18 @@ export default function MascotWidget() {
             return;
         }
 
+        // Guard: microphone + AudioWorklet require a secure context (HTTPS or localhost)
+        if (!window.isSecureContext) {
+            showBubble('⚠️ Tính năng giọng nói chỉ hoạt động trên HTTPS. Vui lòng truy cập qua mascoteach.com!', 6000);
+            return;
+        }
+
+        // Guard: AudioWorklet support (not available on old iOS Safari)
+        if (!window.AudioContext && !window.webkitAudioContext) {
+            showBubble('⚠️ Trình duyệt của bạn không hỗ trợ tính năng giọng nói. Hãy dùng Chrome hoặc Edge!', 6000);
+            return;
+        }
+
         try {
             showBubble('Đang kết nối với Tanuki...', 0);
             setIsSpeaking(true); // Show as "thinking" while connecting

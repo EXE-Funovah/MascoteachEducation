@@ -41,13 +41,13 @@ export default function Header() {
           'mx-auto max-w-7xl grid grid-cols-[auto_1fr_auto] items-center gap-4',
           'px-4 py-2 rounded-full transition-all duration-500',
           scrolled
-            ? 'bg-white/85 backdrop-blur-xl shadow-gamma-card border border-slate-100/80'
-            : 'bg-white/40 backdrop-blur-md border border-transparent',
+            ? 'bg-black/50 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.4)] border border-white/10'
+            : 'bg-black/20 backdrop-blur-md border border-white/10',
         ].join(' ')}
       >
         {/* ── Left: Logo ── */}
         <Link to="/" className="flex items-center shrink-0">
-          <img src="/images/Logo.png" alt={SITE.name} className="h-6 object-contain" />
+          <img src="/images/Logo.png" alt={SITE.name} className="h-6 object-contain brightness-0 invert" />
         </Link>
 
         {/* ── Center: Nav links ── */}
@@ -55,10 +55,10 @@ export default function Header() {
           <PillNav
             items={navItems}
             activeHref={activeHref}
-            baseColor="#1B3A6B"
-            pillColor="#f8fafc"
-            pillTextColor="#475569"
-            hoveredPillTextColor="#ffffff"
+            baseColor="#ffffff"
+            pillColor="rgba(255,255,255,0.15)"
+            pillTextColor="rgba(255,255,255,0.95)"
+            hoveredPillTextColor="#0F172A"
             ease="power3.out"
             initialLoadAnimation={false}
           />
@@ -69,7 +69,7 @@ export default function Header() {
           <Link
             to="/login"
             className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium
-                       text-slate-600 hover:text-brand-navy hover:bg-slate-100/70
+                       text-white/70 hover:text-white hover:bg-white/10
                        rounded-full transition-all duration-200"
           >
             Đăng nhập
@@ -77,9 +77,9 @@ export default function Header() {
           <Link
             to="/signup"
             className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium
-                       bg-gradient-to-r from-brand-navy to-brand-blue text-white
-                       rounded-full shadow-gamma-btn hover:shadow-gamma-btn-hover
-                       hover:brightness-110 transition-all duration-300 active:scale-[0.97]"
+                       bg-white text-brand-navy
+                       rounded-full hover:bg-white/90
+                       transition-all duration-300 active:scale-[0.97]"
           >
             Bắt đầu miễn phí
           </Link>

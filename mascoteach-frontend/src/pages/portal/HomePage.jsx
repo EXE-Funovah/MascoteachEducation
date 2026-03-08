@@ -28,7 +28,7 @@ export default function HomePage() {
     const [sessionsError, setSessionsError] = useState(null);
 
     const { user } = useAuth();
-    const displayName = user?.fullName || user?.name || 'Giáo viên';
+    const displayName = user?.fullName || user?.FullName || user?.full_name || user?.name || user?.userName || 'Giáo viên';
 
     const hour = new Date().getHours();
     const greeting = hour < 12 ? 'Chào buổi sáng' : hour < 17 ? 'Chào buổi chiều' : 'Chào buổi tối';

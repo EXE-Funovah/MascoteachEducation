@@ -1,13 +1,15 @@
 import { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
     ChevronLeft, Copy, Trash2, Pencil, CheckCircle2,
     Loader2, Send, Clock, Star, BookOpen,
-    LayoutList, FileText, BarChart3, AlertCircle
+    LayoutList, FileText, BarChart3, AlertCircle,
+    Save, X, Plus, GripVertical, Check
 } from 'lucide-react';
 import { generateMCQFromUrl } from '@/services/aiService';
-import { generateQuizFromAI } from '@/services/quizService';
+import { createQuiz } from '@/services/quizService';
+import { createQuestion } from '@/services/questionService';
 
 /**
  * QuizPreviewPage — Preview AI-generated MCQ questions before publishing
@@ -15,8 +17,10 @@ import { generateQuizFromAI } from '@/services/quizService';
  * Flow:
  *   QuizSettingsPage passes { fileName, fileSize, documentId, fileUrl, settings } via route state
  *   → This page sends the S3 fileUrl to the AI Module to generate questions
- *   → User previews, edits, deletes questions
- *   → "Xuất bản" saves to Backend via POST /api/Quiz/generate-from-ai
+ *   → User previews, EDITS, deletes questions
+ *   → "Xuất bản" saves to Backend:
+ *       1. POST /api/Quiz (create quiz)
+ *       2. POST /api/Question (create each question with options)
  *   → Navigates to /teacher/select-game-template with quizId
  */
 
@@ -44,6 +48,11 @@ export default function QuizPreviewPage() {
     const [publishing, setPublishing] = useState(false);
     const [publishError, setPublishError] = useState(null);
 
+    // Track which question is being edited (by id)
+    const [editingQuestionId, setEditingQuestionId] = useState(null);
+    // Temp edit state for the question being edited
+    const [editDraft, setEditDraft] = useState(null);
+
     // Call AI Module to generate questions on mount
     useEffect(() => {
         if (calledRef.current) return;
@@ -66,14 +75,13 @@ export default function QuizPreviewPage() {
                 const result = await generateMCQFromUrl(fileUrl, {
                     documentId,
                     quizTitle,
-                    numberOfQuestions: questionCount === 0 ? 5 : questionCount, // 0 = auto → default 5
+                    numberOfQuestions: questionCount === 0 ? 5 : questionCount,
                 });
 
                 if (!result.success || !result.data?.questions?.length) {
                     throw new Error(result.message || 'AI không trả về câu hỏi nào.');
                 }
 
-                // Map AI response to preview format
                 const mapped = result.data.questions.map((q, idx) => ({
                     id: idx + 1,
                     question: q.questionText,
@@ -84,7 +92,6 @@ export default function QuizPreviewPage() {
                         text: o.optionText,
                         isCorrect: o.isCorrect,
                     })),
-                    // Keep raw data for publishing
                     _raw: q,
                 }));
 
@@ -100,7 +107,7 @@ export default function QuizPreviewPage() {
         callAI();
     }, [documentId, settingsData]);
 
-    // Publish quiz to Backend, then navigate to game template selection
+    // ── Publish: Create Quiz + Questions via existing Backend APIs ──
     async function handlePublish() {
         if (questions.length === 0) return;
 
@@ -108,24 +115,29 @@ export default function QuizPreviewPage() {
         setPublishError(null);
 
         try {
-            // Build AIGenerateQuizRequest for Backend
-            const payload = {
+            // Step 1: Create the Quiz
+            const quizResult = await createQuiz({
                 documentId: documentId,
-                quizTitle: settingsData?.title || 'Bài kiểm tra',
-                questions: questions.map(q => ({
+                title: settingsData?.title || 'Bài kiểm tra',
+            });
+
+            const quizId = quizResult?.id ?? quizResult?.quizId;
+            if (!quizId) throw new Error('Không thể tạo quiz — Backend không trả về ID.');
+
+            // Step 2: Create each question with its options
+            for (const q of questions) {
+                await createQuestion({
+                    quizId: quizId,
                     questionText: q.question,
                     questionType: 'MultipleChoice',
                     options: q.options.map(o => ({
                         optionText: o.text,
                         isCorrect: o.isCorrect,
                     })),
-                })),
-            };
-
-            const quizResult = await generateQuizFromAI(payload);
+                });
+            }
 
             // Navigate to game template selection with quizId
-            const quizId = quizResult?.id ?? quizResult?.quizId ?? null;
             navigate('/teacher/select-game-template', {
                 state: {
                     quizId,
@@ -148,17 +160,114 @@ export default function QuizPreviewPage() {
 
     function handleDeleteQuestion(id) {
         setQuestions(prev => prev.filter(q => q.id !== id));
+        if (editingQuestionId === id) {
+            setEditingQuestionId(null);
+            setEditDraft(null);
+        }
     }
 
     function handleDuplicate(id) {
         setQuestions(prev => {
             const idx = prev.findIndex(q => q.id === id);
             if (idx === -1) return prev;
-            const copy = { ...prev[idx], id: Date.now() };
+            const copy = {
+                ...prev[idx],
+                id: Date.now(),
+                options: prev[idx].options.map(o => ({ ...o })),
+            };
             const next = [...prev];
             next.splice(idx + 1, 0, copy);
             return next;
         });
+    }
+
+    // ── Edit handlers ──
+    function startEditing(q) {
+        setEditingQuestionId(q.id);
+        setEditDraft({
+            question: q.question,
+            time: q.time,
+            points: q.points,
+            options: q.options.map(o => ({ ...o })),
+        });
+    }
+
+    function cancelEditing() {
+        setEditingQuestionId(null);
+        setEditDraft(null);
+    }
+
+    function saveEditing(id) {
+        if (!editDraft) return;
+        setQuestions(prev =>
+            prev.map(q =>
+                q.id === id
+                    ? {
+                        ...q,
+                        question: editDraft.question,
+                        time: editDraft.time,
+                        points: editDraft.points,
+                        options: editDraft.options,
+                    }
+                    : q
+            )
+        );
+        setEditingQuestionId(null);
+        setEditDraft(null);
+    }
+
+    function updateDraftQuestion(text) {
+        setEditDraft(prev => ({ ...prev, question: text }));
+    }
+
+    function updateDraftOptionText(optIdx, text) {
+        setEditDraft(prev => ({
+            ...prev,
+            options: prev.options.map((o, i) => (i === optIdx ? { ...o, text } : o)),
+        }));
+    }
+
+    function toggleDraftOptionCorrect(optIdx) {
+        setEditDraft(prev => ({
+            ...prev,
+            options: prev.options.map((o, i) => (i === optIdx ? { ...o, isCorrect: !o.isCorrect } : o)),
+        }));
+    }
+
+    function addDraftOption() {
+        setEditDraft(prev => ({
+            ...prev,
+            options: [...prev.options, { text: '', isCorrect: false }],
+        }));
+    }
+
+    function removeDraftOption(optIdx) {
+        if (editDraft.options.length <= 2) return; // keep at least 2 options
+        setEditDraft(prev => ({
+            ...prev,
+            options: prev.options.filter((_, i) => i !== optIdx),
+        }));
+    }
+
+    // Add a new blank question
+    function handleAddQuestion() {
+        const newQ = {
+            id: Date.now(),
+            question: '',
+            type: 'TRẮC NGHIỆM',
+            time: 30,
+            points: 1000,
+            options: [
+                { text: '', isCorrect: true },
+                { text: '', isCorrect: false },
+                { text: '', isCorrect: false },
+                { text: '', isCorrect: false },
+            ],
+            _raw: null,
+        };
+        setQuestions(prev => [...prev, newQ]);
+        // Auto-start editing the new question
+        startEditing(newQ);
     }
 
     return (
@@ -190,7 +299,7 @@ export default function QuizPreviewPage() {
                             </span>
                             <span className="flex items-center gap-1">
                                 <Clock className="w-3.5 h-3.5" />
-                                {questions.length * 30}s tổng
+                                {questions.reduce((s, q) => s + q.time, 0)}s tổng
                             </span>
                             <span className="flex items-center gap-1">
                                 <Star className="w-3.5 h-3.5" />
@@ -284,102 +393,210 @@ export default function QuizPreviewPage() {
                 </div>
             ) : activeTab === 'questions' ? (
                 <div className="space-y-4">
-                    {questions.map((q, idx) => (
-                        <motion.article
-                            key={q.id}
-                            className="bg-white rounded-xl border border-slate-200/80 overflow-hidden"
-                            initial={{ opacity: 0, y: 12 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.3, delay: idx * 0.05 }}
-                        >
-                            {/* Question Header */}
-                            <div className="flex items-center justify-between px-5 py-3 border-b border-slate-50">
-                                <div className="flex items-center gap-3">
-                                    <span className="text-[12px] font-bold text-slate-300">
-                                        {String(idx + 1).padStart(2, '0')}
-                                    </span>
-                                    <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider
-                                                     bg-violet-50 text-violet-500 border border-violet-100">
-                                        {q.type}
-                                    </span>
-                                    <span className="text-[11px] text-slate-400 flex items-center gap-1">
-                                        <Clock className="w-3 h-3" /> {q.time}s
-                                    </span>
-                                    <span className="text-[11px] text-slate-400 flex items-center gap-1">
-                                        <Star className="w-3 h-3" /> {q.points}
-                                    </span>
-                                </div>
+                    <AnimatePresence mode="popLayout">
+                        {questions.map((q, idx) => {
+                            const isEditing = editingQuestionId === q.id;
 
-                                {/* Actions */}
-                                <div className="flex items-center gap-1">
-                                    <button
-                                        onClick={() => handleDuplicate(q.id)}
-                                        className="w-7 h-7 rounded-md flex items-center justify-center
-                                                   text-slate-300 hover:text-slate-500 hover:bg-slate-50 transition-all"
-                                        title="Nhân đôi"
-                                    >
-                                        <Copy className="w-3.5 h-3.5" />
-                                    </button>
-                                    <button className="w-7 h-7 rounded-md flex items-center justify-center
-                                                       text-slate-300 hover:text-slate-500 hover:bg-slate-50 transition-all"
-                                        title="Chỉnh sửa">
-                                        <Pencil className="w-3.5 h-3.5" />
-                                    </button>
-                                    <button
-                                        onClick={() => handleDeleteQuestion(q.id)}
-                                        className="w-7 h-7 rounded-md flex items-center justify-center
-                                                   text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-all"
-                                        title="Xóa"
-                                    >
-                                        <Trash2 className="w-3.5 h-3.5" />
-                                    </button>
-                                </div>
-                            </div>
+                            return (
+                                <motion.article
+                                    key={q.id}
+                                    className="bg-white rounded-xl border border-slate-200/80 overflow-hidden"
+                                    initial={{ opacity: 0, y: 12 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: -12, scale: 0.95 }}
+                                    transition={{ duration: 0.3, delay: idx * 0.03 }}
+                                    layout
+                                >
+                                    {/* Question Header */}
+                                    <div className="flex items-center justify-between px-5 py-3 border-b border-slate-50">
+                                        <div className="flex items-center gap-3">
+                                            <span className="text-[12px] font-bold text-slate-300">
+                                                {String(idx + 1).padStart(2, '0')}
+                                            </span>
+                                            <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider
+                                                             bg-violet-50 text-violet-500 border border-violet-100">
+                                                {q.type}
+                                            </span>
+                                            <span className="text-[11px] text-slate-400 flex items-center gap-1">
+                                                <Clock className="w-3 h-3" /> {q.time}s
+                                            </span>
+                                            <span className="text-[11px] text-slate-400 flex items-center gap-1">
+                                                <Star className="w-3 h-3" /> {q.points}
+                                            </span>
+                                        </div>
 
-                            {/* Question Text */}
-                            <div className="px-5 pt-4 pb-3">
-                                <p className="text-[14px] font-medium text-slate-700 leading-relaxed">
-                                    {q.question}
-                                </p>
-                            </div>
-
-                            {/* Options Grid */}
-                            <div className="px-5 pb-5 grid grid-cols-2 gap-2">
-                                {q.options.map((opt, optIdx) => (
-                                    <div
-                                        key={optIdx}
-                                        className={`flex items-start gap-2.5 p-3 rounded-lg border transition-all
-                                                    ${opt.isCorrect
-                                                ? 'bg-emerald-50/60 border-emerald-200'
-                                                : 'bg-slate-50/40 border-slate-100'
-                                            }`}
-                                    >
-                                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5
-                                                         ${opt.isCorrect
-                                                ? 'border-emerald-400 bg-emerald-400'
-                                                : 'border-slate-300 bg-white'
-                                            }`}>
-                                            {opt.isCorrect && (
-                                                <CheckCircle2 className="w-3.5 h-3.5 text-white" />
+                                        {/* Actions */}
+                                        <div className="flex items-center gap-1">
+                                            {isEditing ? (
+                                                <>
+                                                    <button
+                                                        onClick={() => saveEditing(q.id)}
+                                                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-md
+                                                                   text-[11px] font-medium text-emerald-600
+                                                                   bg-emerald-50 hover:bg-emerald-100 transition-all"
+                                                        title="Lưu"
+                                                    >
+                                                        <Check className="w-3.5 h-3.5" />
+                                                        Lưu
+                                                    </button>
+                                                    <button
+                                                        onClick={cancelEditing}
+                                                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-md
+                                                                   text-[11px] font-medium text-slate-500
+                                                                   bg-slate-50 hover:bg-slate-100 transition-all"
+                                                        title="Hủy"
+                                                    >
+                                                        <X className="w-3.5 h-3.5" />
+                                                        Hủy
+                                                    </button>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <button
+                                                        onClick={() => handleDuplicate(q.id)}
+                                                        className="w-7 h-7 rounded-md flex items-center justify-center
+                                                                   text-slate-300 hover:text-slate-500 hover:bg-slate-50 transition-all"
+                                                        title="Nhân đôi"
+                                                    >
+                                                        <Copy className="w-3.5 h-3.5" />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => startEditing(q)}
+                                                        className="w-7 h-7 rounded-md flex items-center justify-center
+                                                                   text-slate-300 hover:text-sky-500 hover:bg-sky-50 transition-all"
+                                                        title="Chỉnh sửa"
+                                                    >
+                                                        <Pencil className="w-3.5 h-3.5" />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDeleteQuestion(q.id)}
+                                                        className="w-7 h-7 rounded-md flex items-center justify-center
+                                                                   text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-all"
+                                                        title="Xóa"
+                                                    >
+                                                        <Trash2 className="w-3.5 h-3.5" />
+                                                    </button>
+                                                </>
                                             )}
                                         </div>
-                                        <span className={`text-[13px] leading-relaxed
-                                                          ${opt.isCorrect
-                                                ? 'text-emerald-700 font-medium'
-                                                : 'text-slate-600'
-                                            }`}>
-                                            {opt.text}
-                                        </span>
                                     </div>
-                                ))}
-                            </div>
-                        </motion.article>
-                    ))}
+
+                                    {/* Question Text */}
+                                    <div className="px-5 pt-4 pb-3">
+                                        {isEditing ? (
+                                            <textarea
+                                                value={editDraft.question}
+                                                onChange={e => updateDraftQuestion(e.target.value)}
+                                                rows={2}
+                                                className="w-full text-[14px] font-medium text-slate-700 leading-relaxed
+                                                           border border-sky-200 rounded-lg p-3 resize-none
+                                                           focus:outline-none focus:ring-2 focus:ring-sky-200 focus:border-sky-400
+                                                           bg-sky-50/30 transition-all"
+                                                placeholder="Nhập câu hỏi..."
+                                                autoFocus
+                                            />
+                                        ) : (
+                                            <p className="text-[14px] font-medium text-slate-700 leading-relaxed">
+                                                {q.question || <span className="italic text-slate-400">Chưa có nội dung</span>}
+                                            </p>
+                                        )}
+                                    </div>
+
+                                    {/* Options Grid */}
+                                    <div className="px-5 pb-5 grid grid-cols-2 gap-2">
+                                        {(isEditing ? editDraft.options : q.options).map((opt, optIdx) => (
+                                            <div
+                                                key={optIdx}
+                                                className={`flex items-start gap-2.5 p-3 rounded-lg border transition-all
+                                                            ${isEditing ? 'cursor-pointer' : ''}
+                                                            ${opt.isCorrect
+                                                        ? 'bg-emerald-50/60 border-emerald-200'
+                                                        : 'bg-slate-50/40 border-slate-100'
+                                                    }`}
+                                            >
+                                                {/* Correct toggle */}
+                                                <button
+                                                    type="button"
+                                                    onClick={isEditing ? () => toggleDraftOptionCorrect(optIdx) : undefined}
+                                                    className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5
+                                                                 transition-all duration-200
+                                                                 ${isEditing ? 'cursor-pointer hover:scale-110' : 'cursor-default'}
+                                                                 ${opt.isCorrect
+                                                            ? 'border-emerald-400 bg-emerald-400'
+                                                            : 'border-slate-300 bg-white'
+                                                        }`}
+                                                    title={isEditing ? (opt.isCorrect ? 'Bỏ đáp án đúng' : 'Đặt đáp án đúng') : undefined}
+                                                >
+                                                    {opt.isCorrect && (
+                                                        <CheckCircle2 className="w-3.5 h-3.5 text-white" />
+                                                    )}
+                                                </button>
+
+                                                {/* Option text */}
+                                                {isEditing ? (
+                                                    <div className="flex-1 flex items-center gap-1">
+                                                        <input
+                                                            type="text"
+                                                            value={opt.text}
+                                                            onChange={e => updateDraftOptionText(optIdx, e.target.value)}
+                                                            className={`flex-1 text-[13px] leading-relaxed border-b
+                                                                        bg-transparent outline-none pb-0.5
+                                                                        ${opt.isCorrect
+                                                                    ? 'border-emerald-300 text-emerald-700 font-medium focus:border-emerald-500'
+                                                                    : 'border-slate-200 text-slate-600 focus:border-sky-400'
+                                                                }`}
+                                                            placeholder={`Đáp án ${optIdx + 1}`}
+                                                        />
+                                                        {editDraft.options.length > 2 && (
+                                                            <button
+                                                                onClick={() => removeDraftOption(optIdx)}
+                                                                className="w-5 h-5 rounded flex items-center justify-center
+                                                                           text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-all"
+                                                                title="Xóa đáp án"
+                                                            >
+                                                                <X className="w-3 h-3" />
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                ) : (
+                                                    <span className={`text-[13px] leading-relaxed
+                                                                      ${opt.isCorrect
+                                                            ? 'text-emerald-700 font-medium'
+                                                            : 'text-slate-600'
+                                                        }`}>
+                                                        {opt.text}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        ))}
+
+                                        {/* Add option button (only in edit mode) */}
+                                        {isEditing && editDraft.options.length < 6 && (
+                                            <button
+                                                onClick={addDraftOption}
+                                                className="flex items-center justify-center gap-1.5 p-3 rounded-lg
+                                                           border-2 border-dashed border-slate-200
+                                                           text-[12px] font-medium text-slate-400
+                                                           hover:border-sky-300 hover:text-sky-500 hover:bg-sky-50/30
+                                                           transition-all duration-200"
+                                            >
+                                                <Plus className="w-3.5 h-3.5" />
+                                                Thêm đáp án
+                                            </button>
+                                        )}
+                                    </div>
+                                </motion.article>
+                            );
+                        })}
+                    </AnimatePresence>
 
                     {/* Add more button */}
-                    <button className="w-full py-4 rounded-xl border-2 border-dashed border-slate-200
-                                       text-[13px] font-medium text-slate-400 hover:text-sky-500
-                                       hover:border-sky-300 hover:bg-sky-50/30 transition-all duration-200">
+                    <button
+                        onClick={handleAddQuestion}
+                        className="w-full py-4 rounded-xl border-2 border-dashed border-slate-200
+                                   text-[13px] font-medium text-slate-400 hover:text-sky-500
+                                   hover:border-sky-300 hover:bg-sky-50/30 transition-all duration-200"
+                    >
                         + Thêm câu hỏi
                     </button>
                 </div>
