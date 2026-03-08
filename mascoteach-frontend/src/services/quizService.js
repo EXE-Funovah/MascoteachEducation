@@ -67,14 +67,31 @@ export async function toggleDeleteQuiz(id) {
 }
 
 /**
- * Generate quiz from AI (Phase 4 — for future use with AI module)
- * @param {{ documentId: number, quizTitle: string, questions: Array }} data
- * @returns {Promise<object>}
+ * Get all quizzes for a specific user (via their documents).
+ * Backend returns quizzes under each document → we flatten.
+ * Alternatively, if Backend has GET /api/Quiz/me, use that directly.
+ *
+ * This fetches all documents and their quizzes concurrently.
+ * @param {Array<{id: number}>} documents — user's documents list
+ * @returns {Promise<object[]>} — flat list of quizzes
  */
-export async function generateQuizFromAI(data) {
-    return api.post('/api/Quiz/generate-from-ai', {
-        documentId: data.documentId,
-        quizTitle: data.quizTitle,
-        questions: data.questions,
-    });
+export async function getQuizzesByDocuments(documents) {
+    if (!documents?.length) return [];
+    const results = await Promise.all(
+        documents.map(doc => api.get(`/api/Quiz/document/${doc.id}`).catch(() => []))
+    );
+    return results.flat();
+}
+
+/**
+ * Get a single quiz with its full questions + options
+ * @param {number} quizId
+ * @returns {Promise<{ quiz: object, questions: object[] }>}
+ */
+export async function getQuizWithQuestions(quizId) {
+    const [quiz, questions] = await Promise.all([
+        api.get(`/api/Quiz/${quizId}`),
+        api.get(`/api/Question/quiz/${quizId}`),
+    ]);
+    return { quiz, questions };
 }
