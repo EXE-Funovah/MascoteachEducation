@@ -5,7 +5,7 @@ import {
     ChevronLeft, Copy, Trash2, Pencil, CheckCircle2,
     Loader2, Send, Clock, Star, BookOpen,
     LayoutList, FileText, BarChart3, AlertCircle,
-    Save, X, Plus, GripVertical, Check
+    Save, X, Plus, GripVertical, Check, Play, Gamepad2
 } from 'lucide-react';
 import { generateMCQFromUrl } from '@/services/aiService';
 import { createQuiz } from '@/services/quizService';
@@ -270,6 +270,30 @@ export default function QuizPreviewPage() {
         startEditing(newQ);
     }
 
+    // ── Play test: convert AI-generated preview questions to game format ──
+    function handlePlayTest() {
+        if (questions.length === 0) return;
+
+        // Convert QuizPreview format → game normalized format
+        const gameQuestions = questions.map((q) => {
+            const correctIndex = q.options.findIndex((o) => o.isCorrect);
+            return {
+                id: q.id,
+                text: q.question,
+                options: q.options.map((o) => o.text),
+                correctIndex: correctIndex >= 0 ? correctIndex : 0,
+                explanation: '',
+            };
+        });
+
+        navigate('/play/adventure', {
+            state: {
+                session: { id: 0, quizId: 0, pin: 'PREVIEW' },
+                questions: gameQuestions,
+            },
+        });
+    }
+
     return (
         <section className="max-w-4xl mx-auto px-4 py-6">
             {/* ── Top bar ── */}
@@ -309,29 +333,46 @@ export default function QuizPreviewPage() {
                     </div>
                 </div>
 
-                <motion.button
-                    onClick={handlePublish}
-                    disabled={publishing || questions.length === 0}
-                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl
-                               bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-[13px] font-bold
-                               hover:from-emerald-600 hover:to-teal-600 transition-all duration-200
-                               shadow-md hover:shadow-lg
-                               disabled:opacity-60 disabled:cursor-not-allowed"
-                    whileHover={!publishing ? { scale: 1.02, y: -1 } : {}}
-                    whileTap={!publishing ? { scale: 0.98 } : {}}
-                >
-                    {publishing ? (
-                        <>
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                            Đang xuất bản...
-                        </>
-                    ) : (
-                        <>
-                            <Send className="w-4 h-4" />
-                            Xuất bản
-                        </>
-                    )}
-                </motion.button>
+                <div className="flex items-center gap-2">
+                    <motion.button
+                        onClick={handlePlayTest}
+                        disabled={publishing || questions.length === 0}
+                        className="flex items-center gap-2 px-4 py-2.5 rounded-xl
+                                   bg-gradient-to-r from-violet-500 to-purple-500 text-white text-[13px] font-bold
+                                   hover:from-violet-600 hover:to-purple-600 transition-all duration-200
+                                   shadow-md hover:shadow-lg
+                                   disabled:opacity-60 disabled:cursor-not-allowed"
+                        whileHover={!publishing ? { scale: 1.02, y: -1 } : {}}
+                        whileTap={!publishing ? { scale: 0.98 } : {}}
+                    >
+                        <Gamepad2 className="w-4 h-4" />
+                        Chơi thử game
+                    </motion.button>
+
+                    <motion.button
+                        onClick={handlePublish}
+                        disabled={publishing || questions.length === 0}
+                        className="flex items-center gap-2 px-5 py-2.5 rounded-xl
+                                   bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-[13px] font-bold
+                                   hover:from-emerald-600 hover:to-teal-600 transition-all duration-200
+                                   shadow-md hover:shadow-lg
+                                   disabled:opacity-60 disabled:cursor-not-allowed"
+                        whileHover={!publishing ? { scale: 1.02, y: -1 } : {}}
+                        whileTap={!publishing ? { scale: 0.98 } : {}}
+                    >
+                        {publishing ? (
+                            <>
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                Đang xuất bản...
+                            </>
+                        ) : (
+                            <>
+                                <Send className="w-4 h-4" />
+                                Xuất bản
+                            </>
+                        )}
+                    </motion.button>
+                </div>
             </motion.header>
 
             {/* Publish error */}

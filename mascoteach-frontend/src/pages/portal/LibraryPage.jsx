@@ -28,12 +28,12 @@ export default function LibraryPage() {
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [activeTab, setActiveTab] = useState('documents');
 
-    // ── Document state ──
+    // —— Document state ——
     const [documents, setDocuments] = useState([]);
     const [loadingDocs, setLoadingDocs] = useState(true);
     const [docError, setDocError] = useState(null);
 
-    // ── Quiz state ──
+    // —— Quiz state ——
     const [quizzes, setQuizzes] = useState([]);
     const [loadingQuizzes, setLoadingQuizzes] = useState(false);
     const [quizError, setQuizError] = useState(null);
@@ -150,7 +150,7 @@ export default function LibraryPage() {
     return (
         <>
             <div className="space-y-8">
-                {/* ── Page Header ── */}
+                {/* —— Page Header —— */}
                 <header className="flex items-center justify-between">
                     <div>
                         <h1 className="text-2xl font-bold text-slate-800">
@@ -173,7 +173,7 @@ export default function LibraryPage() {
                     </button>
                 </header>
 
-                {/* ── Tabs ── */}
+                {/* —— Tabs —— */}
                 <div className="flex items-center gap-1 border-b border-slate-100 pb-0">
                     {LIBRARY_TABS.map(tab => {
                         const isActive = activeTab === tab.id;
@@ -203,7 +203,7 @@ export default function LibraryPage() {
                     })}
                 </div>
 
-                {/* ── Documents Tab ── */}
+                {/* —— Documents Tab —— */}
                 {activeTab === 'documents' && (
                     <>
                         {loadingDocs ? (
@@ -318,7 +318,7 @@ export default function LibraryPage() {
                     </>
                 )}
 
-                {/* ── Quizzes Tab ── */}
+                {/* —— Quizzes Tab —— */}
                 {activeTab === 'quizzes' && (
                     <>
                         {loadingQuizzes || loadingDocs ? (
@@ -553,7 +553,7 @@ export default function LibraryPage() {
                 )}
             </div>
 
-            {/* ── Create Flow Modal ── */}
+            {/* —— Create Flow Modal —— */}
             {showCreateModal && (
                 <CreateFlowModal onClose={handleModalClose} />
             )}

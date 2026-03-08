@@ -8,6 +8,8 @@ import {
 } from 'lucide-react';
 import { getAllGameTemplates } from '@/services/gameTemplateService';
 import { createSession } from '@/services/liveSessionService';
+import { getQuestionsByQuiz } from '@/services/questionService';
+import { normalizeQuestion } from '@/services/gameService';
 
 /**
  * GameTemplateSelectionPage — Netflix/streaming-style game template picker
@@ -35,6 +37,21 @@ const BUILTIN_TEMPLATES = [
         players: '2 – 60',
         isPlus: false,
         fallbackTemplateId: 1,
+    },
+    {
+        id: '__adventure__',
+        name: 'Mascoteach Adventure',
+        logoUrl: '/images/Game2.png',
+        bgImage: '/images/Game2.png',
+        description:
+            'Phiêu lưu cùng gấu mèo Mascoteach! Học sinh nhập mã PIN, vượt chướng ngại vật, trả lời câu hỏi và chinh phục hành trình tri thức.',
+        difficulty: 'Trung bình',
+        difficultyColor: 'text-amber-400',
+        time: '10 phút',
+        skills: 'Tư duy & Phản xạ',
+        players: '2 – 60',
+        isPlus: false,
+        fallbackTemplateId: 2,
     },
 ];
 
@@ -165,6 +182,28 @@ export default function GameTemplateSelectionPage() {
                     questionCount,
                 },
             });
+            return;
+        }
+
+        // Built-in Adventure → fetch questions & navigate directly (single-player for now)
+        if (activeGame.id === '__adventure__') {
+            setCreating(true);
+            setCreateError(null);
+            try {
+                const raw = await getQuestionsByQuiz(quizId);
+                const questions = (Array.isArray(raw) ? raw : []).map(normalizeQuestion);
+                if (!questions.length) {
+                    setCreateError('Bài quiz chưa có câu hỏi nào.');
+                    return;
+                }
+                navigate('/play/adventure', {
+                    state: { session: null, questions },
+                });
+            } catch (err) {
+                setCreateError(err.message || 'Không thể tải câu hỏi. Vui lòng thử lại.');
+            } finally {
+                setCreating(false);
+            }
             return;
         }
 
