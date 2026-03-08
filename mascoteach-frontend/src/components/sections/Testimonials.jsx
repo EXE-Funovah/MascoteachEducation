@@ -152,8 +152,8 @@ export default function Testimonials() {
               Được yêu thích bởi giáo viên thực thụ
             </h2>
             <p className="mt-6 text-body-lg text-ink-secondary">
-              Đây là những câu chuyện thật từ các trường đang sử dụng
-              Mascoteach.
+              Những câu chuyện từ các giáo viên, phụ huynh và nhà quản lý
+              trường học.
             </p>
           </div>
         </FadeInUp>
