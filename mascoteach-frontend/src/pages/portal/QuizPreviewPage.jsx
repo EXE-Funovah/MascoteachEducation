@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -33,7 +33,6 @@ const TABS = [
 export default function QuizPreviewPage() {
     const location = useLocation();
     const navigate = useNavigate();
-    const calledRef = useRef(false);
 
     const settingsData = location.state?.settings;
     const fileName = location.state?.fileName;
@@ -53,16 +52,15 @@ export default function QuizPreviewPage() {
     // Temp edit state for the question being edited
     const [editDraft, setEditDraft] = useState(null);
 
-    // Call AI Module to generate questions on mount
+    // Call AI Module to generate questions on mount (once only)
     useEffect(() => {
-        if (calledRef.current) return;
-        calledRef.current = true;
-
         if (!fileUrl) {
             setError('Không tìm thấy file tài liệu. Vui lòng quay lại và tải lên.');
             setLoading(false);
             return;
         }
+
+        const controller = new AbortController();
 
         async function callAI() {
             try {
@@ -76,7 +74,9 @@ export default function QuizPreviewPage() {
                     documentId,
                     quizTitle,
                     numberOfQuestions: questionCount === 0 ? 5 : questionCount,
-                });
+                }, controller.signal);
+
+                if (controller.signal.aborted) return;
 
                 if (!result.success || !result.data?.questions?.length) {
                     throw new Error(result.message || 'AI không trả về câu hỏi nào.');
@@ -97,15 +97,20 @@ export default function QuizPreviewPage() {
 
                 setQuestions(mapped);
             } catch (err) {
+                if (controller.signal.aborted) return;
                 console.error('[QuizPreview] AI error:', err);
                 setError(err.message || 'Không thể tạo câu hỏi từ AI. Vui lòng thử lại.');
             } finally {
-                setLoading(false);
+                if (!controller.signal.aborted) setLoading(false);
             }
         }
 
         callAI();
-    }, [documentId, settingsData]);
+        // Abort in-flight request on unmount (handles StrictMode double-invoke &
+        // component remount caused by rapid navigation from QuizSettingsPage)
+        return () => controller.abort();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []); // empty deps: values come from location.state which is stable on this page
 
     // ── Publish: Create Quiz + Questions via existing Backend APIs ──
     async function handlePublish() {

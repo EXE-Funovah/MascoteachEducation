@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
@@ -68,6 +68,7 @@ export default function QuizSettingsPage() {
 
     const [isGenerating, setIsGenerating] = useState(false);
     const [editingTitle, setEditingTitle] = useState(false);
+    const generatingRef = useRef(false); // synchronous guard against double-click race
 
     // Redirect if no file data
     useEffect(() => {
@@ -90,6 +91,10 @@ export default function QuizSettingsPage() {
     }
 
     async function handleGenerate() {
+        // useRef guard: prevents double-click firing two navigate() calls before
+        // React's async re-render can disable the button via isGenerating state.
+        if (generatingRef.current) return;
+        generatingRef.current = true;
         setIsGenerating(true);
 
         // Navigate to preview with settings — the preview page will call the AI API

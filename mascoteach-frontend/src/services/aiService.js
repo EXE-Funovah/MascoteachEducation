@@ -6,7 +6,7 @@
  *   GET  /api/v1/ai/health               — Health check
  */
 
-const AI_BASE_URL = import.meta.env.VITE_AI_BASE_URL || 'https://ai.mascoteach.com';
+const AI_BASE_URL = import.meta.env.VITE_AI_BASE_URL || 'https://ai.mascoteach.com:8443';
 
 /**
  * Health check — verify AI Module is running
@@ -42,7 +42,7 @@ export async function aiHealthCheck() {
  *   metadata: { generatedAt: string, questionCount: number, model: string }
  * }>}
  */
-export async function generateMCQFromUrl(fileUrl, options = {}) {
+export async function generateMCQFromUrl(fileUrl, options = {}, signal) {
     const { documentId, quizTitle, numberOfQuestions = 5 } = options;
 
     const body = {
@@ -60,6 +60,7 @@ export async function generateMCQFromUrl(fileUrl, options = {}) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
+        signal,
     });
 
     if (!res.ok) {
