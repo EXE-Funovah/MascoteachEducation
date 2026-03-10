@@ -36,27 +36,27 @@ function generateNodePositions(count) {
     const waypoints = [
         // Pass 1: Ship → sharp right → mountains
         { x: 30, y: 90 },  //  1. Ship at bottom
-        { x: 35, y: 90 },  //  2. Sharp right along the beach
-        { x: 50, y: 90 },  //  3. Continue right
-        { x: 70, y: 73 },  //  4. Reaching the small mountains
-        { x: 78, y: 66 },  //  5. Into the mountain area
-        { x: 70, y: 58 },  //  6. Moving up through mountains
+        { x: 42, y: 85 },  //  2. Sharp right along the beach
+        { x: 55, y: 85 },  //  3. Continue right
+        { x: 68, y: 82 },  //  4. Reaching the small mountains
+        { x: 75, y: 69 },  //  5. Into the mountain area
+        { x: 72, y: 58 },  //  6. Moving up through mountains
         // Pass 2: Left U-turn → across to palm trees
-        { x: 67, y: 50 },  //  7. Starting the U-turn left
-        { x: 60, y: 46 },  //  8. Heading left
-        { x: 52, y: 44 },  //  9. Past the lake area
-        { x: 44, y: 46 },  // 10. Center of the map
-        { x: 36, y: 50 },  // 11. Approaching palm trees
-        { x: 28, y: 54 },  // 12. In the palm tree area
-        { x: 22, y: 50 },  // 13. Deep in the palms
+        { x: 65, y: 54 },  //  7. Starting the U-turn left
+        { x: 59, y: 56 },  //  8. Heading left
+        { x: 52, y: 61 },  //  9. Past the lake area
+        { x: 44, y: 65 },  // 10. Center of the map
+        { x: 36, y: 67 },  // 11. Approaching palm trees
+        { x: 27, y: 64 },  // 12. In the palm tree area
+        { x: 23, y: 55 },  // 13. Deep in the palms
         // Pass 3: Right U-turn → straight to treasure
-        { x: 22, y: 42 },  // 14. Starting U-turn right
-        { x: 28, y: 36 },  // 15. Heading back right
-        { x: 36, y: 30 },  // 16. Past the pirate flag
+        { x: 23, y: 42 },  // 14. Starting U-turn right
+        { x: 28, y: 32 },  // 15. Heading back right
+        { x: 36, y: 26 },  // 16. Past the pirate flag
         { x: 45, y: 26 },  // 17. Upper middle area
-        { x: 55, y: 24 },  // 18. Heading toward treasure
-        { x: 65, y: 22 },  // 19. Almost there
-        { x: 76, y: 20 },  // 20. Treasure chest X mark!
+        { x: 55, y: 28 },  // 18. Heading toward treasure
+        { x: 65, y: 32 },  // 19. Almost there
+        { x: 77, y: 33 },  // 20. Treasure chest X mark!
     ];
 
     // Interpolate positions for any question count (up to MAX_QUESTIONS)

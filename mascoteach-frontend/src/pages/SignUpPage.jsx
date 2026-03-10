@@ -105,8 +105,8 @@ export default function SignUpPage() {
                                    bg-[length:12px] bg-[right_16px_center] bg-no-repeat"
                     >
                         <option value="Teacher">Giáo viên</option>
-                        <option value="Student">Học sinh</option>
-                        <option value="Parent">Phụ huynh</option>
+                        <option value="Student" disabled>Học sinh (Sắp ra mắt)</option>
+                        <option value="Parent" disabled>Phụ huynh (Sắp ra mắt)</option>
                     </select>
                 </div>
 
