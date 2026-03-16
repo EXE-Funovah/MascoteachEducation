@@ -9,7 +9,7 @@
  *   Gemini Live API → Backend → WebSocket → AudioContext (PCM 24kHz) → Speaker
  */
 
-const AI_WS_URL = import.meta.env.VITE_AI_WS_URL || 'https://ai.mascoteach.com';
+const AI_WS_URL = import.meta.env.VITE_AI_WS_URL || 'https://ai.mascoteach.com:8443';
 
 // PCM Audio Worklet processor code (inline, loaded as a blob URL)
 const AUDIO_WORKLET_CODE = `
@@ -446,7 +446,7 @@ export const mascotLiveService = new MascotLiveAudioService();
  * Legacy fallback: Send a text chat message to the AI via REST.
  * Used if audio is not available.
  */
-const AI_BASE_URL = import.meta.env.VITE_AI_BASE_URL || 'https://ai.mascoteach.com';
+const AI_BASE_URL = import.meta.env.VITE_AI_BASE_URL || 'https://ai.mascoteach.com:8443';
 
 export async function sendMascotMessage(message, history = []) {
     try {

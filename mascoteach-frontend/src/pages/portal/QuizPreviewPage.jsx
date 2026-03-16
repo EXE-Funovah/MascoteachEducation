@@ -52,11 +52,15 @@ export default function QuizPreviewPage() {
 
                 const questionCount = settingsData?.questionCount || 5;
                 const quizTitle = settingsData?.title || 'Bài kiểm tra';
+                const difficultyDistribution = settingsData?.difficultyDistribution;
+                const language = settingsData?.language || 'vi';
 
                 const result = await generateMCQFromUrl(fileUrl, {
                     documentId,
                     quizTitle,
                     numberOfQuestions: questionCount === 0 ? 5 : questionCount,
+                    difficultyDistribution,
+                    language,
                 }, controller.signal);
 
                 if (controller.signal.aborted) return;

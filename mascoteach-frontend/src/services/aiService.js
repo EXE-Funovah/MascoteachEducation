@@ -27,6 +27,8 @@ export async function aiHealthCheck() {
  * @param {number} [options.documentId] — Document ID from backend
  * @param {string} [options.quizTitle] — Title for the quiz
  * @param {number} [options.numberOfQuestions=5] — How many questions to generate
+ * @param {object} [options.difficultyDistribution] — Difficulty distribution percentages,
+ *  * @param {string} [options.language='vi'] — Language for questions: 'vi' or 'en'
  * @returns {Promise<{
  *   success: boolean,
  *   message: string,
@@ -43,7 +45,7 @@ export async function aiHealthCheck() {
  * }>}
  */
 export async function generateMCQFromUrl(fileUrl, options = {}, signal) {
-    const { documentId, quizTitle, numberOfQuestions = 5 } = options;
+    const { documentId, quizTitle, numberOfQuestions = 5, difficultyDistribution, language } = options;
 
     const body = {
         fileUrl,
@@ -54,6 +56,12 @@ export async function generateMCQFromUrl(fileUrl, options = {}, signal) {
     }
     if (quizTitle) {
         body.quizTitle = quizTitle;
+    }
+    if (difficultyDistribution) {
+        body.difficultyDistribution = difficultyDistribution;
+    }
+    if (language) {
+        body.language = language;
     }
 
     const res = await fetch(`${AI_BASE_URL}/api/v1/ai/generate-for-backend`, {
