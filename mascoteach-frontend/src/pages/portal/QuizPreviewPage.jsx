@@ -5,24 +5,11 @@ import {
     ChevronLeft, Copy, Trash2, Pencil, CheckCircle2,
     Loader2, Send, Clock, Star, BookOpen,
     LayoutList, FileText, BarChart3, AlertCircle,
-    Save, X, Plus, GripVertical, Check, Play, Gamepad2
+    X, Plus, Check
 } from 'lucide-react';
 import { generateMCQFromUrl } from '@/services/aiService';
-import { createQuiz } from '@/services/quizService';
+import { createQuiz, updateQuiz } from '@/services/quizService';
 import { createQuestion } from '@/services/questionService';
-
-/**
- * QuizPreviewPage — Preview AI-generated MCQ questions before publishing
- *
- * Flow:
- *   QuizSettingsPage passes { fileName, fileSize, documentId, fileUrl, settings } via route state
- *   → This page sends the S3 fileUrl to the AI Module to generate questions
- *   → User previews, EDITS, deletes questions
- *   → "Xuất bản" saves to Backend:
- *       1. POST /api/Quiz (create quiz)
- *       2. POST /api/Question (create each question with options)
- *   → Navigates to /teacher/select-game-template with quizId
- */
 
 const TABS = [
     { id: 'questions', label: 'Hoạt động', icon: LayoutList },
@@ -46,13 +33,9 @@ export default function QuizPreviewPage() {
     const [activeTab, setActiveTab] = useState('questions');
     const [publishing, setPublishing] = useState(false);
     const [publishError, setPublishError] = useState(null);
-
-    // Track which question is being edited (by id)
     const [editingQuestionId, setEditingQuestionId] = useState(null);
-    // Temp edit state for the question being edited
     const [editDraft, setEditDraft] = useState(null);
 
-    // Call AI Module to generate questions on mount (once only)
     useEffect(() => {
         if (!fileUrl) {
             setError('Không tìm thấy file tài liệu. Vui lòng quay lại và tải lên.');
@@ -106,33 +89,30 @@ export default function QuizPreviewPage() {
         }
 
         callAI();
-        // Abort in-flight request on unmount (handles StrictMode double-invoke &
-        // component remount caused by rapid navigation from QuizSettingsPage)
         return () => controller.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []); // empty deps: values come from location.state which is stable on this page
+    }, []);
 
-    // ── Publish: Create Quiz + Questions via existing Backend APIs ──
     async function handlePublish() {
         if (questions.length === 0) return;
 
         setPublishing(true);
         setPublishError(null);
 
+        const quizTitle = settingsData?.title || 'Bài kiểm tra';
+
         try {
-            // Step 1: Create the Quiz
             const quizResult = await createQuiz({
-                documentId: documentId,
-                title: settingsData?.title || 'Bài kiểm tra',
+                documentId,
+                title: quizTitle,
             });
 
             const quizId = quizResult?.id ?? quizResult?.quizId;
-            if (!quizId) throw new Error('Không thể tạo quiz — Backend không trả về ID.');
+            if (!quizId) throw new Error('Không thể tạo quiz - Backend không trả về ID.');
 
-            // Step 2: Create each question with its options
             for (const q of questions) {
                 await createQuestion({
-                    quizId: quizId,
+                    quizId,
                     questionText: q.question,
                     questionType: 'MultipleChoice',
                     options: q.options.map(o => ({
@@ -142,12 +122,16 @@ export default function QuizPreviewPage() {
                 });
             }
 
-            // Navigate to game template selection with quizId
-            navigate('/teacher/select-game-template', {
+            await updateQuiz(quizId, {
+                title: quizTitle,
+                status: 'Teacher_Approved',
+            });
+
+            navigate('/teacher/library', {
                 state: {
-                    quizId,
-                    quizTitle: settingsData?.title || 'Bài kiểm tra',
-                    questionCount: questions.length,
+                    activeTab: 'quizzes',
+                    targetQuizId: quizId,
+                    successMessage: 'Quiz của bạn đã sẵn sàng, bạn có thể xem ở Thư viện của tôi.',
                 },
             });
         } catch (err) {
@@ -186,7 +170,6 @@ export default function QuizPreviewPage() {
         });
     }
 
-    // ── Edit handlers ──
     function startEditing(q) {
         setEditingQuestionId(q.id);
         setEditDraft({
@@ -247,14 +230,13 @@ export default function QuizPreviewPage() {
     }
 
     function removeDraftOption(optIdx) {
-        if (editDraft.options.length <= 2) return; // keep at least 2 options
+        if (editDraft.options.length <= 2) return;
         setEditDraft(prev => ({
             ...prev,
             options: prev.options.filter((_, i) => i !== optIdx),
         }));
     }
 
-    // Add a new blank question
     function handleAddQuestion() {
         const newQ = {
             id: Date.now(),
@@ -271,37 +253,11 @@ export default function QuizPreviewPage() {
             _raw: null,
         };
         setQuestions(prev => [...prev, newQ]);
-        // Auto-start editing the new question
         startEditing(newQ);
-    }
-
-    // ── Play test: convert AI-generated preview questions to game format ──
-    function handlePlayTest() {
-        if (questions.length === 0) return;
-
-        // Convert QuizPreview format → game normalized format
-        const gameQuestions = questions.map((q) => {
-            const correctIndex = q.options.findIndex((o) => o.isCorrect);
-            return {
-                id: q.id,
-                text: q.question,
-                options: q.options.map((o) => o.text),
-                correctIndex: correctIndex >= 0 ? correctIndex : 0,
-                explanation: '',
-            };
-        });
-
-        navigate('/play/adventure', {
-            state: {
-                session: { id: 0, quizId: 0, pin: 'PREVIEW' },
-                questions: gameQuestions,
-            },
-        });
     }
 
     return (
         <section className="max-w-4xl mx-auto px-4 py-6">
-            {/* ── Top bar ── */}
             <motion.header
                 className="flex items-center justify-between mb-6"
                 initial={{ opacity: 0, y: -8 }}
@@ -311,8 +267,7 @@ export default function QuizPreviewPage() {
                 <div className="flex items-center gap-4">
                     <button
                         onClick={handleBack}
-                        className="w-8 h-8 rounded-lg flex items-center justify-center
-                                   text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all"
+                        className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all"
                         aria-label="Quay lại"
                     >
                         <ChevronLeft className="w-5 h-5" />
@@ -340,21 +295,6 @@ export default function QuizPreviewPage() {
 
                 <div className="flex items-center gap-2">
                     <motion.button
-                        onClick={handlePlayTest}
-                        disabled={publishing || questions.length === 0}
-                        className="flex items-center gap-2 px-4 py-2.5 rounded-xl
-                                   bg-gradient-to-r from-violet-500 to-purple-500 text-white text-[13px] font-bold
-                                   hover:from-violet-600 hover:to-purple-600 transition-all duration-200
-                                   shadow-md hover:shadow-lg
-                                   disabled:opacity-60 disabled:cursor-not-allowed"
-                        whileHover={!publishing ? { scale: 1.02, y: -1 } : {}}
-                        whileTap={!publishing ? { scale: 0.98 } : {}}
-                    >
-                        <Gamepad2 className="w-4 h-4" />
-                        Chơi thử game
-                    </motion.button>
-
-                    <motion.button
                         onClick={handlePublish}
                         disabled={publishing || questions.length === 0}
                         className="flex items-center gap-2 px-5 py-2.5 rounded-xl
@@ -380,7 +320,6 @@ export default function QuizPreviewPage() {
                 </div>
             </motion.header>
 
-            {/* Publish error */}
             {publishError && (
                 <div className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-sm text-rose-600 flex items-center gap-2">
                     <AlertCircle className="w-4 h-4 flex-shrink-0" />
@@ -388,18 +327,12 @@ export default function QuizPreviewPage() {
                 </div>
             )}
 
-            {/* ── Tabs ── */}
             <div className="flex items-center gap-1 mb-6 border-b border-slate-100">
                 {TABS.map(tab => (
                     <button
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id)}
-                        className={`flex items-center gap-2 px-4 py-2.5 text-[13px] font-medium
-                                    border-b-2 transition-all duration-200 -mb-px
-                                    ${activeTab === tab.id
-                                ? 'border-sky-500 text-sky-600'
-                                : 'border-transparent text-slate-400 hover:text-slate-600'
-                            }`}
+                        className={`flex items-center gap-2 px-4 py-2.5 text-[13px] font-medium border-b-2 transition-all duration-200 -mb-px ${activeTab === tab.id ? 'border-sky-500 text-sky-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
                     >
                         <tab.icon className="w-4 h-4" />
                         {tab.label}
@@ -407,13 +340,8 @@ export default function QuizPreviewPage() {
                 ))}
             </div>
 
-            {/* ── Content ── */}
             {loading ? (
-                <motion.div
-                    className="flex flex-col items-center justify-center py-20"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                >
+                <motion.div className="flex flex-col items-center justify-center py-20" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
                     <div className="w-16 h-16 rounded-2xl bg-sky-50 flex items-center justify-center mb-4">
                         <Loader2 className="w-8 h-8 text-sky-500 animate-spin" />
                     </div>
@@ -453,14 +381,12 @@ export default function QuizPreviewPage() {
                                     transition={{ duration: 0.3, delay: idx * 0.03 }}
                                     layout
                                 >
-                                    {/* Question Header */}
                                     <div className="flex items-center justify-between px-5 py-3 border-b border-slate-50">
                                         <div className="flex items-center gap-3">
                                             <span className="text-[12px] font-bold text-slate-300">
                                                 {String(idx + 1).padStart(2, '0')}
                                             </span>
-                                            <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider
-                                                             bg-violet-50 text-violet-500 border border-violet-100">
+                                            <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-violet-50 text-violet-500 border border-violet-100">
                                                 {q.type}
                                             </span>
                                             <span className="text-[11px] text-slate-400 flex items-center gap-1">
@@ -471,15 +397,12 @@ export default function QuizPreviewPage() {
                                             </span>
                                         </div>
 
-                                        {/* Actions */}
                                         <div className="flex items-center gap-1">
                                             {isEditing ? (
                                                 <>
                                                     <button
                                                         onClick={() => saveEditing(q.id)}
-                                                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-md
-                                                                   text-[11px] font-medium text-emerald-600
-                                                                   bg-emerald-50 hover:bg-emerald-100 transition-all"
+                                                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-md text-[11px] font-medium text-emerald-600 bg-emerald-50 hover:bg-emerald-100 transition-all"
                                                         title="Lưu"
                                                     >
                                                         <Check className="w-3.5 h-3.5" />
@@ -487,9 +410,7 @@ export default function QuizPreviewPage() {
                                                     </button>
                                                     <button
                                                         onClick={cancelEditing}
-                                                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-md
-                                                                   text-[11px] font-medium text-slate-500
-                                                                   bg-slate-50 hover:bg-slate-100 transition-all"
+                                                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-md text-[11px] font-medium text-slate-500 bg-slate-50 hover:bg-slate-100 transition-all"
                                                         title="Hủy"
                                                     >
                                                         <X className="w-3.5 h-3.5" />
@@ -500,24 +421,21 @@ export default function QuizPreviewPage() {
                                                 <>
                                                     <button
                                                         onClick={() => handleDuplicate(q.id)}
-                                                        className="w-7 h-7 rounded-md flex items-center justify-center
-                                                                   text-slate-300 hover:text-slate-500 hover:bg-slate-50 transition-all"
+                                                        className="w-7 h-7 rounded-md flex items-center justify-center text-slate-300 hover:text-slate-500 hover:bg-slate-50 transition-all"
                                                         title="Nhân đôi"
                                                     >
                                                         <Copy className="w-3.5 h-3.5" />
                                                     </button>
                                                     <button
                                                         onClick={() => startEditing(q)}
-                                                        className="w-7 h-7 rounded-md flex items-center justify-center
-                                                                   text-slate-300 hover:text-sky-500 hover:bg-sky-50 transition-all"
+                                                        className="w-7 h-7 rounded-md flex items-center justify-center text-slate-300 hover:text-sky-500 hover:bg-sky-50 transition-all"
                                                         title="Chỉnh sửa"
                                                     >
                                                         <Pencil className="w-3.5 h-3.5" />
                                                     </button>
                                                     <button
                                                         onClick={() => handleDeleteQuestion(q.id)}
-                                                        className="w-7 h-7 rounded-md flex items-center justify-center
-                                                                   text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-all"
+                                                        className="w-7 h-7 rounded-md flex items-center justify-center text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-all"
                                                         title="Xóa"
                                                     >
                                                         <Trash2 className="w-3.5 h-3.5" />
@@ -527,17 +445,13 @@ export default function QuizPreviewPage() {
                                         </div>
                                     </div>
 
-                                    {/* Question Text */}
                                     <div className="px-5 pt-4 pb-3">
                                         {isEditing ? (
                                             <textarea
                                                 value={editDraft.question}
                                                 onChange={e => updateDraftQuestion(e.target.value)}
                                                 rows={2}
-                                                className="w-full text-[14px] font-medium text-slate-700 leading-relaxed
-                                                           border border-sky-200 rounded-lg p-3 resize-none
-                                                           focus:outline-none focus:ring-2 focus:ring-sky-200 focus:border-sky-400
-                                                           bg-sky-50/30 transition-all"
+                                                className="w-full text-[14px] font-medium text-slate-700 leading-relaxed border border-sky-200 rounded-lg p-3 resize-none focus:outline-none focus:ring-2 focus:ring-sky-200 focus:border-sky-400 bg-sky-50/30 transition-all"
                                                 placeholder="Nhập câu hỏi..."
                                                 autoFocus
                                             />
@@ -548,29 +462,16 @@ export default function QuizPreviewPage() {
                                         )}
                                     </div>
 
-                                    {/* Options Grid */}
                                     <div className="px-5 pb-5 grid grid-cols-2 gap-2">
                                         {(isEditing ? editDraft.options : q.options).map((opt, optIdx) => (
                                             <div
                                                 key={optIdx}
-                                                className={`flex items-start gap-2.5 p-3 rounded-lg border transition-all
-                                                            ${isEditing ? 'cursor-pointer' : ''}
-                                                            ${opt.isCorrect
-                                                        ? 'bg-emerald-50/60 border-emerald-200'
-                                                        : 'bg-slate-50/40 border-slate-100'
-                                                    }`}
+                                                className={`flex items-start gap-2.5 p-3 rounded-lg border transition-all ${isEditing ? 'cursor-pointer' : ''} ${opt.isCorrect ? 'bg-emerald-50/60 border-emerald-200' : 'bg-slate-50/40 border-slate-100'}`}
                                             >
-                                                {/* Correct toggle */}
                                                 <button
                                                     type="button"
                                                     onClick={isEditing ? () => toggleDraftOptionCorrect(optIdx) : undefined}
-                                                    className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5
-                                                                 transition-all duration-200
-                                                                 ${isEditing ? 'cursor-pointer hover:scale-110' : 'cursor-default'}
-                                                                 ${opt.isCorrect
-                                                            ? 'border-emerald-400 bg-emerald-400'
-                                                            : 'border-slate-300 bg-white'
-                                                        }`}
+                                                    className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 transition-all duration-200 ${isEditing ? 'cursor-pointer hover:scale-110' : 'cursor-default'} ${opt.isCorrect ? 'border-emerald-400 bg-emerald-400' : 'border-slate-300 bg-white'}`}
                                                     title={isEditing ? (opt.isCorrect ? 'Bỏ đáp án đúng' : 'Đặt đáp án đúng') : undefined}
                                                 >
                                                     {opt.isCorrect && (
@@ -578,26 +479,19 @@ export default function QuizPreviewPage() {
                                                     )}
                                                 </button>
 
-                                                {/* Option text */}
                                                 {isEditing ? (
                                                     <div className="flex-1 flex items-center gap-1">
                                                         <input
                                                             type="text"
                                                             value={opt.text}
                                                             onChange={e => updateDraftOptionText(optIdx, e.target.value)}
-                                                            className={`flex-1 text-[13px] leading-relaxed border-b
-                                                                        bg-transparent outline-none pb-0.5
-                                                                        ${opt.isCorrect
-                                                                    ? 'border-emerald-300 text-emerald-700 font-medium focus:border-emerald-500'
-                                                                    : 'border-slate-200 text-slate-600 focus:border-sky-400'
-                                                                }`}
+                                                            className={`flex-1 text-[13px] leading-relaxed border-b bg-transparent outline-none pb-0.5 ${opt.isCorrect ? 'border-emerald-300 text-emerald-700 font-medium focus:border-emerald-500' : 'border-slate-200 text-slate-600 focus:border-sky-400'}`}
                                                             placeholder={`Đáp án ${optIdx + 1}`}
                                                         />
                                                         {editDraft.options.length > 2 && (
                                                             <button
                                                                 onClick={() => removeDraftOption(optIdx)}
-                                                                className="w-5 h-5 rounded flex items-center justify-center
-                                                                           text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-all"
+                                                                className="w-5 h-5 rounded flex items-center justify-center text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-all"
                                                                 title="Xóa đáp án"
                                                             >
                                                                 <X className="w-3 h-3" />
@@ -605,26 +499,17 @@ export default function QuizPreviewPage() {
                                                         )}
                                                     </div>
                                                 ) : (
-                                                    <span className={`text-[13px] leading-relaxed
-                                                                      ${opt.isCorrect
-                                                            ? 'text-emerald-700 font-medium'
-                                                            : 'text-slate-600'
-                                                        }`}>
+                                                    <span className={`text-[13px] leading-relaxed ${opt.isCorrect ? 'text-emerald-700 font-medium' : 'text-slate-600'}`}>
                                                         {opt.text}
                                                     </span>
                                                 )}
                                             </div>
                                         ))}
 
-                                        {/* Add option button (only in edit mode) */}
                                         {isEditing && editDraft.options.length < 6 && (
                                             <button
                                                 onClick={addDraftOption}
-                                                className="flex items-center justify-center gap-1.5 p-3 rounded-lg
-                                                           border-2 border-dashed border-slate-200
-                                                           text-[12px] font-medium text-slate-400
-                                                           hover:border-sky-300 hover:text-sky-500 hover:bg-sky-50/30
-                                                           transition-all duration-200"
+                                                className="flex items-center justify-center gap-1.5 p-3 rounded-lg border-2 border-dashed border-slate-200 text-[12px] font-medium text-slate-400 hover:border-sky-300 hover:text-sky-500 hover:bg-sky-50/30 transition-all duration-200"
                                             >
                                                 <Plus className="w-3.5 h-3.5" />
                                                 Thêm đáp án
@@ -636,12 +521,9 @@ export default function QuizPreviewPage() {
                         })}
                     </AnimatePresence>
 
-                    {/* Add more button */}
                     <button
                         onClick={handleAddQuestion}
-                        className="w-full py-4 rounded-xl border-2 border-dashed border-slate-200
-                                   text-[13px] font-medium text-slate-400 hover:text-sky-500
-                                   hover:border-sky-300 hover:bg-sky-50/30 transition-all duration-200"
+                        className="w-full py-4 rounded-xl border-2 border-dashed border-slate-200 text-[13px] font-medium text-slate-400 hover:text-sky-500 hover:border-sky-300 hover:bg-sky-50/30 transition-all duration-200"
                     >
                         + Thêm câu hỏi
                     </button>

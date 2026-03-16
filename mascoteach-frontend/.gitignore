@@ -9,6 +9,7 @@ dist/
 # Environment
 .env*.local
 .env
+context.md
 
 # Debug
 npm-debug.log*
