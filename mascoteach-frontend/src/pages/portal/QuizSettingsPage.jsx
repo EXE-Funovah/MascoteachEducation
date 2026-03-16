@@ -1,18 +1,10 @@
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
-    FileText, Pencil, Layers, BookOpen,
-    Settings2, ArrowRight, Loader2,
-    ChevronDown, CheckCircle2
+    FileText, Pencil, Layers, Settings2,
+    ArrowRight, Loader2, ChevronDown
 } from 'lucide-react';
-
-/**
- * QuizSettingsPage — Cấu hình trước khi gọi AI Module generate câu hỏi
- *
- * Flow: Upload file (CreateFlowModal) → navigate('/teacher/quiz-settings', { state: { fileName, fileSize, documentId, fileUrl } })
- *       → User configures settings → navigate to /teacher/quiz-preview
- */
 
 const STRUCTURE_OPTIONS = [
     'Phát triển chuyên môn',
@@ -27,10 +19,16 @@ const DIFFICULTY_LEVELS = [
     { id: 3, label: 'Cấp độ 3', color: 'rose' },
 ];
 
+const DEFAULT_DIFFICULTY_DISTRIBUTION = {
+    1: 40,
+    2: 40,
+    3: 20,
+};
+
 const QUESTION_TYPES = [
     { id: 'MCQ', label: 'MCQ', active: true },
     { id: 'FillBlank', label: 'Điền vào chỗ trống', active: false },
-    { id: 'Open', label: 'Mở ra', active: false },
+    { id: 'Open', label: 'Mở', active: false },
     { id: 'Essay', label: 'Đoạn văn', active: false },
 ];
 
@@ -51,7 +49,6 @@ export default function QuizSettingsPage() {
     const location = useLocation();
     const navigate = useNavigate();
 
-    // Data passed from CreateFlowModal
     const fileName = location.state?.fileName;
     const fileSize = location.state?.fileSize;
     const documentId = location.state?.documentId;
@@ -61,6 +58,7 @@ export default function QuizSettingsPage() {
         title: 'Bài kiểm tra',
         structure: 'Phát triển chuyên môn',
         difficulties: [1, 2, 3],
+        difficultyDistribution: DEFAULT_DIFFICULTY_DISTRIBUTION,
         questionType: 'MCQ',
         questionCount: 20,
         language: 'vi',
@@ -68,36 +66,60 @@ export default function QuizSettingsPage() {
 
     const [isGenerating, setIsGenerating] = useState(false);
     const [editingTitle, setEditingTitle] = useState(false);
-    const generatingRef = useRef(false); // synchronous guard against double-click race
+    const generatingRef = useRef(false);
 
-    // Redirect if no file data
     useEffect(() => {
         if (!fileName && !documentId) {
             navigate('/teacher');
         }
     }, [fileName, documentId, navigate]);
 
-    function toggleDifficulty(id) {
+    function handleDifficultyPercentChange(levelId, rawValue) {
+        const nextValue = Math.max(0, Math.min(100, Number(rawValue) || 0));
+
         setSettings(prev => {
-            const has = prev.difficulties.includes(id);
-            if (has && prev.difficulties.length === 1) return prev; // keep at least 1
+            const current = prev.difficultyDistribution || DEFAULT_DIFFICULTY_DISTRIBUTION;
+            const others = DIFFICULTY_LEVELS.filter(level => level.id !== levelId);
+            const remaining = Math.max(0, 100 - nextValue);
+            const currentOtherTotal = others.reduce((sum, level) => sum + (current[level.id] || 0), 0);
+
+            const nextDistribution = { ...current, [levelId]: nextValue };
+
+            if (currentOtherTotal === 0) {
+                const evenShare = Math.floor(remaining / others.length);
+                let leftover = remaining - evenShare * others.length;
+
+                others.forEach((level) => {
+                    nextDistribution[level.id] = evenShare + (leftover > 0 ? 1 : 0);
+                    if (leftover > 0) leftover -= 1;
+                });
+            } else {
+                let assigned = 0;
+                others.forEach((level, index) => {
+                    if (index === others.length - 1) {
+                        nextDistribution[level.id] = remaining - assigned;
+                        return;
+                    }
+
+                    const scaled = Math.round(((current[level.id] || 0) / currentOtherTotal) * remaining);
+                    nextDistribution[level.id] = scaled;
+                    assigned += scaled;
+                });
+            }
+
             return {
                 ...prev,
-                difficulties: has
-                    ? prev.difficulties.filter(d => d !== id)
-                    : [...prev.difficulties, id],
+                difficultyDistribution: nextDistribution,
+                difficulties: DIFFICULTY_LEVELS.filter(level => nextDistribution[level.id] > 0).map(level => level.id),
             };
         });
     }
 
     async function handleGenerate() {
-        // useRef guard: prevents double-click firing two navigate() calls before
-        // React's async re-render can disable the button via isGenerating state.
         if (generatingRef.current) return;
         generatingRef.current = true;
         setIsGenerating(true);
 
-        // Navigate to preview with settings — the preview page will call the AI API
         setTimeout(() => {
             navigate('/teacher/quiz-preview', {
                 state: {
@@ -113,6 +135,11 @@ export default function QuizSettingsPage() {
 
     if (!fileName && !documentId) return null;
 
+    const difficultyTotal = DIFFICULTY_LEVELS.reduce(
+        (sum, level) => sum + (settings.difficultyDistribution?.[level.id] || 0),
+        0
+    );
+
     return (
         <section className="max-w-2xl mx-auto px-4 py-8">
             <motion.article
@@ -121,7 +148,6 @@ export default function QuizSettingsPage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4 }}
             >
-                {/* ── Header ── */}
                 <header className="px-8 py-6 border-b border-slate-100/60">
                     <div className="flex items-center gap-3 mb-1">
                         <div className="w-8 h-8 rounded-lg bg-sky-50 flex items-center justify-center">
@@ -134,7 +160,6 @@ export default function QuizSettingsPage() {
                 </header>
 
                 <div className="px-8 py-6 space-y-6">
-                    {/* ── File Info ── */}
                     <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-50/60 border border-slate-100">
                         <div className="w-9 h-9 rounded-lg bg-slate-200/60 flex items-center justify-center flex-shrink-0">
                             <FileText className="w-5 h-5 text-slate-500" />
@@ -152,7 +177,6 @@ export default function QuizSettingsPage() {
                         <Pencil className="w-4 h-4 text-slate-300" />
                     </div>
 
-                    {/* ── Title ── */}
                     <div className="flex items-center gap-3">
                         <div className="w-3 h-3 rounded-full bg-emerald-400 flex-shrink-0" />
                         {editingTitle ? (
@@ -176,7 +200,6 @@ export default function QuizSettingsPage() {
                         )}
                     </div>
 
-                    {/* ── Pages ── */}
                     <div className="flex items-center gap-3">
                         <div className="w-3 h-3 rounded-full bg-sky-400 flex-shrink-0" />
                         <div className="flex items-center gap-2 text-[14px] text-slate-600">
@@ -186,7 +209,6 @@ export default function QuizSettingsPage() {
                         </div>
                     </div>
 
-                    {/* ── Customization Section ── */}
                     <div className="pt-2">
                         <div className="flex items-center gap-2 mb-5">
                             <div className="w-3 h-3 rounded-full bg-violet-400 flex-shrink-0" />
@@ -196,17 +218,13 @@ export default function QuizSettingsPage() {
                         </div>
 
                         <div className="space-y-5">
-                            {/* Cấu trúc */}
                             <div className="flex items-center justify-between">
                                 <span className="text-[13px] text-slate-500 font-medium">Cấu trúc</span>
                                 <div className="relative">
                                     <select
                                         value={settings.structure}
                                         onChange={e => setSettings(p => ({ ...p, structure: e.target.value }))}
-                                        className="appearance-none text-[13px] text-slate-600 font-medium
-                                                   bg-white border border-slate-200 rounded-lg px-4 py-2 pr-8
-                                                   focus:outline-none focus:ring-2 focus:ring-sky-200 focus:border-sky-300
-                                                   transition-all cursor-pointer"
+                                        className="appearance-none text-[13px] text-slate-600 font-medium bg-white border border-slate-200 rounded-lg px-4 py-2 pr-8 focus:outline-none focus:ring-2 focus:ring-sky-200 focus:border-sky-300 transition-all cursor-pointer"
                                     >
                                         {STRUCTURE_OPTIONS.map(opt => (
                                             <option key={opt} value={opt}>{opt}</option>
@@ -216,38 +234,67 @@ export default function QuizSettingsPage() {
                                 </div>
                             </div>
 
-                            {/* Độ sâu kiến thức */}
-                            <div className="flex items-center justify-between">
-                                <span className="text-[13px] text-slate-500 font-medium">
-                                    Độ sâu kiến thức (DOK)
-                                </span>
-                                <div className="flex items-center gap-2">
+                            <div className="space-y-3">
+                                <div className="flex items-center justify-between gap-4">
+                                    <div>
+                                        <span className="text-[13px] text-slate-500 font-medium">
+                                            Độ khó câu hỏi
+                                        </span>
+                                        <p className="text-[11px] text-slate-400 mt-1">
+                                            Chia theo phần trăm, ví dụ: 40% cấp độ 1, 40% cấp độ 2, 20% cấp độ 3
+                                        </p>
+                                    </div>
+                                    <span className="text-[12px] font-semibold text-sky-600">
+                                        Tổng {difficultyTotal}%
+                                    </span>
+                                </div>
+
+                                <div className="grid gap-3">
                                     {DIFFICULTY_LEVELS.map(level => {
-                                        const isActive = settings.difficulties.includes(level.id);
                                         const colorClasses = {
-                                            emerald: isActive ? 'bg-emerald-50 border-emerald-300 text-emerald-600' : '',
-                                            amber: isActive ? 'bg-amber-50 border-amber-300 text-amber-600' : '',
-                                            rose: isActive ? 'bg-rose-50 border-rose-300 text-rose-600' : '',
+                                            emerald: 'bg-emerald-50 border-emerald-200 text-emerald-700',
+                                            amber: 'bg-amber-50 border-amber-200 text-amber-700',
+                                            rose: 'bg-rose-50 border-rose-200 text-rose-700',
                                         };
+
                                         return (
-                                            <button
+                                            <div
                                                 key={level.id}
-                                                onClick={() => toggleDifficulty(level.id)}
-                                                className={`px-3 py-1.5 rounded-lg text-[12px] font-semibold border transition-all duration-200
-                                                            ${isActive
-                                                        ? colorClasses[level.color]
-                                                        : 'bg-white border-slate-200 text-slate-400 hover:border-slate-300'
-                                                    }`}
+                                                className={`flex items-center gap-3 rounded-xl border px-3 py-3 ${colorClasses[level.color]}`}
                                             >
-                                                {isActive && <span className="mr-1">✓</span>}
-                                                {level.label}
-                                            </button>
+                                                <div className="min-w-[92px]">
+                                                    <p className="text-[12px] font-semibold">{level.label}</p>
+                                                </div>
+
+                                                <input
+                                                    type="range"
+                                                    min="0"
+                                                    max="100"
+                                                    step="5"
+                                                    value={settings.difficultyDistribution?.[level.id] || 0}
+                                                    onChange={(e) => handleDifficultyPercentChange(level.id, e.target.value)}
+                                                    className="flex-1 accent-current"
+                                                />
+
+                                                <div className="w-20">
+                                                    <input
+                                                        type="number"
+                                                        min="0"
+                                                        max="100"
+                                                        step="5"
+                                                        value={settings.difficultyDistribution?.[level.id] || 0}
+                                                        onChange={(e) => handleDifficultyPercentChange(level.id, e.target.value)}
+                                                        className="w-full rounded-lg border border-white/70 bg-white px-3 py-2 text-[12px] font-semibold text-slate-700 outline-none focus:border-sky-300"
+                                                    />
+                                                </div>
+
+                                                <span className="text-[12px] font-semibold">%</span>
+                                            </div>
                                         );
                                     })}
                                 </div>
                             </div>
 
-                            {/* Loại câu hỏi */}
                             <div className="flex items-center justify-between">
                                 <span className="text-[13px] text-slate-500 font-medium">Loại câu hỏi</span>
                                 <div className="flex items-center gap-2">
@@ -256,13 +303,7 @@ export default function QuizSettingsPage() {
                                             key={qt.id}
                                             onClick={() => qt.active && setSettings(p => ({ ...p, questionType: qt.id }))}
                                             disabled={!qt.active}
-                                            className={`px-3 py-1.5 rounded-lg text-[12px] font-semibold border transition-all duration-200
-                                                        ${settings.questionType === qt.id
-                                                    ? 'bg-sky-50 border-sky-300 text-sky-600'
-                                                    : qt.active
-                                                        ? 'bg-white border-slate-200 text-slate-500 hover:border-slate-300 cursor-pointer'
-                                                        : 'bg-slate-50 border-slate-100 text-slate-300 cursor-not-allowed'
-                                                }`}
+                                            className={`px-3 py-1.5 rounded-lg text-[12px] font-semibold border transition-all duration-200 ${settings.questionType === qt.id ? 'bg-sky-50 border-sky-300 text-sky-600' : qt.active ? 'bg-white border-slate-200 text-slate-500 hover:border-slate-300 cursor-pointer' : 'bg-slate-50 border-slate-100 text-slate-300 cursor-not-allowed'}`}
                                         >
                                             {settings.questionType === qt.id ? '✓ ' : '+ '}
                                             {qt.label}
@@ -271,7 +312,6 @@ export default function QuizSettingsPage() {
                                 </div>
                             </div>
 
-                            {/* Số lượng câu hỏi */}
                             <div className="flex items-center justify-between">
                                 <span className="text-[13px] text-slate-500 font-medium">Số lượng câu hỏi</span>
                                 <div className="flex items-center gap-1.5">
@@ -279,11 +319,7 @@ export default function QuizSettingsPage() {
                                         <button
                                             key={qc.value}
                                             onClick={() => setSettings(p => ({ ...p, questionCount: qc.value }))}
-                                            className={`px-3 py-1.5 rounded-lg text-[12px] font-semibold border transition-all duration-200
-                                                        ${settings.questionCount === qc.value
-                                                    ? 'bg-slate-800 border-slate-800 text-white'
-                                                    : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'
-                                                }`}
+                                            className={`px-3 py-1.5 rounded-lg text-[12px] font-semibold border transition-all duration-200 ${settings.questionCount === qc.value ? 'bg-slate-800 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'}`}
                                         >
                                             {qc.label}
                                         </button>
@@ -291,17 +327,13 @@ export default function QuizSettingsPage() {
                                 </div>
                             </div>
 
-                            {/* Ngôn ngữ */}
                             <div className="flex items-center justify-between">
                                 <span className="text-[13px] text-slate-500 font-medium">Ngôn ngữ đầu ra</span>
                                 <div className="relative">
                                     <select
                                         value={settings.language}
                                         onChange={e => setSettings(p => ({ ...p, language: e.target.value }))}
-                                        className="appearance-none text-[13px] text-slate-600 font-medium
-                                                   bg-white border border-slate-200 rounded-lg px-4 py-2 pr-8
-                                                   focus:outline-none focus:ring-2 focus:ring-sky-200 focus:border-sky-300
-                                                   transition-all cursor-pointer"
+                                        className="appearance-none text-[13px] text-slate-600 font-medium bg-white border border-slate-200 rounded-lg px-4 py-2 pr-8 focus:outline-none focus:ring-2 focus:ring-sky-200 focus:border-sky-300 transition-all cursor-pointer"
                                     >
                                         {LANGUAGES.map(lang => (
                                             <option key={lang.value} value={lang.value}>{lang.label}</option>
@@ -313,16 +345,11 @@ export default function QuizSettingsPage() {
                         </div>
                     </div>
 
-                    {/* ── Generate Button ── */}
                     <div className="flex justify-end pt-4 border-t border-slate-100/60">
                         <motion.button
                             onClick={handleGenerate}
                             disabled={isGenerating}
-                            className="flex items-center gap-2 px-6 py-3 rounded-xl
-                                       bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-[13px] font-bold
-                                       hover:from-emerald-600 hover:to-teal-600 transition-all duration-200
-                                       shadow-md hover:shadow-lg
-                                       disabled:opacity-60 disabled:cursor-not-allowed"
+                            className="flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-[13px] font-bold hover:from-emerald-600 hover:to-teal-600 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-60 disabled:cursor-not-allowed"
                             whileHover={!isGenerating ? { scale: 1.02, y: -1 } : {}}
                             whileTap={!isGenerating ? { scale: 0.98 } : {}}
                         >
@@ -341,7 +368,6 @@ export default function QuizSettingsPage() {
                     </div>
                 </div>
 
-                {/* ── Footer hint ── */}
                 <footer className="px-8 py-3 bg-slate-50/50 border-t border-slate-100/60 text-center">
                     <p className="text-[11px] text-slate-400">
                         AI sẽ phân tích tài liệu. Hãy xem xét và tùy chỉnh tài nguyên để điều chỉnh theo nhu cầu của bạn.
