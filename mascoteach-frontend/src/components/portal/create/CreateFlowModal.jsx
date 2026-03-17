@@ -148,7 +148,7 @@ export default function CreateFlowModal({ onClose }) {
                         >
                             <input
                                 type="file"
-                                accept=".pdf,.doc,.docx"
+                                accept=".pdf,.doc,.docx,.pptx"
                                 onChange={handleFileInput}
                                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                                 id="file-upload-input"
@@ -181,7 +181,7 @@ export default function CreateFlowModal({ onClose }) {
                                         Tải lên tài liệu của bạn
                                     </p>
                                     <p className="text-[12px] text-slate-400">
-                                        Kéo thả hoặc nhấp để chọn file (PDF, Doc)
+                                        Kéo thả hoặc nhấp để chọn file (PDF, DOCX, PPTX)
                                     </p>
                                 </div>
                             )}
