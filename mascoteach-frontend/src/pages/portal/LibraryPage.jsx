@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
@@ -41,6 +41,7 @@ export default function LibraryPage() {
     const [loadingQuestions, setLoadingQuestions] = useState(false);
     const [historySessionInfo, setHistorySessionInfo] = useState(location.state?.sourceSession || null);
     const [successMessage, setSuccessMessage] = useState(location.state?.successMessage || null);
+    const autoExpandedRef = useRef(false);
 
     useEffect(() => {
         fetchDocuments();
@@ -50,6 +51,8 @@ export default function LibraryPage() {
         if (location.state?.activeTab) setActiveTab(location.state.activeTab);
         setHistorySessionInfo(location.state?.sourceSession || null);
         setSuccessMessage(location.state?.successMessage || null);
+        // Reset auto-expand flag when navigation state changes (new publish)
+        autoExpandedRef.current = false;
     }, [location.state]);
 
     useEffect(() => {
@@ -61,10 +64,13 @@ export default function LibraryPage() {
     useEffect(() => {
         const targetQuizId = location.state?.targetQuizId;
         if (!targetQuizId || activeTab !== 'quizzes' || loadingQuizzes || quizzes.length === 0) return;
-        if (!quizzes.some((quiz) => quiz.id === targetQuizId) || expandedQuizId === targetQuizId) return;
+        if (!quizzes.some((quiz) => quiz.id === targetQuizId)) return;
+        // Only auto-expand once per navigation; prevents re-expanding after user collapses
+        if (autoExpandedRef.current) return;
+        autoExpandedRef.current = true;
         toggleExpandQuiz(targetQuizId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [location.state, activeTab, loadingQuizzes, quizzes, expandedQuizId]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [location.state, activeTab, loadingQuizzes, quizzes]);
 
     async function fetchDocuments() {
         try {
@@ -259,10 +265,10 @@ export default function LibraryPage() {
                                 <AnimatePresence>
                                     {quizzes.map((quiz) => {
                                         const isExpanded = expandedQuizId === quiz.id;
-                                        const statusLabel = quiz.status === 'AI_Drafted' ? 'AI Nháp' : quiz.status || 'Nháp';
+                                        const statusLabel = quiz.status === 'AI_Drafted' ? 'AI Nháp' : quiz.status === 'Teacher_Approved' ? 'Teacher Approved' : quiz.status || 'Nháp';
                                         const statusClass = quiz.status === 'AI_Drafted'
                                             ? 'bg-amber-50 text-amber-600 border border-amber-100'
-                                            : quiz.status === 'Published'
+                                            : quiz.status === 'Teacher_Approved' || quiz.status === 'Published'
                                                 ? 'bg-emerald-50 text-emerald-600 border border-emerald-100'
                                                 : 'bg-slate-50 text-slate-500 border border-slate-100';
 
