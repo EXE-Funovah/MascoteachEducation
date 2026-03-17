@@ -1,5 +1,5 @@
 /**
- * Mascoteach ‚Äî Game Service
+ * Mascoteach ó Game Service
  * Handles fetching and normalizing game data for the Adventure Game mode.
  */
 
@@ -7,19 +7,16 @@ import { getSessionByPin } from './liveSessionService';
 import { getQuestionsByQuiz } from './questionService';
 import { joinSession, updateParticipant } from './sessionParticipantService';
 
-/**
- * Load game session + questions by PIN code
- * @param {string} pin
- * @returns {Promise<{ session: object, questions: object[] }>}
- */
-export async function loadGameByPin(pin) {
-    const session = await getSessionByPin(pin);
-    if (!session) throw new Error('Kh√¥ng t√¨m th·∫•y phi√™n ch∆°i v·ªõi m√£ PIN n√†y.');
+export async function loadGameByPin(pin, options = {}) {
+    const requestOptions = { skipAuth: true, ...options };
 
-    const raw = await getQuestionsByQuiz(session.quizId);
+    const session = await getSessionByPin(pin, requestOptions);
+    if (!session) throw new Error('KhÙng tÏm th?y phiÍn choi v?i m„ PIN n‡y.');
+
+    const raw = await getQuestionsByQuiz(session.quizId, requestOptions);
     const questions = Array.isArray(raw) ? raw : [];
 
-    if (!questions.length) throw new Error('B√†i quiz n√†y ch∆∞a c√≥ c√¢u h·ªèi n√†o.');
+    if (!questions.length) throw new Error('B‡i quiz n‡y chua cÛ c‚u h?i n‡o.');
 
     return {
         session,
@@ -27,37 +24,14 @@ export async function loadGameByPin(pin) {
     };
 }
 
-/**
- * Join a game session as a named participant
- * @param {number} sessionId
- * @param {string} studentName
- * @returns {Promise<object>} participant record
- */
-export async function joinGame(sessionId, studentName) {
-    return joinSession({ sessionId, studentName });
+export async function joinGame(sessionId, studentName, options = {}) {
+    return joinSession({ sessionId, studentName }, { skipAuth: true, ...options });
 }
 
-/**
- * Save final score for a participant
- * @param {number} participantId
- * @param {number} totalScore
- */
 export async function saveGameResult(participantId, totalScore) {
     return updateParticipant(participantId, { totalScore });
 }
 
-/**
- * Normalize a raw API question to the game's internal format.
- *
- * API shape (from /api/Question/quiz/:quizId):
- *   { id, quizId, questionText, questionType, options: [{ id, optionText, isCorrect }] }
- *
- * Game shape:
- *   { id, text, options: string[], correctIndex: number, explanation: string }
- *
- * @param {object} q  Raw API question
- * @returns {object}  Normalized game question
- */
 export function normalizeQuestion(q) {
     const rawOptions = q.options || q.questionOptions || [];
 

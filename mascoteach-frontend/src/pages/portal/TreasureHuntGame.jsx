@@ -2,17 +2,16 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getQuizWithQuestions } from '@/services/quizService';
+import { createLiveSessionConnection } from '@/services/liveSessionRealtime';
 import './TreasureHuntGame.css';
 
 /**
  * TreasureHuntGame — Pirate-themed adventure quiz game
  *
- * Flow:
- *   GameTemplateSelectionPage passes { quizId, quizTitle, questionCount, questions? } via route state
- *   → Fetches quiz questions from backend if not provided
- *   → Player navigates a treasure map by answering MCQ questions correctly
- *   → Wrong answers trigger a shake animation + try-again
- *   → Reaching the final node shows a treasure celebration
+ * Supports two modes:
+ *   1. HOST MODE (teacher): Shows map + question text only. No answer options.
+ *      Teacher clicks a node → broadcasts QuestionRevealed to students via SignalR.
+ *   2. SOLO MODE (legacy): Player answers questions themselves (original behavior).
  */
 
 const MASCOT_HEAD = '/images/mascot-head.png';
@@ -20,49 +19,25 @@ const TREASURE_MAP = '/images/treasure-map.jpg';
 const WOODEN_PLANK = '/images/wooden-plank.png';
 const MAX_QUESTIONS = 20;
 
-/* ──────────────────────────────────────
+/* ─────────────────────────────────────────────
    Generate node positions along a winding path
-   across the map (percentage-based for responsiveness)
-   Path: Ship → sharp right to mountains → up → left U-turn
-         → palm trees → right U-turn → straight to treasure
-   ────────────────────────────────────── */
+   ───────────────────────────────────────────── */
 function generateNodePositions(count) {
     if (count <= 1) return [{ x: 50, y: 85 }];
 
-    // 20 waypoints for max 20 questions, tracing the red dashed trail:
-    // Pass 1 (bottom): Ship → sharp right to mountains
-    // Pass 2 (middle, right→left): U-turn left across to palm trees
-    // Pass 3 (top, left→right): U-turn right → straight to treasure
     const waypoints = [
-        // Pass 1: Ship → sharp right → mountains
-        { x: 30, y: 90 },  //  1. Ship at bottom
-        { x: 42, y: 85 },  //  2. Sharp right along the beach
-        { x: 55, y: 85 },  //  3. Continue right
-        { x: 68, y: 82 },  //  4. Reaching the small mountains
-        { x: 75, y: 69 },  //  5. Into the mountain area
-        { x: 72, y: 58 },  //  6. Moving up through mountains
-        // Pass 2: Left U-turn → across to palm trees
-        { x: 65, y: 54 },  //  7. Starting the U-turn left
-        { x: 59, y: 56 },  //  8. Heading left
-        { x: 52, y: 61 },  //  9. Past the lake area
-        { x: 44, y: 65 },  // 10. Center of the map
-        { x: 36, y: 67 },  // 11. Approaching palm trees
-        { x: 27, y: 64 },  // 12. In the palm tree area
-        { x: 23, y: 55 },  // 13. Deep in the palms
-        // Pass 3: Right U-turn → straight to treasure
-        { x: 23, y: 42 },  // 14. Starting U-turn right
-        { x: 28, y: 32 },  // 15. Heading back right
-        { x: 36, y: 26 },  // 16. Past the pirate flag
-        { x: 45, y: 26 },  // 17. Upper middle area
-        { x: 55, y: 28 },  // 18. Heading toward treasure
-        { x: 65, y: 32 },  // 19. Almost there
-        { x: 77, y: 33 },  // 20. Treasure chest X mark!
+        { x: 30, y: 90 }, { x: 42, y: 85 }, { x: 55, y: 85 },
+        { x: 68, y: 82 }, { x: 75, y: 69 }, { x: 72, y: 58 },
+        { x: 65, y: 54 }, { x: 59, y: 56 }, { x: 52, y: 61 },
+        { x: 44, y: 65 }, { x: 36, y: 67 }, { x: 27, y: 64 },
+        { x: 23, y: 55 }, { x: 23, y: 42 }, { x: 28, y: 32 },
+        { x: 36, y: 26 }, { x: 45, y: 26 }, { x: 55, y: 28 },
+        { x: 65, y: 32 }, { x: 77, y: 33 },
     ];
 
-    // Interpolate positions for any question count (up to MAX_QUESTIONS)
     const positions = [];
     for (let i = 0; i < count; i++) {
-        const t = i / (count - 1); // 0..1
+        const t = i / (count - 1);
         const segIndex = t * (waypoints.length - 1);
         const lo = Math.floor(segIndex);
         const hi = Math.min(lo + 1, waypoints.length - 1);
@@ -92,6 +67,9 @@ export default function TreasureHuntGame() {
     const quizId = location.state?.quizId;
     const quizTitle = location.state?.quizTitle || 'Treasure Hunt';
     const passedQuestions = location.state?.questions;
+    const hostMode = location.state?.hostMode || false;
+    const sessionId = location.state?.sessionId;
+    const gamePin = location.state?.gamePin;
 
     /* ── State ── */
     const [questions, setQuestions] = useState([]);
@@ -108,7 +86,11 @@ export default function TreasureHuntGame() {
     const [answeredNodes, setAnsweredNodes] = useState([]);
     const [showIntro, setShowIntro] = useState(true);
 
+    /* ── Host mode: student answer stats ── */
+    const [answerStats, setAnswerStats] = useState({ total: 0, correct: 0 });
+
     const mapRef = useRef(null);
+    const realtimeRef = useRef(null);
 
     /* ── Fetch questions ── */
     useEffect(() => {
@@ -128,7 +110,6 @@ export default function TreasureHuntGame() {
                     const { questions: raw } = await getQuizWithQuestions(quizId);
                     normalized = normalizeQuestions(raw);
                 }
-                // Cap at MAX_QUESTIONS (20)
                 setQuestions(normalized.slice(0, MAX_QUESTIONS));
             } catch (err) {
                 console.error('[TreasureHunt] Load error:', err);
@@ -140,16 +121,47 @@ export default function TreasureHuntGame() {
         loadQuestions();
     }, [quizId, passedQuestions]);
 
+    /* ── Connect SignalR in host mode ── */
+    useEffect(() => {
+        if (!hostMode || !gamePin) return undefined;
+
+        const realtime = createLiveSessionConnection({
+            gamePin,
+            sessionId,
+            role: 'host',
+            onEvent: (eventName, payload) => {
+                if (eventName === 'AnswerSubmitted') {
+                    setAnswerStats((prev) => ({
+                        total: prev.total + 1,
+                        correct: prev.correct + (payload?.isCorrect ? 1 : 0),
+                    }));
+                }
+            },
+            onError: (err) => {
+                console.warn('[TreasureHunt Host] SignalR error:', err);
+            },
+        });
+
+        realtimeRef.current = realtime;
+
+        return () => {
+            realtime?.stop();
+        };
+    }, [hostMode, gamePin, sessionId]);
+
     /* Normalize different question formats */
     function normalizeQuestions(raw) {
         if (!Array.isArray(raw)) return [];
         return raw.map((q, i) => ({
-            id: q.id || i,
-            text: q.questionText || q.question || `Câu ${i + 1}`,
-            options: (q.options || []).map((o) => ({
-                text: o.optionText || o.text || '',
-                isCorrect: o.isCorrect ?? false,
-            })),
+            id: q.id || q.Id || i,
+            text: q.questionText || q.question || q.QuestionText || `Câu ${i + 1}`,
+            options: (q.options || q.questionOptions || q.Options || q.QuestionOptions || []).map((o) => {
+                const isCorrectVal = o.isCorrect ?? o.IsCorrect ?? false;
+                return {
+                    text: o.optionText || o.text || o.OptionText || o.Text || '',
+                    isCorrect: isCorrectVal === 'true' || isCorrectVal === true,
+                };
+            }),
         }));
     }
 
@@ -161,11 +173,47 @@ export default function TreasureHuntGame() {
         setShowQuestion(true);
         setSelectedOption(null);
         setIsCorrect(null);
-    }, [currentNode, completed]);
+        setAnswerStats({ total: 0, correct: 0 });
 
-    /* ── Handle answering ── */
+        /* HOST MODE: Broadcast question to students via SignalR */
+        if (hostMode && realtimeRef.current && questions[index]) {
+            const q = questions[index];
+            // Backend: SendQuestion(gamePin, questionData) → sends "NewQuestion" to group
+            realtimeRef.current.invoke('SendQuestion', gamePin, {
+                questionIndex: index,
+                questionText: q.text,
+                options: q.options.map((o) => ({ text: o.text, isCorrect: o.isCorrect })),
+                totalQuestions: questions.length,
+            }).catch((err) => {
+                console.warn('[TreasureHunt Host] Failed to broadcast question:', err);
+            });
+        }
+    }, [currentNode, completed, hostMode, gamePin, questions]);
+
+    /* ── Host mode: move to next question ── */
+    const handleHostNext = useCallback(() => {
+        setShowQuestion(false);
+        setAnsweredNodes((prev) => [...prev, currentNode]);
+
+        if (hostMode && realtimeRef.current && gamePin) {
+            // Backend: CloseQuestion(gamePin) → sends "QuestionClosed" to group
+            realtimeRef.current.invoke('CloseQuestion', gamePin).catch(() => { });
+        }
+
+        if (currentNode >= questions.length - 1) {
+            // Game complete — notify students
+            if (hostMode && realtimeRef.current && gamePin) {
+                realtimeRef.current.invoke('EndGame', gamePin).catch(() => { });
+            }
+            setTimeout(() => setCompleted(true), 600);
+        } else {
+            setCurrentNode((n) => n + 1);
+        }
+    }, [currentNode, questions.length, hostMode, gamePin]);
+
+    /* ── Handle answering (solo mode only) ── */
     const handleAnswer = useCallback((optIdx) => {
-        if (selectedOption !== null) return;
+        if (selectedOption !== null || hostMode) return;
 
         const question = questions[currentNode];
         const correct = question.options[optIdx]?.isCorrect;
@@ -173,17 +221,16 @@ export default function TreasureHuntGame() {
         setIsCorrect(correct);
 
         if (correct) {
-            setScore(s => s + 1000 + streak * 200);
-            setStreak(s => s + 1);
-            setAnsweredNodes(prev => [...prev, currentNode]);
+            setScore((s) => s + 1000 + streak * 200);
+            setStreak((s) => s + 1);
+            setAnsweredNodes((prev) => [...prev, currentNode]);
 
             setTimeout(() => {
                 setShowQuestion(false);
                 if (currentNode >= questions.length - 1) {
-                    // Game complete!
                     setTimeout(() => setCompleted(true), 600);
                 } else {
-                    setCurrentNode(n => n + 1);
+                    setCurrentNode((n) => n + 1);
                 }
             }, 1200);
         } else {
@@ -195,7 +242,7 @@ export default function TreasureHuntGame() {
                 setIsCorrect(null);
             }, 800);
         }
-    }, [selectedOption, currentNode, questions, streak]);
+    }, [selectedOption, currentNode, questions, streak, hostMode]);
 
     /* ── Celebration confetti effect ── */
     const confettiPieces = useRef(
@@ -239,9 +286,26 @@ export default function TreasureHuntGame() {
         return (
             <div className="th-intro-screen">
                 <div className="th-intro-card">
-                    <div className="th-intro-icon">🗺️</div>
+                    <div className="th-intro-icon">🏴‍☠️</div>
                     <h1 className="th-intro-title">Treasure Hunt</h1>
                     <h2 className="th-intro-subtitle">{quizTitle}</h2>
+
+                    {hostMode && (
+                        <div style={{
+                            background: 'rgba(255,215,0,0.15)',
+                            border: '1px solid rgba(255,215,0,0.3)',
+                            borderRadius: 12,
+                            padding: '10px 16px',
+                            marginBottom: 20,
+                            fontSize: 13,
+                            color: '#ffd700',
+                            fontFamily: 'Montserrat, sans-serif',
+                            fontWeight: 600,
+                        }}>
+                            🎓 Chế độ Host — Bạn đang điều khiển game cho học sinh
+                        </div>
+                    )}
+
                     <div className="th-intro-stats">
                         <div className="th-intro-stat">
                             <span className="th-intro-stat-num">{questions.length}</span>
@@ -254,13 +318,14 @@ export default function TreasureHuntGame() {
                         </div>
                         <div className="th-intro-stat-divider" />
                         <div className="th-intro-stat">
-                            <span className="th-intro-stat-num">🏴‍☠️</span>
+                            <span className="th-intro-stat-num">🗺️</span>
                             <span className="th-intro-stat-label">Phiêu lưu</span>
                         </div>
                     </div>
                     <p className="th-intro-desc">
-                        Trả lời đúng các câu hỏi để di chuyển trên bản đồ.
-                        Tìm kho báu ẩn giấu ở cuối hành trình!
+                        {hostMode
+                            ? 'Ấn vào từng trạm trên bản đồ để hiện câu hỏi cho học sinh trả lời.'
+                            : 'Trả lời đúng các câu hỏi để di chuyển trên bản đồ. Tìm kho báu ẩn giấu ở cuối hành trình!'}
                     </p>
                     <p className="th-intro-limit">
                         Tối đa {MAX_QUESTIONS} câu hỏi mỗi lượt chơi
@@ -271,7 +336,7 @@ export default function TreasureHuntGame() {
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
                     >
-                        ⚓ Bắt đầu phiêu lưu!
+                        {hostMode ? '🎮 Bắt đầu điều khiển!' : '⚓ Bắt đầu phiêu lưu!'}
                     </motion.button>
                 </div>
             </div>
@@ -286,18 +351,36 @@ export default function TreasureHuntGame() {
                     ← Quay lại
                 </button>
                 <div className="th-hud-title">
-                    <span className="th-hud-icon">🗺️</span>
+                    <span className="th-hud-icon">🏴‍☠️</span>
                     <span>{quizTitle}</span>
+                    {hostMode && (
+                        <span style={{
+                            fontSize: 11,
+                            background: 'rgba(255,215,0,0.2)',
+                            color: '#ffd700',
+                            padding: '2px 10px',
+                            borderRadius: 8,
+                            fontFamily: 'Montserrat, sans-serif',
+                            fontWeight: 700,
+                            marginLeft: 8,
+                        }}>
+                            HOST
+                        </span>
+                    )}
                 </div>
                 <div className="th-hud-stats">
-                    <div className="th-hud-stat">
-                        <span className="th-hud-stat-icon">⭐</span>
-                        <span className="th-hud-stat-value">{score.toLocaleString()}</span>
-                    </div>
-                    <div className="th-hud-stat">
-                        <span className="th-hud-stat-icon">🔥</span>
-                        <span className="th-hud-stat-value">{streak}x</span>
-                    </div>
+                    {!hostMode && (
+                        <>
+                            <div className="th-hud-stat">
+                                <span className="th-hud-stat-icon">⭐</span>
+                                <span className="th-hud-stat-value">{score.toLocaleString()}</span>
+                            </div>
+                            <div className="th-hud-stat">
+                                <span className="th-hud-stat-icon">🔥</span>
+                                <span className="th-hud-stat-value">{streak}x</span>
+                            </div>
+                        </>
+                    )}
                     <div className="th-hud-stat">
                         <span className="th-hud-stat-icon">📍</span>
                         <span className="th-hud-stat-value">{currentNode + 1}/{questions.length}</span>
@@ -357,7 +440,7 @@ export default function TreasureHuntGame() {
                             {isCompleted ? (
                                 <span className="th-node-icon">✅</span>
                             ) : isFinal ? (
-                                <span className="th-node-icon">🏴‍☠️</span>
+                                <span className="th-node-icon">💎🗝️</span>
                             ) : isCurrent ? (
                                 <img src={MASCOT_HEAD} alt="Player" className="th-node-mascot" />
                             ) : (
@@ -395,66 +478,140 @@ export default function TreasureHuntGame() {
                                 </div>
                             </div>
 
-                            {/* Combo indicator */}
-                            <div className="th-modal-header">
-                                <span className="th-modal-streak">🔥 {streak}x combo</span>
-                            </div>
-
-                            {/* Answer options on wooden planks */}
-                            <div className="th-modal-options">
-                                {questions[currentNode].options.map((opt, optIdx) => {
-                                    const color = OPTION_COLORS[optIdx % OPTION_COLORS.length];
-                                    let optClass = 'th-option';
-                                    if (selectedOption !== null) {
-                                        if (optIdx === selectedOption) {
-                                            optClass += isCorrect ? ' th-option--correct' : ' th-option--wrong';
-                                        }
-                                    }
-
-                                    return (
-                                        <motion.button
-                                            key={optIdx}
-                                            className={optClass}
-                                            style={{
-                                                '--opt-bg': color.bg,
-                                                '--opt-hover': color.hover,
-                                            }}
-                                            onClick={() => handleAnswer(optIdx)}
-                                            disabled={selectedOption !== null && isCorrect}
-                                            whileHover={selectedOption === null ? { scale: 1.03, y: -2 } : {}}
-                                            whileTap={selectedOption === null ? { scale: 0.97 } : {}}
-                                        >
-                                            <img src={WOODEN_PLANK} alt="" className="th-option-plank-bg" draggable={false} />
-                                            <div className="th-option-inner">
-                                                <span className="th-option-label">{color.label}</span>
-                                                <span className="th-option-text">{opt.text}</span>
-                                                {selectedOption === optIdx && isCorrect && (
-                                                    <span className="th-option-feedback">✓</span>
-                                                )}
-                                                {selectedOption === optIdx && isCorrect === false && (
-                                                    <span className="th-option-feedback">✗</span>
-                                                )}
+                            {hostMode ? (
+                                /* ══════════════════════════════════════════
+                                   HOST MODE: Show question text only + stats
+                                   No answer options for teacher
+                                   ══════════════════════════════════════════ */
+                                <div style={{ textAlign: 'center' }}>
+                                    {/* Student answer stats */}
+                                    <div style={{
+                                        display: 'flex',
+                                        justifyContent: 'center',
+                                        gap: 24,
+                                        marginBottom: 20,
+                                        padding: '14px 20px',
+                                        background: 'rgba(26,26,46,0.8)',
+                                        borderRadius: 16,
+                                        border: '1px solid rgba(255,215,0,0.15)',
+                                    }}>
+                                        <div style={{ textAlign: 'center' }}>
+                                            <div style={{ fontSize: 28, fontWeight: 800, color: '#ffd700', fontFamily: "'Pirata One', serif" }}>
+                                                {answerStats.total}
                                             </div>
-                                        </motion.button>
-                                    );
-                                })}
-                            </div>
+                                            <div style={{ fontSize: 11, color: 'rgba(245,230,200,0.6)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1 }}>
+                                                Đã trả lời
+                                            </div>
+                                        </div>
+                                        <div style={{ width: 1, background: 'rgba(255,215,0,0.2)' }} />
+                                        <div style={{ textAlign: 'center' }}>
+                                            <div style={{ fontSize: 28, fontWeight: 800, color: '#27ae60', fontFamily: "'Pirata One', serif" }}>
+                                                {answerStats.correct}
+                                            </div>
+                                            <div style={{ fontSize: 11, color: 'rgba(245,230,200,0.6)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1 }}>
+                                                Trả lời đúng
+                                            </div>
+                                        </div>
+                                    </div>
 
-                            {/* Feedback message */}
-                            <AnimatePresence>
-                                {selectedOption !== null && (
-                                    <motion.div
-                                        className={`th-feedback ${isCorrect ? 'th-feedback--correct' : 'th-feedback--wrong'}`}
-                                        initial={{ opacity: 0, y: 10 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        exit={{ opacity: 0 }}
+                                    <p style={{
+                                        fontSize: 13,
+                                        color: 'rgba(245,230,200,0.5)',
+                                        fontFamily: 'Montserrat, sans-serif',
+                                        marginBottom: 16,
+                                    }}>
+                                        Học sinh đang trả lời câu hỏi này trên thiết bị của họ...
+                                    </p>
+
+                                    <motion.button
+                                        onClick={handleHostNext}
+                                        style={{
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: 8,
+                                            padding: '14px 32px',
+                                            border: 'none',
+                                            borderRadius: 14,
+                                            background: 'linear-gradient(135deg, #b8860b, #ffd700)',
+                                            color: '#1a1a2e',
+                                            fontFamily: "'Pirata One', serif",
+                                            fontSize: 18,
+                                            cursor: 'pointer',
+                                            boxShadow: '0 4px 24px rgba(255,215,0,0.3)',
+                                        }}
+                                        whileHover={{ scale: 1.05 }}
+                                        whileTap={{ scale: 0.95 }}
                                     >
-                                        {isCorrect
-                                            ? '🎉 Chính xác! Tiến lên phía trước!'
-                                            : '💥 Sai rồi! Thử lại nào!'}
-                                    </motion.div>
-                                )}
-                            </AnimatePresence>
+                                        {currentNode >= questions.length - 1 ? '🏆 Kết thúc game' : '➡️ Câu tiếp theo'}
+                                    </motion.button>
+                                </div>
+                            ) : (
+                                /* ══════════════════════════════════════════
+                                   SOLO MODE: Show answer options (original)
+                                   ══════════════════════════════════════════ */
+                                <>
+                                    {/* Combo indicator */}
+                                    <div className="th-modal-header">
+                                        <span className="th-modal-streak">🔥 {streak}x combo</span>
+                                    </div>
+
+                                    {/* Answer options on wooden planks */}
+                                    <div className="th-modal-options">
+                                        {questions[currentNode].options.map((opt, optIdx) => {
+                                            const color = OPTION_COLORS[optIdx % OPTION_COLORS.length];
+                                            let optClass = 'th-option';
+                                            if (selectedOption !== null) {
+                                                if (optIdx === selectedOption) {
+                                                    optClass += isCorrect ? ' th-option--correct' : ' th-option--wrong';
+                                                }
+                                            }
+
+                                            return (
+                                                <motion.button
+                                                    key={optIdx}
+                                                    className={optClass}
+                                                    style={{
+                                                        '--opt-bg': color.bg,
+                                                        '--opt-hover': color.hover,
+                                                    }}
+                                                    onClick={() => handleAnswer(optIdx)}
+                                                    disabled={selectedOption !== null && isCorrect}
+                                                    whileHover={selectedOption === null ? { scale: 1.03, y: -2 } : {}}
+                                                    whileTap={selectedOption === null ? { scale: 0.97 } : {}}
+                                                >
+                                                    <img src={WOODEN_PLANK} alt="" className="th-option-plank-bg" draggable={false} />
+                                                    <div className="th-option-inner">
+                                                        <span className="th-option-label">{color.label}</span>
+                                                        <span className="th-option-text">{opt.text}</span>
+                                                        {selectedOption === optIdx && isCorrect && (
+                                                            <span className="th-option-feedback">✓</span>
+                                                        )}
+                                                        {selectedOption === optIdx && isCorrect === false && (
+                                                            <span className="th-option-feedback">✗</span>
+                                                        )}
+                                                    </div>
+                                                </motion.button>
+                                            );
+                                        })}
+                                    </div>
+
+                                    {/* Feedback message */}
+                                    <AnimatePresence>
+                                        {selectedOption !== null && (
+                                            <motion.div
+                                                className={`th-feedback ${isCorrect ? 'th-feedback--correct' : 'th-feedback--wrong'}`}
+                                                initial={{ opacity: 0, y: 10 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                exit={{ opacity: 0 }}
+                                            >
+                                                {isCorrect
+                                                    ? '🎉 Chính xác! Tiến lên phía trước!'
+                                                    : '💀 Sai rồi! Thử lại nào!'}
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+                                </>
+                            )}
                         </motion.div>
                     </motion.div>
                 )}
@@ -470,7 +627,7 @@ export default function TreasureHuntGame() {
                         exit={{ opacity: 0 }}
                     >
                         {/* Confetti */}
-                        {confettiPieces.current.map(p => (
+                        {confettiPieces.current.map((p) => (
                             <motion.div
                                 key={p.id}
                                 className="th-confetti"
@@ -502,44 +659,57 @@ export default function TreasureHuntGame() {
                             animate={{ scale: 1, y: 0 }}
                             transition={{ type: 'spring', stiffness: 200, damping: 18, delay: 0.3 }}
                         >
-                            <div className="th-victory-chest">💰</div>
-                            <h1 className="th-victory-title">Tìm thấy kho báu!</h1>
+                            <div className="th-victory-chest">🎁</div>
+                            <h1 className="th-victory-title">
+                                {hostMode ? 'Game đã kết thúc!' : 'Tìm thấy kho báu!'}
+                            </h1>
                             <p className="th-victory-subtitle">{quizTitle}</p>
 
                             <div className="th-victory-stats">
-                                <div className="th-victory-stat">
-                                    <span className="th-victory-stat-num">{score.toLocaleString()}</span>
-                                    <span className="th-victory-stat-label">Điểm số</span>
-                                </div>
-                                <div className="th-victory-stat">
-                                    <span className="th-victory-stat-num">{questions.length}/{questions.length}</span>
-                                    <span className="th-victory-stat-label">Câu đúng</span>
-                                </div>
+                                {hostMode ? (
+                                    <div className="th-victory-stat">
+                                        <span className="th-victory-stat-num">{questions.length}</span>
+                                        <span className="th-victory-stat-label">Câu hỏi</span>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <div className="th-victory-stat">
+                                            <span className="th-victory-stat-num">{score.toLocaleString()}</span>
+                                            <span className="th-victory-stat-label">Điểm số</span>
+                                        </div>
+                                        <div className="th-victory-stat">
+                                            <span className="th-victory-stat-num">{questions.length}/{questions.length}</span>
+                                            <span className="th-victory-stat-label">Câu đúng</span>
+                                        </div>
+                                    </>
+                                )}
                             </div>
 
                             <div className="th-victory-actions">
-                                <motion.button
-                                    className="th-victory-btn th-victory-btn--primary"
-                                    onClick={() => {
-                                        setCurrentNode(0);
-                                        setScore(0);
-                                        setStreak(0);
-                                        setAnsweredNodes([]);
-                                        setCompleted(false);
-                                        setShowQuestion(false);
-                                    }}
-                                    whileHover={{ scale: 1.05 }}
-                                    whileTap={{ scale: 0.95 }}
-                                >
-                                    🔄 Chơi lại
-                                </motion.button>
+                                {!hostMode && (
+                                    <motion.button
+                                        className="th-victory-btn th-victory-btn--primary"
+                                        onClick={() => {
+                                            setCurrentNode(0);
+                                            setScore(0);
+                                            setStreak(0);
+                                            setAnsweredNodes([]);
+                                            setCompleted(false);
+                                            setShowQuestion(false);
+                                        }}
+                                        whileHover={{ scale: 1.05 }}
+                                        whileTap={{ scale: 0.95 }}
+                                    >
+                                        🔄 Chơi lại
+                                    </motion.button>
+                                )}
                                 <motion.button
                                     className="th-victory-btn th-victory-btn--secondary"
-                                    onClick={() => navigate(-1)}
+                                    onClick={() => navigate(hostMode ? '/teacher/sessions' : -1)}
                                     whileHover={{ scale: 1.05 }}
                                     whileTap={{ scale: 0.95 }}
                                 >
-                                    ← Thoát
+                                    {hostMode ? '📋 Về danh sách' : '← Thoát'}
                                 </motion.button>
                             </div>
                         </motion.div>
