@@ -87,7 +87,7 @@ export default function FileUpload({ onFileSelect }) {
         >
             <input
                 type="file"
-                accept=".pdf,.docx,.doc,.txt"
+                accept=".pdf,.docx,.doc,.txt,.pptx"
                 onChange={handleFileInput}
                 className="absolute inset-0 opacity-0 cursor-pointer"
                 aria-label="Upload document"
