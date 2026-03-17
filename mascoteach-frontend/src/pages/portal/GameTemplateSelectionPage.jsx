@@ -1,133 +1,173 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
-    Play, Info, Users, Clock, BrainCircuit,
-    Loader2, AlertCircle, Hash,
-    CheckCircle2, Lock, X, BookOpen, Zap
+    AlertCircle,
+    BookOpen,
+    BrainCircuit,
+    CheckCircle2,
+    Clock3,
+    Gamepad2,
+    Info,
+    Loader2,
+    Lock,
+    Play,
+    Sparkles,
+    Users,
 } from 'lucide-react';
 import { getAllGameTemplates } from '@/services/gameTemplateService';
 import { createSession } from '@/services/liveSessionService';
 import { getQuestionsByQuiz } from '@/services/questionService';
 import { normalizeQuestion } from '@/services/gameService';
 
-/**
- * GameTemplateSelectionPage — Netflix/streaming-style game template picker
- *
- * Layout:
- *   • Full-screen dark bg with blurred in-game screenshot as hero
- *   • Left hero: game title, tags, description, action buttons
- *   • Bottom carousel: horizontal scrollable template cards
- *   • On "Tạo Game": POST /api/LiveSession → PIN modal
- */
-
-// ─── Built-in template data ──────────────────────────────────────────────────
 const BUILTIN_TEMPLATES = [
     {
         id: '__treasure_hunt__',
         name: 'Treasure Hunt',
         logoUrl: '/images/Game1.png',
-        bgImage: '/images/Game1.png',
+        bgImage: '/images/treasure-map.jpg',
         description:
-            'Phiêu lưu săn kho báu với các câu hỏi của bạn! Học sinh trả lời đúng để tiến bước trên bản đồ, vượt qua cạm bẫy và giành lấy rương vàng.',
-        difficulty: 'Đơn giản',
-        difficultyColor: 'text-emerald-400',
-        time: '7 phút',
-        skills: 'May mắn & Tốc độ',
-        players: '2 – 60',
+            'Tạo phòng live cho Treasure Hunt, chia sẻ PIN cho học sinh và cho cả lớp vào chờ như Kahoot.',
+        difficulty: 'Dễ vào',
+        duration: '7 phút',
+        skills: 'May mắn và tốc độ',
+        players: '2 - 60',
         isPlus: false,
-        fallbackTemplateId: 1,
+        fallbackTemplateId: 3,
+        launchMode: 'live',
+        accent: 'from-amber-300 via-orange-400 to-rose-500',
     },
     {
         id: '__adventure__',
         name: 'Mascoteach Adventure',
-        logoUrl: '/images/Game2.png',
-        bgImage: '/images/Game2.png',
+        logoUrl: '/images/mascot-head.png',
+        bgImage: '/images/mascot-speaking.png',
         description:
-            'Phiêu lưu cùng gấu mèo Mascoteach! Học sinh nhập mã PIN, vượt chướng ngại vật, trả lời câu hỏi và chinh phục hành trình tri thức.',
+            'Chế độ phiêu lưu hiện có. Frontend đang cho chạy local trên người chơi để test nhanh câu hỏi.',
         difficulty: 'Trung bình',
-        difficultyColor: 'text-amber-400',
-        time: '10 phút',
-        skills: 'Tư duy & Phản xạ',
-        players: '2 – 60',
+        duration: '10 phút',
+        skills: 'Tư duy và phản xạ',
+        players: '1 - 1',
         isPlus: false,
-        fallbackTemplateId: 2,
+        fallbackTemplateId: 4,
+        launchMode: 'solo',
+        accent: 'from-sky-400 via-cyan-400 to-emerald-400',
     },
 ];
 
-/** Enrich an API template object with display defaults */
-function enrichApiTemplate(t) {
+function canonicalTemplateKey(value) {
+    return String(value || '')
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, '');
+}
+
+function enrichApiTemplate(template) {
     return {
-        id: t.id,
-        name: t.name || `Game #${t.id}`,
-        logoUrl: t.thumbnailUrl || null,
-        bgImage: t.thumbnailUrl || null,
-        description: t.description || 'Chế độ chơi hấp dẫn dành cho lớp học của bạn.',
-        difficulty: t.difficulty || 'Trung bình',
-        difficultyColor: 'text-amber-400',
-        time: t.idealTime || '10 phút',
-        skills: t.skills || 'Tư duy & Tốc độ',
-        players: t.players || '2 – 60',
-        isPlus: t.isPlus ?? false,
-        fallbackTemplateId: t.id,
+        id: template.id,
+        name: template.name || `Game #${template.id}`,
+        logoUrl: template.thumbnailUrl || null,
+        bgImage: template.thumbnailUrl || null,
+        description: template.description || 'Chế độ chơi có thể tạo live session từ quiz của bạn.',
+        difficulty: template.difficulty || 'Trung bình',
+        duration: template.idealTime || '10 phút',
+        skills: template.skills || 'Tư duy và tốc độ',
+        players: template.players || '2 - 60',
+        isPlus: template.isPlus ?? false,
+        fallbackTemplateId: template.id,
+        launchMode: 'live',
+        accent: 'from-violet-500 via-indigo-500 to-sky-500',
     };
 }
 
-// ─── Difficulty badge helper ─────────────────────────────────────────────────
-function diffBadgeClass(diff) {
-    if (!diff) return 'text-white/60 border-white/20 bg-white/10';
-    const d = diff.toLowerCase();
-    if (d.includes('đơn') || d.includes('simple') || d.includes('easy'))
-        return 'text-emerald-300 border-emerald-500/40 bg-emerald-500/10';
-    if (d.includes('trung') || d.includes('medium'))
-        return 'text-amber-300 border-amber-500/40 bg-amber-500/10';
-    return 'text-rose-300 border-rose-500/40 bg-rose-500/10';
+function dedupeTemplates(templates) {
+    const seen = new Set();
+
+    return templates.filter((template) => {
+        const key = canonicalTemplateKey(template.name || template.id);
+        if (!key || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+    });
 }
 
-// ─── Back Button with spring animation ───────────────────────────────────────
+function difficultyClass(difficulty) {
+    const value = String(difficulty || '').toLowerCase();
+    if (value.includes('dễ') || value.includes('de') || value.includes('easy')) {
+        return 'border-emerald-400/30 bg-emerald-400/10 text-emerald-100';
+    }
+    if (value.includes('trung') || value.includes('medium')) {
+        return 'border-amber-300/30 bg-amber-300/10 text-amber-100';
+    }
+    return 'border-rose-400/30 bg-rose-400/10 text-rose-100';
+}
+
 function BackButton({ onClick }) {
-    const [hovered, setHovered] = useState(false);
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-5 py-3 text-sm font-semibold text-white/90 backdrop-blur hover:bg-white/15"
+        >
+            <span aria-hidden="true">&lt;</span>
+            Quay lại
+        </button>
+    );
+}
+
+function TemplateCard({ template, active, onSelect }) {
     return (
         <motion.button
-            onClick={onClick}
-            onHoverStart={() => setHovered(true)}
-            onHoverEnd={() => setHovered(false)}
-            className="relative flex items-center gap-3 px-6 py-3 rounded-full overflow-hidden
-                       border border-white/25 bg-white/10 backdrop-blur-sm
-                       text-white font-semibold text-[15px] cursor-pointer"
-            whileTap={{ scale: 0.96 }}
-            animate={{ scale: hovered ? 1.04 : 1 }}
-            transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+            type="button"
+            onClick={() => onSelect(template)}
+            whileHover={{ y: -4, scale: 1.01 }}
+            whileTap={{ scale: 0.98 }}
+            className={`group relative aspect-square overflow-hidden rounded-[28px] border text-left transition-all ${
+                active
+                    ? 'border-white bg-white/12 shadow-[0_0_0_1px_rgba(255,255,255,0.55),0_18px_60px_rgba(15,23,42,0.35)]'
+                    : 'border-white/12 bg-white/5 hover:border-white/30 hover:bg-white/10'
+            }`}
         >
-            {/* Sliding fill on hover — y chang HeroSection */}
-            <motion.span
-                className="absolute inset-0 bg-white/20 rounded-full"
-                initial={{ x: '-100%' }}
-                animate={{ x: hovered ? '0%' : '-100%' }}
-                transition={{ type: 'spring', stiffness: 260, damping: 28 }}
+            {template.logoUrl ? (
+                <img
+                    src={template.logoUrl}
+                    alt={template.name}
+                    className="absolute inset-0 h-full w-full object-cover"
+                    onError={(event) => {
+                        event.currentTarget.style.display = 'none';
+                    }}
+                />
+            ) : null}
+
+            <div
+                className={`absolute inset-0 bg-gradient-to-br ${template.accent || 'from-slate-700 to-slate-900'} ${
+                    template.logoUrl ? 'opacity-20' : 'opacity-100'
+                }`}
             />
 
-            {/* Arrow slides in từ trái */}
-            <motion.span
-                className="relative z-10 flex items-center overflow-hidden"
-                animate={{
-                    opacity: hovered ? 1 : 0,
-                    width: hovered ? 16 : 0,
-                    marginRight: hovered ? 0 : -12,
-                }}
-                transition={{ duration: 0.2 }}
-            >
-                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
-                </svg>
-            </motion.span>
+            {!template.logoUrl ? (
+                <div className="absolute inset-0 flex items-center justify-center">
+                    <Gamepad2 className="h-14 w-14 text-white/55" />
+                </div>
+            ) : null}
 
-            <span className="relative z-10">Quay lại</span>
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/45 to-transparent" />
+
+            {active ? (
+                <div className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-white text-emerald-500 shadow-lg">
+                    <CheckCircle2 className="h-5 w-5" />
+                </div>
+            ) : null}
+
+            <div className="absolute inset-x-0 bottom-0 p-4">
+                <p className="text-sm font-bold text-white">{template.name}</p>
+                <p className="mt-1 text-xs text-white/60">
+                    {template.launchMode === 'live' ? 'Phòng live' : 'Chơi thử local'}
+                </p>
+            </div>
         </motion.button>
     );
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
 export default function GameTemplateSelectionPage() {
     const location = useLocation();
     const navigate = useNavigate();
@@ -139,470 +179,290 @@ export default function GameTemplateSelectionPage() {
     const [apiTemplates, setApiTemplates] = useState([]);
     const [loadingTemplates, setLoadingTemplates] = useState(true);
     const [templatesError, setTemplatesError] = useState(null);
-
     const [activeGame, setActiveGame] = useState(BUILTIN_TEMPLATES[0]);
     const [showInfo, setShowInfo] = useState(false);
-
     const [creating, setCreating] = useState(false);
     const [createError, setCreateError] = useState(null);
-    const [createdSession, setCreatedSession] = useState(null);
 
-    // Redirect if no quizId
     useEffect(() => {
-        if (!quizId) navigate('/teacher/library');
-    }, [quizId, navigate]);
+        if (!quizId) {
+            navigate('/teacher/library');
+        }
+    }, [navigate, quizId]);
 
-    // Fetch API templates
     useEffect(() => {
-        async function fetchTemplates() {
+        async function loadTemplates() {
             try {
                 setLoadingTemplates(true);
+                setTemplatesError(null);
                 const data = await getAllGameTemplates();
                 setApiTemplates(Array.isArray(data) ? data.map(enrichApiTemplate) : []);
             } catch {
-                setTemplatesError('Không thể tải danh sách game');
+                setTemplatesError('Không thể tải danh sách game từ server.');
             } finally {
                 setLoadingTemplates(false);
             }
         }
-        fetchTemplates();
+
+        loadTemplates();
     }, []);
 
-    const allTemplates = [...BUILTIN_TEMPLATES, ...apiTemplates];
+    const allTemplates = useMemo(
+        () => dedupeTemplates([...BUILTIN_TEMPLATES, ...apiTemplates]),
+        [apiTemplates]
+    );
+
+    useEffect(() => {
+        if (!allTemplates.some((template) => template.id === activeGame?.id)) {
+            setActiveGame(allTemplates[0] || null);
+        }
+    }, [activeGame?.id, allTemplates]);
 
     async function handleCreateGame() {
         if (!activeGame || !quizId || activeGame.isPlus) return;
 
-        // Built-in Treasure Hunt → navigate directly to single-player game
-        if (activeGame.id === '__treasure_hunt__') {
-            navigate('/teacher/treasure-hunt', {
-                state: {
-                    quizId,
-                    quizTitle,
-                    questionCount,
-                },
-            });
-            return;
-        }
+        setCreating(true);
+        setCreateError(null);
 
-        // Built-in Adventure → fetch questions & navigate directly (single-player for now)
-        if (activeGame.id === '__adventure__') {
-            setCreating(true);
-            setCreateError(null);
-            try {
-                const raw = await getQuestionsByQuiz(quizId);
-                const questions = (Array.isArray(raw) ? raw : []).map(normalizeQuestion);
+        try {
+            if (activeGame.id === '__adventure__') {
+                const rawQuestions = await getQuestionsByQuiz(quizId);
+                const questions = (Array.isArray(rawQuestions) ? rawQuestions : []).map(normalizeQuestion);
+
                 if (!questions.length) {
-                    setCreateError('Bài quiz chưa có câu hỏi nào.');
-                    return;
+                    throw new Error('Quiz này chưa có câu hỏi nào.');
                 }
+
                 navigate('/play/adventure', {
                     state: { session: null, questions },
                 });
-            } catch (err) {
-                setCreateError(err.message || 'Không thể tải câu hỏi. Vui lòng thử lại.');
-            } finally {
-                setCreating(false);
+                return;
             }
-            return;
-        }
 
-        setCreating(true);
-        setCreateError(null);
-        try {
             const templateId =
                 typeof activeGame.id === 'string' && activeGame.id.startsWith('__')
-                    ? (apiTemplates[0]?.id ?? activeGame.fallbackTemplateId ?? 1)
+                    ? activeGame.fallbackTemplateId ?? 3
                     : activeGame.id;
 
             const session = await createSession({ quizId, templateId });
-            setCreatedSession(session);
-        } catch (err) {
-            setCreateError(err.message || 'Không thể tạo phiên chơi. Vui lòng thử lại.');
+            navigate(`/teacher/live-session/${session.id}`, {
+                state: {
+                    session,
+                    quizId,
+                    quizTitle,
+                    questionCount,
+                    gameName: activeGame.name,
+                },
+            });
+        } catch (error) {
+            setCreateError(error.message || 'Không thể tạo game lúc này.');
         } finally {
             setCreating(false);
         }
     }
 
-    function handleGoToSession() {
-        navigate('/teacher/sessions', { state: { newSessionId: createdSession?.id } });
+    if (!quizId || !activeGame) {
+        return null;
     }
 
-    if (!quizId) return null;
-
-    const game = activeGame;
-
     return (
-        <div className="relative w-full h-screen overflow-hidden text-white flex flex-col" style={{ fontFamily: 'Inter, -apple-system, sans-serif', background: 'linear-gradient(135deg, #0f0720 0%, #160d35 40%, #0d1a3a 100%)' }}>
-
-            {/* ══ LAYER 1 — Blurred full-bleed background ══ */}
-            <div className="absolute inset-0 z-0">
-                <AnimatePresence mode="wait">
-                    <motion.div
-                        key={game.id}
-                        initial={{ opacity: 0, scale: 1.06 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 0.75, ease: 'easeOut' }}
-                        className="absolute inset-0"
-                    >
-                        {game.bgImage ? (
-                            <img
-                                src={game.bgImage}
-                                alt=""
-                                className="w-full h-full object-cover"
-                                style={{ filter: 'blur(4px) brightness(0.35) saturate(1.4)' }}
-                            />
-                        ) : (
-                            <div className="w-full h-full bg-gradient-to-br from-[#2d0b6b] to-[#0d1a3a]" />
-                        )}
-                    </motion.div>
-                </AnimatePresence>
-
-                {/* Left vignette — purple-tinted fade covering hero area */}
-                <div className="absolute inset-0 bg-gradient-to-r from-[#0f0720] via-[#160d35]/80 to-transparent" />
-                {/* Bottom vignette */}
-                <div className="absolute inset-0 bg-gradient-to-t from-[#0d1a3a]/70 to-transparent" />
-                {/* Subtle purple ambient glow top-left */}
-                <div className="absolute -top-32 -left-32 w-[600px] h-[600px] rounded-full opacity-20"
-                    style={{ background: 'radial-gradient(circle, #7c3aed 0%, transparent 70%)' }} />
+        <div className="relative min-h-screen overflow-hidden bg-[radial-gradient(circle_at_top_left,#2b145d_0%,#140b35_42%,#0b1024_100%)] text-white">
+            <div className="absolute inset-0 opacity-20">
+                {activeGame.bgImage ? (
+                    <img
+                        src={activeGame.bgImage}
+                        alt=""
+                        className="h-full w-full object-cover blur-sm"
+                        onError={(event) => {
+                            event.currentTarget.style.display = 'none';
+                        }}
+                    />
+                ) : null}
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(59,130,246,0.18),transparent_55%)]" />
             </div>
+            <div className="absolute inset-0 bg-gradient-to-r from-slate-950/88 via-slate-950/62 to-slate-950/40" />
 
-            {/* ══ LAYER 2 — Top nav bar ══ */}
-            <header className="relative z-20 flex items-center justify-between px-10 pt-6 pb-2 flex-shrink-0">
-                <BackButton onClick={() => navigate(-1)} />
+            <div className="relative z-10 flex min-h-screen flex-col px-4 py-6 md:px-8">
+                <header className="flex items-center justify-between gap-4">
+                    <BackButton onClick={() => navigate(-1)} />
 
-                {/* Quiz context pill */}
-                <div className="flex items-center gap-3 px-5 py-2.5 rounded-full
-                                bg-violet-500/20 border border-violet-400/30 backdrop-blur-md">
-                    <BookOpen className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                    <span className="text-[14px] text-white/85 font-semibold max-w-[260px] truncate">
-                        {quizTitle}
-                    </span>
-                    <span className="text-[13px] text-white/35 select-none">·</span>
-                    <span className="text-[13px] text-white/55 flex-shrink-0 font-medium">{questionCount} câu</span>
-                </div>
-
-                <div className="w-24" />
-            </header>
-
-            {/* ══ LAYER 3 — Body: 50/50 split ══ */}
-            <div className="relative z-10 flex-1 flex overflow-hidden">
-
-                {/* ────────────────────────────────────────
-                    LEFT 50% — Game detail / hero
-                ──────────────────────────────────────── */}
-                <main className="w-1/2 flex flex-col justify-center px-14 pb-8">
-                    <AnimatePresence mode="wait">
-                        <motion.div
-                            key={game.id}
-                            initial={{ opacity: 0, y: 18 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -10 }}
-                            transition={{ duration: 0.4, ease: 'easeOut' }}
-                        >
-                            {/* Logo badge */}
-                            {game.logoUrl && (
-                                <div className="mb-6 w-20 h-20 rounded-2xl overflow-hidden
-                                                border border-white/20 shadow-2xl">
-                                    <img src={game.logoUrl} alt={game.name} className="w-full h-full object-cover" />
-                                </div>
-                            )}
-
-                            {/* Title */}
-                            <h1
-                                className="text-6xl font-black mb-6 tracking-tight leading-none"
-                                style={{ textShadow: '0 4px 32px rgba(0,0,0,0.8)' }}
-                            >
-                                {game.name}
-                            </h1>
-
-                            {/* Meta tags */}
-                            <div className="flex flex-wrap items-center gap-3 mb-6">
-                                <span className={`border px-4 py-1.5 rounded-lg text-[15px] font-semibold ${diffBadgeClass(game.difficulty)}`}>
-                                    {game.difficulty}
-                                </span>
-                                <span className="flex items-center gap-2 text-[15px] text-white/70 font-medium">
-                                    <Users size={16} className="opacity-70 flex-shrink-0" />
-                                    {game.players}
-                                </span>
-                                <span className="flex items-center gap-2 text-[15px] text-white/70 font-medium">
-                                    <Clock size={16} className="opacity-70 flex-shrink-0" />
-                                    {game.time}
-                                </span>
-                                <span className="flex items-center gap-2 text-[15px] text-white/70 font-medium">
-                                    <BrainCircuit size={16} className="opacity-70 flex-shrink-0" />
-                                    {game.skills}
-                                </span>
-                            </div>
-
-                            {/* Description */}
-                            <p
-                                className="text-[17px] text-gray-200 leading-relaxed mb-9 line-clamp-3"
-                                style={{ textShadow: '0 2px 12px rgba(0,0,0,0.5)' }}
-                            >
-                                {game.description}
-                            </p>
-
-                            {/* Create error */}
-                            {createError && (
-                                <div className="flex items-center gap-2 mb-5 text-[14px] text-rose-300
-                                                bg-rose-500/15 border border-rose-500/30 px-5 py-3 rounded-xl">
-                                    <AlertCircle className="w-5 h-5 flex-shrink-0" />
-                                    {createError}
-                                </div>
-                            )}
-
-                            {/* CTA buttons */}
-                            <div className="flex items-center gap-4">
-                                <motion.button
-                                    onClick={handleCreateGame}
-                                    disabled={creating || game.isPlus}
-                                    className={`flex items-center gap-3 px-10 py-4 rounded-full font-bold
-                                                text-[17px] transition-all duration-200 shadow-xl
-                                                ${game.isPlus
-                                            ? 'bg-white/20 text-white/40 cursor-not-allowed'
-                                            : 'bg-white text-black hover:bg-gray-100'
-                                        }`}
-                                    whileHover={!creating && !game.isPlus ? { scale: 1.03 } : {}}
-                                    whileTap={!creating && !game.isPlus ? { scale: 0.97 } : {}}
-                                >
-                                    {creating ? (
-                                        <><Loader2 className="w-6 h-6 animate-spin" />Đang tạo...</>
-                                    ) : game.isPlus ? (
-                                        <><Lock className="w-6 h-6" />Yêu cầu Plus</>
-                                    ) : (
-                                        <><Play fill="black" className="w-6 h-6" />Tạo Game</>
-                                    )}
-                                </motion.button>
-
-                                <button
-                                    onClick={() => setShowInfo(v => !v)}
-                                    className={`p-4 rounded-full backdrop-blur border transition-all duration-200
-                                                ${showInfo
-                                            ? 'bg-white/25 border-white/40 text-white'
-                                            : 'bg-gray-600/40 border-gray-500/30 text-white/70 hover:bg-gray-600/60 hover:text-white'
-                                        }`}
-                                >
-                                    <Info size={26} />
-                                </button>
-                            </div>
-
-                            {/* Expandable info panel */}
-                            <AnimatePresence>
-                                {showInfo && (
-                                    <motion.div
-                                        initial={{ opacity: 0, height: 0, marginTop: 0 }}
-                                        animate={{ opacity: 1, height: 'auto', marginTop: 24 }}
-                                        exit={{ opacity: 0, height: 0, marginTop: 0 }}
-                                        transition={{ duration: 0.28 }}
-                                        className="overflow-hidden max-w-[500px]"
-                                    >
-                                        <div className="grid grid-cols-2 gap-4 p-6 rounded-2xl
-                                                        bg-violet-950/50 backdrop-blur-md border border-violet-400/20">
-                                            <InfoTile icon={<Users size={17} />} label="Người chơi" value={game.players} />
-                                            <InfoTile icon={<Clock size={17} />} label="Thời gian" value={game.time} />
-                                            <InfoTile icon={<BrainCircuit size={17} />} label="Kỹ năng" value={game.skills} />
-                                            <InfoTile icon={<Zap size={17} />} label="Độ khó" value={game.difficulty} />
-                                        </div>
-                                    </motion.div>
-                                )}
-                            </AnimatePresence>
-                        </motion.div>
-                    </AnimatePresence>
-                </main>
-
-                {/* ────────────────────────────────────────
-                    RIGHT 50% — Frosted-glass panel, 3-col square grid
-                ──────────────────────────────────────── */}
-                <aside className="w-1/2 flex flex-col py-8 px-8">
-
-                    {/* Frosted glass container */}
-                    <div className="flex-1 flex flex-col rounded-3xl overflow-hidden
-                                    bg-white/[0.07] backdrop-blur-xl border border-violet-400/[0.15]
-                                    shadow-[inset_0_1px_0_rgba(167,139,250,0.12),0_0_40px_rgba(109,40,217,0.15)]">
-
-                        {/* Header inside the glass box */}
-                        <div className="flex items-center justify-between px-6 pt-5 pb-4 flex-shrink-0
-                                        border-b border-violet-400/[0.12]">
-                            <h3 className="text-[13px] font-bold text-white/60 uppercase tracking-[0.18em]">
-                                Chế độ chơi
-                                {!loadingTemplates && (
-                                    <span className="ml-2 text-white/35 font-normal normal-case tracking-normal">
-                                        ({allTemplates.length})
-                                    </span>
-                                )}
-                            </h3>
-                            {loadingTemplates && (
-                                <Loader2 className="w-4 h-4 text-white/35 animate-spin" />
-                            )}
-                        </div>
-
-                        {templatesError && (
-                            <div className="flex items-center gap-2 px-6 py-2.5 text-[13px] text-amber-400
-                                            flex-shrink-0 border-b border-white/[0.06]">
-                                <AlertCircle size={14} className="flex-shrink-0" />
-                                {templatesError}
-                            </div>
-                        )}
-
-                        {/* 3-col square grid — scrollable, shows 3 per row */}
-                        <div className="flex-1 overflow-y-auto hide-scrollbar px-5 py-5">
-                            <div className="grid grid-cols-3 gap-4">
-                                {allTemplates.map((template) => {
-                                    const isActive = activeGame.id === template.id;
-                                    return (
-                                        <motion.button
-                                            key={template.id}
-                                            onClick={() => {
-                                                setActiveGame(template);
-                                                setShowInfo(false);
-                                                setCreateError(null);
-                                            }}
-                                            whileHover={{ scale: 1.04 }}
-                                            whileTap={{ scale: 0.96 }}
-                                            className={`relative w-full rounded-2xl overflow-hidden cursor-pointer
-                                                        text-left transition-all duration-300
-                                                        ${isActive
-                                                    ? 'border-2 border-white shadow-[0_0_24px_rgba(255,255,255,0.18)]'
-                                                    : 'border border-white/12 opacity-55 hover:opacity-95 hover:border-white/30'
-                                                }`}
-                                            style={{ aspectRatio: '1 / 1' }}
-                                        >
-                                            {/* Thumbnail */}
-                                            {template.logoUrl ? (
-                                                <img
-                                                    src={template.logoUrl}
-                                                    alt={template.name}
-                                                    className="absolute inset-0 w-full h-full object-cover"
-                                                />
-                                            ) : (
-                                                <div className="absolute inset-0 bg-gradient-to-br
-                                                                from-violet-900 to-indigo-950
-                                                                flex items-center justify-center text-4xl select-none">
-                                                    🎮
-                                                </div>
-                                            )}
-
-                                            {/* Bottom scrim + name */}
-                                            <div className="absolute inset-0 bg-gradient-to-t from-black/90
-                                                            via-black/20 to-transparent
-                                                            flex flex-col justify-end px-3 py-3">
-                                                <span className="font-bold text-white text-[13px] leading-tight
-                                                                 line-clamp-2">
-                                                    {template.name}
-                                                </span>
-                                                {template.isPlus && (
-                                                    <span className="text-[11px] text-amber-300 font-semibold mt-1">
-                                                        ✦ Plus
-                                                    </span>
-                                                )}
-                                            </div>
-
-                                            {/* Active badge */}
-                                            {isActive && (
-                                                <motion.div
-                                                    initial={{ scale: 0 }}
-                                                    animate={{ scale: 1 }}
-                                                    className="absolute top-2 right-2 w-6 h-6 rounded-full bg-white
-                                                               flex items-center justify-center shadow-lg"
-                                                >
-                                                    <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                                                </motion.div>
-                                            )}
-                                        </motion.button>
-                                    );
-                                })}
-                            </div>
-                        </div>
+                    <div className="inline-flex max-w-full items-center gap-3 rounded-full border border-violet-300/20 bg-violet-400/10 px-5 py-3 text-sm text-white/85 backdrop-blur">
+                        <BookOpen className="h-4 w-4 text-emerald-300" />
+                        <span className="max-w-[240px] truncate font-semibold">{quizTitle}</span>
+                        <span className="text-white/30">•</span>
+                        <span className="text-white/60">{questionCount} câu</span>
                     </div>
-                </aside>
 
-            </div>{/* end body flex-row */}
+                    <div className="hidden w-28 md:block" />
+                </header>
 
-            {/* ══ PIN success modal ══ */}
-            <AnimatePresence>
-                {createdSession && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm"
-                    >
-                        <motion.div
-                            initial={{ scale: 0.82, y: 24 }}
-                            animate={{ scale: 1, y: 0 }}
-                            exit={{ scale: 0.82, y: 24 }}
-                            transition={{ type: 'spring', stiffness: 340, damping: 28 }}
-                            className="relative w-full max-w-sm mx-4 rounded-3xl p-8 text-center
-                                       bg-gradient-to-br from-[#1e0a3a] to-[#0a0a1f]
-                                       border border-white/10 shadow-2xl"
-                        >
-                            <button
-                                onClick={() => setCreatedSession(null)}
-                                className="absolute top-4 right-4 text-white/35 hover:text-white transition-colors"
+                <div className="mt-8 grid flex-1 gap-8 xl:grid-cols-[1.1fr_0.9fr]">
+                    <section className="flex min-h-[420px] flex-col justify-center px-2 md:px-6">
+                        <AnimatePresence mode="wait">
+                            <motion.div
+                                key={activeGame.id}
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -12 }}
+                                transition={{ duration: 0.28, ease: 'easeOut' }}
                             >
-                                <X className="w-5 h-5" />
-                            </button>
+                                <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-[28px] border border-white/15 bg-white/8 shadow-2xl">
+                                    {activeGame.logoUrl ? (
+                                        <img
+                                            src={activeGame.logoUrl}
+                                            alt={activeGame.name}
+                                            className="h-full w-full object-cover"
+                                            onError={(event) => {
+                                                event.currentTarget.style.display = 'none';
+                                            }}
+                                        />
+                                    ) : (
+                                        <Gamepad2 className="h-10 w-10 text-white/70" />
+                                    )}
+                                </div>
 
-                            <div className="w-16 h-16 mx-auto mb-5 rounded-2xl
-                                            bg-emerald-500/20 border border-emerald-400/30
-                                            flex items-center justify-center">
-                                <CheckCircle2 className="w-8 h-8 text-emerald-400" />
+                                <h1 className="mt-8 text-5xl font-black tracking-tight md:text-7xl">{activeGame.name}</h1>
+
+                                <div className="mt-6 flex flex-wrap items-center gap-3 text-sm text-white/75">
+                                    <span className={`rounded-full border px-4 py-2 font-semibold ${difficultyClass(activeGame.difficulty)}`}>
+                                        {activeGame.difficulty}
+                                    </span>
+                                    <span className="inline-flex items-center gap-2">
+                                        <Users className="h-4 w-4" />
+                                        {activeGame.players}
+                                    </span>
+                                    <span className="inline-flex items-center gap-2">
+                                        <Clock3 className="h-4 w-4" />
+                                        {activeGame.duration}
+                                    </span>
+                                    <span className="inline-flex items-center gap-2">
+                                        <BrainCircuit className="h-4 w-4" />
+                                        {activeGame.skills}
+                                    </span>
+                                </div>
+
+                                <p className="mt-6 max-w-2xl text-base leading-8 text-white/82 md:text-lg">
+                                    {activeGame.description}
+                                </p>
+
+                                {activeGame.launchMode === 'live' ? (
+                                    <div className="mt-6 inline-flex items-center gap-2 rounded-full border border-emerald-300/20 bg-emerald-300/10 px-4 py-2 text-sm text-emerald-100">
+                                        <Sparkles className="h-4 w-4" />
+                                        Tạo phòng live, lấy PIN và đợi học sinh join
+                                    </div>
+                                ) : (
+                                    <div className="mt-6 inline-flex items-center gap-2 rounded-full border border-sky-300/20 bg-sky-300/10 px-4 py-2 text-sm text-sky-100">
+                                        <Sparkles className="h-4 w-4" />
+                                        Chế độ này đang chạy local để test nhanh
+                                    </div>
+                                )}
+
+                                {createError ? (
+                                    <div className="mt-6 flex max-w-xl items-start gap-3 rounded-2xl border border-rose-400/20 bg-rose-400/10 px-4 py-3 text-sm text-rose-100">
+                                        <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+                                        <span>{createError}</span>
+                                    </div>
+                                ) : null}
+
+                                <div className="mt-8 flex flex-wrap items-center gap-4">
+                                    <motion.button
+                                        type="button"
+                                        onClick={handleCreateGame}
+                                        disabled={creating || activeGame.isPlus}
+                                        whileHover={!creating && !activeGame.isPlus ? { scale: 1.02 } : undefined}
+                                        whileTap={!creating && !activeGame.isPlus ? { scale: 0.98 } : undefined}
+                                        className={`inline-flex min-w-[220px] items-center justify-center gap-3 rounded-full px-8 py-4 text-base font-bold shadow-xl transition ${
+                                            activeGame.isPlus
+                                                ? 'cursor-not-allowed bg-white/10 text-white/35'
+                                                : 'bg-white text-slate-950 hover:bg-slate-100'
+                                        }`}
+                                    >
+                                        {creating ? <Loader2 className="h-5 w-5 animate-spin" /> : activeGame.isPlus ? <Lock className="h-5 w-5" /> : <Play className="h-5 w-5 fill-current" />}
+                                        {creating ? 'Đang tạo...' : activeGame.launchMode === 'live' ? 'Tạo phòng game' : 'Chơi thử ngay'}
+                                    </motion.button>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowInfo((value) => !value)}
+                                        className={`inline-flex h-14 w-14 items-center justify-center rounded-full border transition ${
+                                            showInfo
+                                                ? 'border-white/30 bg-white/18 text-white'
+                                                : 'border-white/12 bg-white/8 text-white/65 hover:bg-white/12 hover:text-white'
+                                        }`}
+                                    >
+                                        <Info className="h-5 w-5" />
+                                    </button>
+                                </div>
+
+                                <AnimatePresence>
+                                    {showInfo ? (
+                                        <motion.div
+                                            initial={{ opacity: 0, height: 0, marginTop: 0 }}
+                                            animate={{ opacity: 1, height: 'auto', marginTop: 24 }}
+                                            exit={{ opacity: 0, height: 0, marginTop: 0 }}
+                                            className="max-w-2xl overflow-hidden"
+                                        >
+                                            <div className="grid gap-4 rounded-[28px] border border-white/10 bg-white/8 p-5 backdrop-blur md:grid-cols-2">
+                                                <div>
+                                                    <p className="text-xs uppercase tracking-[0.25em] text-white/45">Loại phòng</p>
+                                                    <p className="mt-2 text-base font-semibold text-white">
+                                                        {activeGame.launchMode === 'live' ? 'Live session cho cả lớp' : 'Chơi thử local'}
+                                                    </p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs uppercase tracking-[0.25em] text-white/45">Template ID</p>
+                                                    <p className="mt-2 text-base font-semibold text-white">
+                                                        {typeof activeGame.id === 'string'
+                                                            ? activeGame.fallbackTemplateId ?? 'Built-in'
+                                                            : activeGame.id}
+                                                    </p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs uppercase tracking-[0.25em] text-white/45">Khuyến nghị</p>
+                                                    <p className="mt-2 text-base font-semibold text-white">{activeGame.players}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs uppercase tracking-[0.25em] text-white/45">Thời lượng</p>
+                                                    <p className="mt-2 text-base font-semibold text-white">{activeGame.duration}</p>
+                                                </div>
+                                            </div>
+                                        </motion.div>
+                                    ) : null}
+                                </AnimatePresence>
+                            </motion.div>
+                        </AnimatePresence>
+                    </section>
+
+                    <aside className="rounded-[32px] border border-white/10 bg-white/[0.07] backdrop-blur-xl shadow-[0_22px_80px_rgba(15,23,42,0.35)]">
+                        <div className="flex items-center justify-between border-b border-white/8 px-6 py-5">
+                            <div>
+                                <p className="text-xs font-bold uppercase tracking-[0.28em] text-white/45">Chế độ chơi</p>
+                                <p className="mt-2 text-sm text-white/60">Đã lọc trùng template để không bị lặp game</p>
                             </div>
+                            {loadingTemplates ? <Loader2 className="h-4 w-4 animate-spin text-white/40" /> : <span className="text-sm text-white/40">{allTemplates.length} game</span>}
+                        </div>
 
-                            <h2 className="text-2xl font-extrabold text-white mb-2">
-                                Phiên chơi đã sẵn sàng!
-                            </h2>
-                            <p className="text-[15px] text-white/55 mb-7">
-                                Chia sẻ mã PIN bên dưới cho học sinh tham gia
-                            </p>
-
-                            <div className="inline-flex items-center gap-3 px-8 py-5 mb-7
-                                            rounded-2xl bg-white/8 border-2 border-white/20 backdrop-blur">
-                                <Hash className="w-6 h-6 text-amber-300 flex-shrink-0" />
-                                <span className="text-5xl font-black tracking-[0.25em] font-mono text-white">
-                                    {createdSession.gamePin
-                                        || createdSession.pin
-                                        || createdSession.pinCode
-                                        || '------'}
-                                </span>
+                        {templatesError ? (
+                            <div className="mx-6 mt-4 flex items-start gap-3 rounded-2xl border border-amber-300/20 bg-amber-300/10 px-4 py-3 text-sm text-amber-100">
+                                <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+                                <span>{templatesError}</span>
                             </div>
+                        ) : null}
 
-                            <div className="grid grid-cols-2 gap-3">
-                                <button
-                                    onClick={() => setCreatedSession(null)}
-                                    className="py-3.5 rounded-xl border border-white/20 text-white/75
-                                               text-[15px] font-semibold hover:bg-white/10 transition-colors"
-                                >
-                                    Đóng
-                                </button>
-                                <button
-                                    onClick={handleGoToSession}
-                                    className="py-3.5 rounded-xl bg-white text-black text-[15px] font-bold
-                                               hover:bg-gray-100 transition-colors flex items-center
-                                               justify-center gap-2"
-                                >
-                                    <Play fill="black" className="w-5 h-5" />
-                                    Vào phòng chờ
-                                </button>
+                        <div className="max-h-[70vh] overflow-y-auto px-5 py-5">
+                            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-2">
+                                {allTemplates.map((template) => (
+                                    <TemplateCard
+                                        key={template.id}
+                                        template={template}
+                                        active={template.id === activeGame.id}
+                                        onSelect={setActiveGame}
+                                    />
+                                ))}
                             </div>
-                        </motion.div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
-        </div>
-    );
-}
-
-// ─── Info tile ────────────────────────────────────────────────────────────────
-function InfoTile({ icon, label, value }) {
-    return (
-        <div className="flex items-start gap-3">
-            <div className="mt-0.5 text-white/55 flex-shrink-0">{icon}</div>
-            <div>
-                <p className="text-[12px] text-white/45 uppercase tracking-wider font-semibold mb-0.5">{label}</p>
-                <p className="text-[15px] text-white font-bold">{value}</p>
+                        </div>
+                    </aside>
+                </div>
             </div>
         </div>
     );

@@ -1,5 +1,5 @@
 /**
- * Mascoteach â€” Question Service
+ * Mascoteach — Question Service
  * CRUD operations for quiz questions.
  */
 
@@ -8,10 +8,11 @@ import api from './api';
 /**
  * Get all questions for a specific quiz
  * @param {number} quizId
+ * @param {object} [options]
  * @returns {Promise<object[]>}
  */
-export async function getQuestionsByQuiz(quizId) {
-    return api.get(`/api/Question/quiz/${quizId}`);
+export async function getQuestionsByQuiz(quizId, options) {
+    return api.get(`/api/Question/quiz/${quizId}`, options);
 }
 
 /**

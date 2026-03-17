@@ -5,10 +5,8 @@ import LoginPage from '@/pages/LoginPage';
 import SignUpPage from '@/pages/SignUpPage';
 import ForgotPasswordPage from '@/pages/ForgotPasswordPage';
 
-// Auth guard
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 
-// Teacher layout + pages
 import PortalLayout from '@/components/portal/layout/PortalLayout';
 import HomePage from '@/pages/portal/HomePage';
 import LibraryPage from '@/pages/portal/LibraryPage';
@@ -17,30 +15,28 @@ import QuizSettingsPage from '@/pages/portal/QuizSettingsPage';
 import QuizPreviewPage from '@/pages/portal/QuizPreviewPage';
 import GameTemplateSelectionPage from '@/pages/portal/GameTemplateSelectionPage';
 import TreasureHuntGame from '@/pages/portal/TreasureHuntGame';
+import TreasureHuntHostPage from '@/pages/portal/TreasureHuntHostPage';
 
-// Student Game (standalone, no sidebar)
 import StudentGamePage from '@/pages/portal/StudentGamePage';
 
-// Adventure Game — new game mode
 import GameLobby from '@/pages/student/GameLobby';
+import LiveSessionWaitingPage from '@/pages/student/LiveSessionWaitingPage';
+import StudentLiveGamePage from '@/pages/student/StudentLiveGamePage';
 import AdventureGamePage from '@/pages/student/games/AdventureGame';
 import AdventureDemoPage from '@/pages/student/games/AdventureGame/DemoPage';
 
-// Interactive Mascot
 import MascotWidget from '@/components/mascot/MascotWidget';
 
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* ── Public routes ── */}
         <Route path="/" element={<LandingPage />} />
         <Route path="/pricing" element={<PricingPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignUpPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
-        {/* ── Teacher routes ── */}
         <Route
           path="/teacher"
           element={
@@ -56,7 +52,6 @@ export default function App() {
           <Route path="quiz-preview" element={<QuizPreviewPage />} />
         </Route>
 
-        {/* ── Game Template Selection (standalone full-screen, no sidebar) ── */}
         <Route
           path="/teacher/select-game-template"
           element={
@@ -66,7 +61,6 @@ export default function App() {
           }
         />
 
-        {/* ── Treasure Hunt Game (standalone full-screen, no sidebar) ── */}
         <Route
           path="/teacher/treasure-hunt"
           element={
@@ -76,7 +70,15 @@ export default function App() {
           }
         />
 
-        {/* ── Student routes ── */}
+        <Route
+          path="/teacher/live-session/:sessionId"
+          element={
+            <ProtectedRoute allowedRoles={['Teacher']}>
+              <TreasureHuntHostPage />
+            </ProtectedRoute>
+          }
+        />
+
         <Route
           path="/student"
           element={
@@ -88,7 +90,6 @@ export default function App() {
           <Route index element={<HomePage />} />
         </Route>
 
-        {/* ── Parent routes ── */}
         <Route
           path="/parent"
           element={
@@ -100,16 +101,16 @@ export default function App() {
           <Route index element={<HomePage />} />
         </Route>
 
-        {/* ── Student Game (standalone, no sidebar) ── */}
         <Route path="/play" element={<GameLobby />} />
+        <Route path="/play/waiting" element={<LiveSessionWaitingPage />} />
+        <Route path="/play/live-game" element={<StudentLiveGamePage />} />
+        <Route path="/play/treasure-hunt" element={<TreasureHuntGame />} />
         <Route path="/play/adventure" element={<AdventureGamePage />} />
         <Route path="/play/demo" element={<AdventureDemoPage />} />
 
-        {/* Legacy student game placeholder */}
         <Route path="/play/legacy" element={<StudentGamePage />} />
       </Routes>
 
-      {/* ── Interactive Mascot (persists across all pages) ── */}
       <MascotWidget />
     </BrowserRouter>
   );
