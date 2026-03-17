@@ -1,4 +1,4 @@
-﻿export const SITE = {
+export const SITE = {
   name: 'Mascoteach',
   tagline: 'Trợ giảng AI cho lớp học thế hệ mới',
   description: 'Biến mọi phòng học thành không gian tương tác sống động.',
@@ -32,9 +32,9 @@ export const FEATURES = [
     id: 'mascot-ai',
     badge: 'AI Core',
     badgeColor: 'sky',
-    title: 'Mascot AI cá nhân hóa',
+    title: 'Trợ giảng AI — hiểu từng học sinh',
     description:
-      'Mỗi lớp sở hữu một mascot riêng  hiểu tính cách học sinh, phản hồi bằng giọng nói và biểu cảm theo real-time.',
+      'Mascot AI đồng hành cùng giáo viên: nhận diện cảm xúc lớp, phản hồi bằng giọng nói real-time và cá nhân hóa tương tác cho từng em.',
     lottie: '/lottie/mascot-ai.json',
     bgColor: 'bg-surface-blue',
     span: 'md:col-span-2',
@@ -43,8 +43,8 @@ export const FEATURES = [
     id: 'quiz-game',
     badge: 'Gamification',
     badgeColor: 'violet',
-    title: 'Quiz & Mini-game',
-    description: 'Biến bài kiểm tra thành trò chơi. Bảng xếp hạng, huy hiệu, streak  học mà như chơi.',
+    title: 'Học mà chơi, chơi mà nhớ',
+    description: 'Biến kiểm tra khô khan thành cuộc đua hấp dẫn. Bảng xếp hạng, huy hiệu, chuỗi streak — học sinh hào hứng, giáo viên an tâm.',
     lottie: '/lottie/quiz-game.json',
     bgColor: 'bg-surface-violet',
     span: 'md:col-span-1',
@@ -53,22 +53,11 @@ export const FEATURES = [
     id: 'analytics',
     badge: 'Analytics',
     badgeColor: 'teal',
-    title: 'Phân tích hành vi học tập',
-    description: 'Dashboard trực quan cho giáo viên: mức độ tập trung, tiến bộ từng học sinh, đề xuất cải thiện.',
+    title: 'Nhìn thấu lớp học bằng dữ liệu',
+    description: 'Dashboard trực quan giúp phát hiện học sinh cần hỗ trợ, theo dõi tiến bộ từng em và đưa ra quyết định giảng dạy chính xác hơn.',
     lottie: '/lottie/analytics.json',
     bgColor: 'bg-surface-teal',
     span: 'md:col-span-1',
-  },
-  {
-    id: 'hardware',
-    badge: 'Hardware',
-    badgeColor: 'orange',
-    title: 'Phần cứng thông minh tích hợp',
-    description:
-      'Nút bấm trả lời, đèn LED tương tác, micro thu âm  biến ban học thành bệ phóng sáng tạo.',
-    lottie: '/lottie/hardware.json',
-    bgColor: 'bg-surface-amber',
-    span: 'md:col-span-2',
   },
 ];
 
@@ -77,42 +66,28 @@ export const SHOWCASE_ITEMS = [
     id: 'lesson-builder',
     badge: 'Content Studio',
     badgeColor: 'sky',
-    title: 'Xây bài giảng trong 5 phút',
+    title: 'Từ ý tưởng đến bài giảng — chỉ 5 phút',
     description:
-      'Kéo-thả slide, nhúng video, quiz tự động  AI gợi ý nội dung phù hợp từng khối lớp.',
+      'Không còn mất hàng giờ soạn giáo án. Kéo-thả slide, nhúng video, AI tự gợi ý câu hỏi — để giáo viên dành thời gian cho điều quan trọng nhất: truyền cảm hứng.',
     visual: 'lesson-builder',
     features: [
-      'Thư viện 10.000+ mẫu bài giảng',
-      'AI tự tạo câu hỏi từ nội dung slide',
-      'Chia sẻ và clone bài giảng giữa giáo viên',
+      'Thư viện 10.000+ mẫu bài giảng sẵn dùng',
+      'AI tự tạo câu hỏi quiz từ nội dung slide',
+      'Chia sẻ và nhân bản bài giảng một cú click',
     ],
   },
   {
     id: 'live-class',
     badge: 'Live Interaction',
     badgeColor: 'violet',
-    title: 'Lớp học trực tiếp đầy sống động',
+    title: 'Lớp học sống động — nơi mọi em đều được lắng nghe',
     description:
-      'Mascot AI dẫn dắt bài học, học sinh tương tác bằng thiết bị vật lý, giáo viên kiểm soát mọi thứ từ dashboard.',
+      'Mascot AI dẫn dắt, học sinh tương tác real-time, giáo viên kiểm soát toàn bộ từ dashboard. Không em nào bị bỏ lại phía sau.',
     visual: 'live-class',
     features: [
-      'Phản hồi tức thì qua nút bấm IoT',
-      'Mascot điều chỉnh giọng theo mood lớp',
-      'Hỗ trợ hybrid: tại lớp + online đồng thời',
-    ],
-  },
-  {
-    id: 'hardware-ecosystem',
-    badge: 'Smart Hardware',
-    badgeColor: 'orange',
-    title: 'Hệ sinh thái phần cứng đồng bộ',
-    description:
-      'Thiết bị plug-and-play cho mỗi bàn học. Kết nối Bluetooth, không cần IT  giáo viên tự lắp đặt trong 10 phút.',
-    visual: 'hardware',
-    features: [
-      'Nút trả lời ABCD có LED phản hồi',
-      'Micro thu âm nhận diện giọng nói',
-      'Hub trung tâm quản lý toàn bộ thiết bị',
+      'Phản hồi tức thì — biết ngay ai đang theo kịp',
+      'Mascot tự điều chỉnh năng lượng theo mood lớp',
+      'Hỗ trợ dạy hybrid: tại lớp + online cùng lúc',
     ],
   },
 ];
