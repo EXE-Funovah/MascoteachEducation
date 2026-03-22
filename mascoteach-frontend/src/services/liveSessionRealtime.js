@@ -12,10 +12,6 @@ const HUB_CANDIDATES = [
 
 /**
  * All events the backend GameHub can send to clients.
- * Maps to: HostJoined, PlayerJoined, GameStarted,
- *          NewQuestion, QuestionClosed, AnswerSubmitted,
- *          ScoresUpdated, GameEnded
- *          + legacy events for backwards compat
  */
 const EVENT_NAMES = [
     // ── GameHub events (match backend exactly) ──
@@ -36,6 +32,30 @@ const EVENT_NAMES = [
 ];
 
 /**
+ * Join the correct SignalR group based on role.
+ * Extracted so it can be called both on initial connect AND on reconnect.
+ */
+async function joinGroup(connection, { role, gamePin, studentName, sessionId }) {
+    try {
+        if (role === 'host' && gamePin) {
+            await connection.invoke('JoinAsHost', gamePin);
+        } else if (role === 'student' && gamePin && studentName) {
+            await connection.invoke('JoinAsStudent', gamePin, studentName);
+        } else if (sessionId) {
+            // Legacy: try old join methods for LiveSession hub
+            await Promise.allSettled([
+                connection.invoke('JoinSessionRoom', sessionId),
+                connection.invoke('JoinSessionGroup', sessionId),
+                connection.invoke('JoinLiveSession', sessionId),
+                connection.invoke('SubscribeSession', sessionId),
+            ]);
+        }
+    } catch (err) {
+        console.warn('[SignalR] joinGroup failed:', err.message);
+    }
+}
+
+/**
  * Create a SignalR connection to the GameHub.
  *
  * @param {Object} options
@@ -53,6 +73,8 @@ export function createLiveSessionConnection({ gamePin, sessionId, role, studentN
     let stopped = false;
     let currentConnection = null;
 
+    const joinOpts = { role, gamePin, studentName, sessionId };
+
     async function connect(urlIndex = 0) {
         if (stopped || urlIndex >= HUB_CANDIDATES.length) {
             return null;
@@ -67,6 +89,7 @@ export function createLiveSessionConnection({ gamePin, sessionId, role, studentN
             .configureLogging(signalR.LogLevel.Warning)
             .build();
 
+        // ── Register event listeners ──
         EVENT_NAMES.forEach((eventName) => {
             connection.on(eventName, (payload) => {
                 if (typeof onEvent === 'function') {
@@ -75,34 +98,36 @@ export function createLiveSessionConnection({ gamePin, sessionId, role, studentN
             });
         });
 
+        // ── Re-join group on automatic reconnect ──
+        // SignalR removes connections from all Groups when the connection drops.
+        // After automatic reconnect, we get a NEW connectionId, so we must re-join.
+        connection.onreconnected(() => {
+            console.log('[SignalR] Reconnected — re-joining group…');
+            joinGroup(connection, joinOpts);
+        });
+
         try {
             await connection.start();
+
+            // ── CRITICAL: Check if stop() was called while we were awaiting start() ──
+            // This prevents the React StrictMode double-mount race condition:
+            //   Mount 1 → starts connecting (async)
+            //   StrictMode unmount → calls stop() but currentConnection is still null
+            //   Mount 2 → starts a fresh connection
+            //   Mount 1's start() resolves → without this guard, BOTH connections live
+            if (stopped) {
+                await connection.stop().catch(() => {});
+                return null;
+            }
+
             currentConnection = connection;
 
             // ── Join the correct group based on role ──
-            if (role === 'host' && gamePin) {
-                // Teacher joins as host with gamePin
-                await connection.invoke('JoinAsHost', gamePin).catch((err) => {
-                    console.warn('[SignalR] JoinAsHost failed:', err.message);
-                });
-            } else if (role === 'student' && gamePin && studentName) {
-                // Student joins with gamePin + name
-                await connection.invoke('JoinAsStudent', gamePin, studentName).catch((err) => {
-                    console.warn('[SignalR] JoinAsStudent failed:', err.message);
-                });
-            } else if (sessionId) {
-                // Legacy: try old join methods for LiveSession hub
-                await Promise.allSettled([
-                    connection.invoke('JoinSessionRoom', sessionId),
-                    connection.invoke('JoinSessionGroup', sessionId),
-                    connection.invoke('JoinLiveSession', sessionId),
-                    connection.invoke('SubscribeSession', sessionId),
-                ]);
-            }
+            await joinGroup(connection, joinOpts);
 
             return connection;
         } catch (error) {
-            await connection.stop().catch(() => { });
+            await connection.stop().catch(() => {});
 
             if (urlIndex === HUB_CANDIDATES.length - 1 && typeof onError === 'function') {
                 onError(error);
@@ -128,7 +153,7 @@ export function createLiveSessionConnection({ gamePin, sessionId, role, studentN
         async stop() {
             stopped = true;
             if (currentConnection) {
-                await currentConnection.stop().catch(() => { });
+                await currentConnection.stop().catch(() => {});
             }
         },
     };

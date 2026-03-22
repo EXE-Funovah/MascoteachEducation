@@ -47,6 +47,7 @@ export default function StudentLiveGamePage() {
     const [totalQuestions, setTotalQuestions] = useState(0);
     const [connected, setConnected] = useState(false);
 
+    const answerSubmittedRef = useRef(false);
     const realtimeRef = useRef(null);
 
     /* ── Connect SignalR ── */
@@ -66,9 +67,10 @@ export default function StudentLiveGamePage() {
 
                 // Backend sends "NewQuestion" when teacher calls SendQuestion
                 if (eventName === 'NewQuestion') {
+                    answerSubmittedRef.current = false;
                     try {
                         const data = typeof payload === 'string' ? JSON.parse(payload) : payload;
-                        
+
                         const rawOptions = data.options || data.Options || [];
                         const parsedOptions = rawOptions.map(o => {
                             const isCorrectVal = o.isCorrect ?? o.IsCorrect ?? false;
@@ -146,8 +148,8 @@ export default function StudentLiveGamePage() {
             const conn = realtime?.getConnection?.();
             if (conn?.state === 'Connected' && gamePin && playerName) {
                 console.log('[StudentLive] Retry: re-joining group...');
-                conn.invoke('JoinAsStudent', gamePin, playerName).catch(() => {});
-                conn.invoke('RequestCurrentQuestion', gamePin).catch(() => {});
+                conn.invoke('JoinAsStudent', gamePin, playerName).catch(() => { });
+                conn.invoke('RequestCurrentQuestion', gamePin).catch(() => { });
             }
         }, 3000);
 
@@ -159,7 +161,8 @@ export default function StudentLiveGamePage() {
 
     /* ── Handle answer selection ── */
     const handleAnswer = useCallback((optIdx) => {
-        if (selectedOption !== null || gameState !== 'answering' || !currentQuestion) return;
+        if (answerSubmittedRef.current || gameState !== 'answering' || !currentQuestion) return;
+        answerSubmittedRef.current = true;
 
         const option = currentQuestion.options[optIdx];
         const correct = option?.isCorrect ?? false;
@@ -177,20 +180,18 @@ export default function StudentLiveGamePage() {
             setStreak(0);
         }
 
-        /* Send answer to teacher via SignalR */
-        // Backend: SubmitAnswer(gamePin, studentName, questionId, optionId)
         if (realtimeRef.current && gamePin) {
             realtimeRef.current.invoke(
                 'SubmitAnswer',
                 gamePin,
                 playerName,
-                currentQuestion.index,   // questionId
-                optIdx                   // optionId
+                currentQuestion.index,
+                optIdx
             ).catch((err) => {
                 console.warn('[StudentLive] Failed to submit answer:', err);
             });
         }
-    }, [selectedOption, gameState, currentQuestion, streak, gamePin, playerName]);
+    }, [gameState, currentQuestion, streak, gamePin, playerName]);
 
     /* ── Waiting Screen ── */
     if (gameState === 'waiting' && !currentQuestion) {

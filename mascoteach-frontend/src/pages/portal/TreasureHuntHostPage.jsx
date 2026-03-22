@@ -14,7 +14,6 @@ import {
 } from 'lucide-react';
 import { getParticipantsBySession } from '@/services/sessionParticipantService';
 import { getSessionById, updateSession } from '@/services/liveSessionService';
-import { createLiveSessionConnection } from '@/services/liveSessionRealtime';
 
 function formatPin(session) {
     return session?.gamePin || session?.pin || session?.pinCode || '------';
@@ -83,34 +82,6 @@ export default function TreasureHuntHostPage() {
         return () => window.clearInterval(timer);
     }, [loadRoom, numericSessionId]);
 
-    useEffect(() => {
-        if (!numericSessionId) return undefined;
-
-        const realtime = createLiveSessionConnection({
-            sessionId: numericSessionId,
-            onEvent: () => {
-                setRealtimeStatus('da-ket-noi');
-                loadRoom(true);
-            },
-            onError: () => {
-                setRealtimeStatus('fallback-polling');
-            },
-        });
-
-        realtime?.startPromise
-            ?.then((connection) => {
-                if (connection) {
-                    setRealtimeStatus('da-ket-noi');
-                }
-            })
-            .catch(() => {
-                setRealtimeStatus('fallback-polling');
-            });
-
-        return () => {
-            realtime?.stop();
-        };
-    }, [loadRoom, numericSessionId]);
 
     async function handleStartGame() {
         if (!session?.id) return;

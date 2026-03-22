@@ -178,12 +178,14 @@ export default function TreasureHuntGame() {
         /* HOST MODE: Broadcast question to students via SignalR */
         if (hostMode && realtimeRef.current && questions[index]) {
             const q = questions[index];
+            const correctOptionIndex = q.options.findIndex(o => o.isCorrect);
             // Backend: SendQuestion(gamePin, questionData) → sends "NewQuestion" to group
             realtimeRef.current.invoke('SendQuestion', gamePin, {
                 questionIndex: index,
                 questionText: q.text,
                 options: q.options.map((o) => ({ text: o.text, isCorrect: o.isCorrect })),
                 totalQuestions: questions.length,
+                correctOptionIndex,
             }).catch((err) => {
                 console.warn('[TreasureHunt Host] Failed to broadcast question:', err);
             });
