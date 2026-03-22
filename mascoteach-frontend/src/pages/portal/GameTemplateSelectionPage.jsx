@@ -33,7 +33,7 @@ const BUILTIN_TEMPLATES = [
         skills: 'May mắn và tốc độ',
         players: '2 - 60',
         isPlus: false,
-        fallbackTemplateId: 3,
+        fallbackTemplateId: 1,
         launchMode: 'live',
         accent: 'from-amber-300 via-orange-400 to-rose-500',
     },
@@ -49,7 +49,7 @@ const BUILTIN_TEMPLATES = [
         skills: 'Tư duy và phản xạ',
         players: '1 - 1',
         isPlus: false,
-        fallbackTemplateId: 4,
+        fallbackTemplateId: 2,
         launchMode: 'solo',
         accent: 'from-sky-400 via-cyan-400 to-emerald-400',
     },
@@ -121,11 +121,10 @@ function TemplateCard({ template, active, onSelect }) {
             onClick={() => onSelect(template)}
             whileHover={{ y: -4, scale: 1.01 }}
             whileTap={{ scale: 0.98 }}
-            className={`group relative aspect-square overflow-hidden rounded-[28px] border text-left transition-all ${
-                active
+            className={`group relative aspect-square overflow-hidden rounded-[28px] border text-left transition-all ${active
                     ? 'border-white bg-white/12 shadow-[0_0_0_1px_rgba(255,255,255,0.55),0_18px_60px_rgba(15,23,42,0.35)]'
                     : 'border-white/12 bg-white/5 hover:border-white/30 hover:bg-white/10'
-            }`}
+                }`}
         >
             {template.logoUrl ? (
                 <img
@@ -139,9 +138,8 @@ function TemplateCard({ template, active, onSelect }) {
             ) : null}
 
             <div
-                className={`absolute inset-0 bg-gradient-to-br ${template.accent || 'from-slate-700 to-slate-900'} ${
-                    template.logoUrl ? 'opacity-20' : 'opacity-100'
-                }`}
+                className={`absolute inset-0 bg-gradient-to-br ${template.accent || 'from-slate-700 to-slate-900'} ${template.logoUrl ? 'opacity-20' : 'opacity-100'
+                    }`}
             />
 
             {!template.logoUrl ? (
@@ -371,11 +369,10 @@ export default function GameTemplateSelectionPage() {
                                         disabled={creating || activeGame.isPlus}
                                         whileHover={!creating && !activeGame.isPlus ? { scale: 1.02 } : undefined}
                                         whileTap={!creating && !activeGame.isPlus ? { scale: 0.98 } : undefined}
-                                        className={`inline-flex min-w-[220px] items-center justify-center gap-3 rounded-full px-8 py-4 text-base font-bold shadow-xl transition ${
-                                            activeGame.isPlus
+                                        className={`inline-flex min-w-[220px] items-center justify-center gap-3 rounded-full px-8 py-4 text-base font-bold shadow-xl transition ${activeGame.isPlus
                                                 ? 'cursor-not-allowed bg-white/10 text-white/35'
                                                 : 'bg-white text-slate-950 hover:bg-slate-100'
-                                        }`}
+                                            }`}
                                     >
                                         {creating ? <Loader2 className="h-5 w-5 animate-spin" /> : activeGame.isPlus ? <Lock className="h-5 w-5" /> : <Play className="h-5 w-5 fill-current" />}
                                         {creating ? 'Đang tạo...' : activeGame.launchMode === 'live' ? 'Tạo phòng game' : 'Chơi thử ngay'}
@@ -384,11 +381,10 @@ export default function GameTemplateSelectionPage() {
                                     <button
                                         type="button"
                                         onClick={() => setShowInfo((value) => !value)}
-                                        className={`inline-flex h-14 w-14 items-center justify-center rounded-full border transition ${
-                                            showInfo
+                                        className={`inline-flex h-14 w-14 items-center justify-center rounded-full border transition ${showInfo
                                                 ? 'border-white/30 bg-white/18 text-white'
                                                 : 'border-white/12 bg-white/8 text-white/65 hover:bg-white/12 hover:text-white'
-                                        }`}
+                                            }`}
                                     >
                                         <Info className="h-5 w-5" />
                                     </button>
