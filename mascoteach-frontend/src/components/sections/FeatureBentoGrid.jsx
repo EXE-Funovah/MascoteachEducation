@@ -1,4 +1,4 @@
-import { motion } from 'framer-motion';
+﻿import { motion } from 'framer-motion';
 import FadeInUp from '@/components/animations/FadeInUp';
 import Badge from '@/components/common/Badge';
 import SpotlightCard from '@/components/common/SpotlightCard';
@@ -101,10 +101,12 @@ export default function FeatureBentoGrid() {
 
       <div className="relative z-10 max-w-6xl mx-auto px-6">
         <FadeInUp>
-          <div className="text-center max-w-2xl mx-auto mb-10 md:mb-12">
+          <div className="text-center max-w-3xl mx-auto mb-10 md:mb-12">
             <Badge color="violet" className="mb-3">Tính năng nổi bật</Badge>
             <h2 className="text-display-sm md:text-display-md">
-              Tất cả trong một — để giáo viên tập trung vào điều quan trọng nhất
+              Tất cả trong một — để giáo viên
+              <br className="hidden md:block" />
+              <span className="md:whitespace-nowrap">tập trung vào điều quan trọng nhất</span>
             </h2>
             <p className="mt-4 text-body-md text-ink/80 font-medium">
               Tiết kiệm hàng giờ soạn bài, biến mỗi tiết học thành trải nghiệm mà học sinh mong chờ mỗi ngày.
@@ -240,3 +242,6 @@ export default function FeatureBentoGrid() {
     </section>
   );
 }
+
+
+

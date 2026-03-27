@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+﻿import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { gsap } from 'gsap';
 
@@ -208,7 +208,7 @@ const PillNav = ({
         </span>
         <span
           className="pill-label-hover absolute left-0 top-0 z-[3] inline-block will-change-[transform,opacity] font-bold tracking-tight"
-          style={{ color: hoveredPillTextColor, fontSize: '15.5px' }}
+          style={{ color: hoveredPillTextColor, fontSize: '16px' }}
           aria-hidden="true"
         >
           {item.label}
@@ -238,7 +238,7 @@ const PillNav = ({
       >
         {/* Desktop nav items */}
         <div
-          className="hidden md:flex items-center h-[42px] rounded-full"
+          className="hidden md:flex items-center h-[48px] rounded-full"
           style={{ background: pillColor }}
           ref={navItemsRef}
         >
@@ -289,7 +289,7 @@ const PillNav = ({
 
         {/* Mobile hamburger */}
         <button
-          className="md:hidden w-[42px] h-[42px] rounded-full flex flex-col items-center justify-center gap-1 cursor-pointer border-0 p-0 shrink-0"
+          className="md:hidden w-[46px] h-[46px] rounded-full flex flex-col items-center justify-center gap-1 cursor-pointer border-0 p-0 shrink-0"
           style={{ background: pillColor }}
           onClick={toggleMobileMenu}
           aria-label="Toggle menu"
@@ -368,3 +368,4 @@ const PillNav = ({
 };
 
 export default PillNav;
+

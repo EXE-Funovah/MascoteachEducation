@@ -1,4 +1,4 @@
-import { motion } from 'framer-motion';
+﻿import { motion } from 'framer-motion';
 import FadeInUp from '@/components/animations/FadeInUp';
 import Badge from '@/components/common/Badge';
 import { SHOWCASE_ITEMS } from '@/lib/constants';
@@ -20,10 +20,10 @@ export default function InteractiveShowcase() {
 
       <div className="relative z-10 max-w-6xl mx-auto px-6">
         <FadeInUp>
-          <div className="text-center max-w-2xl mx-auto mb-14 md:mb-16">
+          <div className="text-center max-w-3xl mx-auto mb-14 md:mb-16">
             <Badge color="teal" className="mb-3">Giải pháp cốt lõi</Badge>
             <h2 className="text-display-sm md:text-display-md">
-              Trải nghiệm Mascoteach trong hành động
+              <span className="md:whitespace-nowrap">Mascoteach vận hành trong lớp học ra sao?</span>
             </h2>
             <p className="mt-4 text-body-md text-ink/80 font-medium">
               Hai công cụ mạnh mẽ giúp giáo viên dạy ít hơn — nhưng truyền cảm hứng nhiều hơn.
@@ -140,3 +140,5 @@ export default function InteractiveShowcase() {
     </section>
   );
 }
+
+

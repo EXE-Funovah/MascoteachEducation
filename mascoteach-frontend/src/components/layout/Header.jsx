@@ -32,7 +32,6 @@ export default function Header() {
     { label: 'Bảng giá', href: '/pricing' },
   ];
 
-  /* Extra items shown only in the mobile dropdown */
   const mobileAuthItems = [
     { label: 'Đăng nhập', href: '/login' },
     { label: 'Bắt đầu miễn phí', href: '/signup' },
@@ -41,22 +40,20 @@ export default function Header() {
   const activeHref = location.pathname === '/pricing' ? '/pricing' : undefined;
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 px-4 pt-4">
+    <header className="fixed top-0 left-0 right-0 z-50 px-4 pt-4 md:pt-5">
       <div
         className={[
-          'mx-auto max-w-7xl flex items-center justify-between gap-3',
-          'px-4 py-2 rounded-full transition-all duration-500',
+          'mx-auto max-w-7xl flex items-center justify-between gap-4',
+          'px-5 py-3 rounded-full transition-all duration-500 md:px-6 md:py-3.5',
           scrolled
-            ? 'bg-black/50 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.4)] border border-white/10'
+            ? 'bg-black/50 backdrop-blur-xl shadow-[0_10px_36px_rgba(0,0,0,0.4)] border border-white/10'
             : 'bg-black/20 backdrop-blur-md border border-white/10',
         ].join(' ')}
       >
-        {/* ── Left: Logo ── */}
         <Link to="/" className="flex items-center shrink-0">
-          <img src="/images/Logo.png" alt={SITE.name} className="h-6 object-contain brightness-0 invert" />
+          <img src="/images/Logo.png" alt={SITE.name} className="h-7 object-contain brightness-0 invert md:h-8" />
         </Link>
 
-        {/* ── Center: Nav links ── */}
         <div className="flex justify-end md:justify-center flex-1 min-w-0">
           <PillNav
             items={navItems}
@@ -71,22 +68,16 @@ export default function Header() {
           />
         </div>
 
-        {/* ── Right: Auth Buttons (desktop only — mobile uses hamburger menu) ── */}
-        <div className="hidden md:flex items-center gap-2 shrink-0">
+        <div className="hidden md:flex items-center gap-2.5 shrink-0">
           <Link
             to="/login"
-            className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium
-                       text-white/70 hover:text-white hover:bg-white/10
-                       rounded-full transition-all duration-200"
+            className="inline-flex items-center justify-center px-5 py-2.5 text-[15px] font-medium text-white/75 hover:text-white hover:bg-white/10 rounded-full transition-all duration-200"
           >
             Đăng nhập
           </Link>
           <Link
             to="/signup"
-            className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium
-                       bg-white text-brand-navy
-                       rounded-full hover:bg-white/90
-                       transition-all duration-300 active:scale-[0.97]"
+            className="inline-flex items-center justify-center px-5 py-2.5 text-[15px] font-semibold bg-white text-brand-navy rounded-full hover:bg-white/90 transition-all duration-300 active:scale-[0.97]"
           >
             Bắt đầu miễn phí
           </Link>

@@ -2,6 +2,7 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import Grainient from '@/components/animations/Grainient';
 import SplitText from '@/components/animations/SplitText';
+import { SITE } from '@/lib/constants';
 
 const SLIDES = [
   { id: 1, text: 'SOẠN BÀI NHANH' },
@@ -32,7 +33,6 @@ export default function HeroSection() {
       className="relative w-full h-screen overflow-hidden flex flex-col"
       aria-label="Hero"
     >
-      {/* ── Grainient background (Mascoteach navy/blue palette) ── */}
       <div className="absolute inset-0 z-0">
         <Grainient
           color1="#5BAED4"
@@ -60,42 +60,55 @@ export default function HeroSection() {
         />
       </div>
 
-      {/* ── Slide text — vertically centred ── */}
-      <div className="relative z-10 flex-1 flex items-center justify-center w-full px-4 sm:px-8 md:px-16 lg:px-24">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={current.id}
-            className="w-full"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
-          >
-            <SplitText
-              key={splitKey}
-              text={current.text}
-              tag="span"
-              className="font-black uppercase text-white leading-tight block w-full text-center sm:whitespace-nowrap"
-              style={{
-                fontSize: 'clamp(2rem, 8.5vw, 10rem)',
-                letterSpacing: '-0.04em',
-                textShadow: '0 4px 40px rgba(0,0,0,0.4)',
-              }}
-              splitType="chars"
-              delay={60}
-              duration={0.6}
-              ease="power3.out"
-              from={{ opacity: 0, y: 60, rotateX: -40 }}
-              to={{ opacity: 1, y: 0, rotateX: 0 }}
-              threshold={0}
-              rootMargin="0px"
-              textAlign="center"
-            />
-          </motion.div>
-        </AnimatePresence>
+      <div className="relative z-10 px-4 pt-[110px] sm:px-8 sm:pt-[122px] md:px-16 md:pt-[136px] lg:px-24">
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.1 }}
+          className="mx-auto flex w-full max-w-7xl justify-center"
+        >
+          <p className="text-center text-sm font-semibold tracking-[0.22em] text-white/88 sm:text-base">
+            {SITE.tagline}
+          </p>
+        </motion.div>
       </div>
 
-      {/* ── Quick-guide button — pinned near bottom ── */}
+      <div className="relative z-10 flex-1 flex items-center justify-center w-full px-4 sm:px-8 md:px-16 lg:px-24">
+        <div className="w-full max-w-7xl text-center">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={current.id}
+              className="w-full"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              <SplitText
+                key={splitKey}
+                text={current.text}
+                tag="span"
+                className="font-black uppercase text-white leading-tight block w-full text-center sm:whitespace-nowrap"
+                style={{
+                  fontSize: 'clamp(2.3rem, 8.8vw, 10rem)',
+                  letterSpacing: '-0.04em',
+                  textShadow: '0 4px 40px rgba(0,0,0,0.4)',
+                }}
+                splitType="chars"
+                delay={60}
+                duration={0.6}
+                ease="power3.out"
+                from={{ opacity: 0, y: 60, rotateX: -40 }}
+                to={{ opacity: 1, y: 0, rotateX: 0 }}
+                threshold={0}
+                rootMargin="0px"
+                textAlign="center"
+              />
+            </motion.div>
+          </AnimatePresence>
+        </div>
+      </div>
+
       <div className="relative z-10 flex justify-center pb-16">
         <QuickGuideButton />
       </div>
@@ -116,7 +129,6 @@ function QuickGuideButton() {
       animate={{ scale: hovered ? 1.04 : 1 }}
       transition={{ type: 'spring', stiffness: 300, damping: 20 }}
     >
-      {/* Sliding fill on hover */}
       <motion.span
         className="absolute inset-0 bg-white/20 rounded-full"
         initial={{ x: '-100%' }}
@@ -124,10 +136,8 @@ function QuickGuideButton() {
         transition={{ type: 'spring', stiffness: 260, damping: 28 }}
       />
 
-      {/* Label */}
       <span className="relative z-10">Hướng dẫn nhanh</span>
 
-      {/* Arrow slides in on hover */}
       <motion.span
         className="relative z-10 flex items-center overflow-hidden"
         animate={{
@@ -144,3 +154,4 @@ function QuickGuideButton() {
     </motion.button>
   );
 }
+
