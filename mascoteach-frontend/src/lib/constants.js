@@ -1,6 +1,6 @@
-export const SITE = {
+﻿export const SITE = {
   name: 'Mascoteach',
-  tagline: 'Trợ giảng AI cho lớp học thế hệ mới',
+  tagline: 'Learn, play, lead the way',
   description: 'Biến mọi phòng học thành không gian tương tác sống động.',
 };
 
@@ -34,7 +34,7 @@ export const FEATURES = [
     badgeColor: 'sky',
     title: 'Trợ giảng AI — hiểu từng học sinh',
     description:
-      'Mascot AI đồng hành cùng giáo viên: nhận diện cảm xúc lớp, phản hồi bằng giọng nói real-time và cá nhân hóa tương tác cho từng em.',
+      'Mascot AI đồng hành cùng giáo viên: nhận diện cảm xúc lớp, phản hồi bằng giọng nói real-time và cá nhân hóa tương tác cho từng học sinh.',
     lottie: '/lottie/mascot-ai.json',
     bgColor: 'bg-surface-blue',
     span: 'md:col-span-2',
@@ -54,7 +54,7 @@ export const FEATURES = [
     badge: 'Analytics',
     badgeColor: 'teal',
     title: 'Nhìn thấu lớp học bằng dữ liệu',
-    description: 'Dashboard trực quan giúp phát hiện học sinh cần hỗ trợ, theo dõi tiến bộ từng em và đưa ra quyết định giảng dạy chính xác hơn.',
+    description: 'Dashboard trực quan giúp phát hiện học sinh cần hỗ trợ, theo dõi tiến bộ từng học sinh và đưa ra quyết định giảng dạy chính xác hơn.',
     lottie: '/lottie/analytics.json',
     bgColor: 'bg-surface-teal',
     span: 'md:col-span-1',
@@ -80,9 +80,9 @@ export const SHOWCASE_ITEMS = [
     id: 'live-class',
     badge: 'Live Interaction',
     badgeColor: 'violet',
-    title: 'Lớp học sống động — nơi mọi em đều được lắng nghe',
+    title: 'Lớp học sống động — nơi mọi học sinh đều được lắng nghe',
     description:
-      'Mascot AI dẫn dắt, học sinh tương tác real-time, giáo viên kiểm soát toàn bộ từ dashboard. Không em nào bị bỏ lại phía sau.',
+      'Mascot AI dẫn dắt, học sinh tương tác real-time, giáo viên kiểm soát toàn bộ từ dashboard. Không học sinh nào bị bỏ lại phía sau.',
     visual: 'live-class',
     features: [
       'Phản hồi tức thì — biết ngay ai đang theo kịp',
@@ -170,3 +170,5 @@ export const FOOTER = {
   ],
   copyright: 'Mascoteach 2026. Sản phẩm của tình yêu công nghệ và giáo dục.',
 };
+
+

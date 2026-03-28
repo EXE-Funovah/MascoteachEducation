@@ -21,28 +21,28 @@ const STICKERS = [
     style: { bottom: '8%', right: '5%' },
   },
   {
-    src: '/images/angry_face.png',
+    src: '/images/happy_face.png',
     width: 100,
     rotate: 8,
     peelDirection: 10,
     style: { top: '10%', right: '6%' },
   },
   {
-    src: '/images/angry_face.png',
+    src: '/images/happy_face.png',
     width: 90,
     rotate: -20,
     peelDirection: -10,
     style: { bottom: '12%', left: '6%' },
   },
   {
-    src: '/images/neutral_face.png',
+    src: '/images/happy_face.png',
     width: 110,
     rotate: 15,
     peelDirection: -20,
     style: { top: '50%', left: '3%' },
   },
   {
-    src: '/images/neutral_face.png',
+    src: '/images/happy_face.png',
     width: 95,
     rotate: -8,
     peelDirection: 15,
@@ -144,12 +144,14 @@ export default function Testimonials() {
 
       <div className="relative z-10 max-w-7xl mx-auto px-6">
         <FadeInUp>
-          <div className="text-center max-w-2xl mx-auto mb-12 md:mb-16">
+          <div className="text-center max-w-3xl mx-auto mb-12 md:mb-16">
             <Badge color="orange" className="mb-4">
               Đánh giá
             </Badge>
             <h2 className="text-display-md md:text-display-lg">
-              Được yêu thích bởi giáo viên thực thụ
+              Được yêu thích bởi
+              <br className="hidden md:block" />
+              <span className="md:whitespace-nowrap">giáo viên thực thụ</span>
             </h2>
             <p className="mt-6 text-body-lg text-ink-secondary">
               Những câu chuyện từ các giáo viên, phụ huynh và nhà quản lý
@@ -175,3 +177,5 @@ export default function Testimonials() {
     </section>
   );
 }
+
+
