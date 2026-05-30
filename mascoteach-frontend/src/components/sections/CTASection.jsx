@@ -43,8 +43,8 @@ export default function CTASection() {
             </h2>
 
             <p className="mt-6 md:mt-8 text-body-lg text-white/80 max-w-2xl mx-auto leading-relaxed">
-              Ứng dụng AI thông minh giúp giáo viên tinh gọn quá trình chuẩn bị, mang đến không gian
-              tương tác sinh động để học sinh chủ động tiếp thu kiến thức.
+              Trợ lý thông minh giúp giáo viên chuẩn bị nhanh hơn, giữ nhịp lớp học tốt hơn
+              và đưa học sinh quay lại đúng mạch kiến thức.
             </p>
 
             <div className="mt-10 md:mt-12 flex items-center justify-center">

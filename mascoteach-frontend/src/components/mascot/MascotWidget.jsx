@@ -18,14 +18,13 @@ const MASCOT_SPEAKING = MASCOT_HEAD;
 const MENU_OPTIONS = [
     {
         id: 'talk',
-        label: 'Nói chuyện',
+        label: 'Gợi ý học',
         action: 'talk',
         icon: (
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
-                <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-                <line x1="12" y1="19" x2="12" y2="23" />
-                <line x1="8" y1="23" x2="16" y2="23" />
+                <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z" />
+                <path d="M8 9h8" />
+                <path d="M8 13h5" />
             </svg>
         ),
     },
@@ -43,7 +42,7 @@ const MENU_OPTIONS = [
     },
     {
         id: 'quiz',
-        label: 'Làm Quiz',
+        label: 'Tạo câu hỏi',
         action: 'quiz',
         icon: (
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -81,14 +80,14 @@ const MENU_OPTIONS = [
 ];
 
 /**
- * Status labels for the live audio session
+ * Status labels for the contextual AI session
  */
 const STATUS_LABELS = {
     idle: '',
     connecting: 'Đang kết nối...',
     connected: 'Sẵn sàng!',
-    listening: '🎤 Đang nghe...',
-    speaking: '🔊 Đang nói...',
+    listening: 'Đang xem mạch học...',
+    speaking: 'Đang phản hồi...',
     error: '⚠️ Lỗi',
     disconnected: 'Đã ngắt kết nối',
 };
@@ -121,14 +120,14 @@ export default function MascotWidget() {
 
         service.onSpeakingStart = () => {
             setIsSpeaking(true);
-            showBubble('🔊 Đang nói...', 0);
+            showBubble('Đang phản hồi...', 0);
         };
 
         service.onSpeakingEnd = () => {
             setIsSpeaking(false);
             // Keep the "listening" bubble if session is active
             if (service.isSessionActive) {
-                showBubble('🎤 Đang nghe...', 0);
+                showBubble('Đang xem mạch học...', 0);
             } else {
                 setBubbleVisible(false);
             }
@@ -225,7 +224,7 @@ export default function MascotWidget() {
     }, []);
 
     /**
-     * Toggle the live audio session (Talk button).
+     * Toggle the contextual AI session.
      * If a session is active, stop it. Otherwise, start one.
      */
     const toggleLiveSession = useCallback(async () => {
@@ -237,19 +236,19 @@ export default function MascotWidget() {
             setIsSessionActive(false);
             setIsListening(false);
             setIsSpeaking(false);
-            showBubble('Đã kết thúc. Bấm Nói chuyện để trò chuyện lại!', 4000);
+            showBubble('Đã kết thúc. Bấm Gợi ý học để tiếp tục nhé!', 4000);
             return;
         }
 
         // Guard: microphone + AudioWorklet require a secure context (HTTPS or localhost)
         if (!window.isSecureContext) {
-            showBubble('⚠️ Tính năng giọng nói chỉ hoạt động trên HTTPS. Vui lòng truy cập qua mascoteach.com!', 6000);
+            showBubble('Tính năng gợi ý học cần kết nối bảo mật. Vui lòng truy cập qua mascoteach.com!', 6000);
             return;
         }
 
         // Guard: AudioWorklet support (not available on old iOS Safari)
         if (!window.AudioContext && !window.webkitAudioContext) {
-            showBubble('⚠️ Trình duyệt của bạn không hỗ trợ tính năng giọng nói. Hãy dùng Chrome hoặc Edge!', 6000);
+            showBubble('Trình duyệt của bạn chưa hỗ trợ tính năng này. Hãy dùng Chrome hoặc Edge!', 6000);
             return;
         }
 
@@ -262,7 +261,7 @@ export default function MascotWidget() {
             setIsSessionActive(true);
             setIsListening(true);
             setIsSpeaking(false);
-            showBubble('🎤 Đang nghe... Hãy nói với Sumadi!', 0);
+            showBubble('Sumadi đang xem mạch học của lớp...', 0);
         } catch (error) {
             console.error('[MascotWidget] Failed to start session:', error);
             setIsSpeaking(false);
@@ -310,15 +309,15 @@ export default function MascotWidget() {
                 break;
             case 'help':
                 speakForDuration(2000);
-                showBubble('Mình là Tanuki! 🦝 Bấm Nói chuyện để trò chuyện bằng giọng nói nhé!', 4000);
+                showBubble('Mình là Tanuki! Bấm Gợi ý học để Sumadi xem mạch bài và gợi ý bước tiếp theo nhé!', 4000);
                 break;
             case 'quiz':
                 speakForDuration(2000);
-                showBubble('Vào Thư viện, tải tài liệu lên, mình sẽ tạo câu hỏi quiz cho bạn! 📝', 4000);
+                showBubble('Vào Thư viện, tải tài liệu lên, mình sẽ giúp bạn tạo câu hỏi ôn tập thật nhanh!', 4000);
                 break;
             case 'tip':
                 speakForDuration(2000);
-                showBubble('Mẹo: Tạo phiên chơi trực tiếp từ quiz để học vui hơn! 🎮', 4000);
+                showBubble('Mẹo: Tạo một lượt chơi ngắn từ bộ câu hỏi để lớp học vui hơn!', 4000);
                 break;
             case 'dismiss':
                 handleDismiss();
@@ -421,7 +420,7 @@ export default function MascotWidget() {
                                     transition={{ type: 'spring', stiffness: 300, damping: 20 }}
                                 >
                                     <span className="mascot-live-dot" />
-                                    <span className="mascot-live-text">LIVE</span>
+                                    <span className="mascot-live-text">Đang mở</span>
                                 </motion.div>
                             )}
                         </AnimatePresence>
@@ -484,7 +483,7 @@ export default function MascotWidget() {
                             onClick={handleMascotClick}
                             role="button"
                             tabIndex={0}
-                            aria-label={isSessionActive ? "Dừng nói chuyện với Tanuki" : "Tương tác với Tanuki"}
+                            aria-label={isSessionActive ? "Dừng gợi ý học với Tanuki" : "Tương tác với Tanuki"}
                         >
                             <motion.img
                                 key={mascotImage}

@@ -15,7 +15,7 @@ export default function HeroSection() {
         <div className="aspect-video w-full">
           <img
             src="/images/herosection/hero.png"
-            alt="Mascoteach introduces Sumadi, a friendly AI learning companion, studying with a child at a warm learning table."
+            alt="Sumadi, người bạn học tập thông minh của Mascoteach, đang học cùng một em nhỏ."
             className="h-full w-full object-cover object-center"
           />
         </div>

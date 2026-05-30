@@ -1,144 +1,256 @@
-﻿import { motion } from 'framer-motion';
+import { useMemo, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import FadeInUp from '@/components/animations/FadeInUp';
-import Badge from '@/components/common/Badge';
-import { SHOWCASE_ITEMS } from '@/lib/constants';
-import { cn } from '@/lib/utils';
+import { SHOWCASE_INSIGHT } from '@/lib/constants';
 
-/* Decorative blob colors per item */
-const BLOB_COLORS = [
-  'bg-brand-mid/20',
-  'bg-brand-blue/18',
-];
+const slideVariants = {
+  enter: (direction) => ({
+    x: direction > 0 ? 64 : -64,
+    opacity: 0,
+    scale: 0.98,
+    filter: 'blur(8px)',
+  }),
+  center: {
+    x: 0,
+    opacity: 1,
+    scale: 1,
+    filter: 'blur(0px)',
+  },
+  exit: (direction) => ({
+    x: direction > 0 ? -64 : 64,
+    opacity: 0,
+    scale: 0.98,
+    filter: 'blur(8px)',
+  }),
+};
 
-const ITEM_EMOJIS = ['📝', '🎓'];
+function SurveyMetric({ label, value }) {
+  return (
+    <div className="rounded-2xl bg-sky-50/70 px-4 py-3 text-left">
+      <p className="text-2xl font-black leading-none text-sky-500 tabular-nums">{value}</p>
+      <p className="mt-2 text-[11px] font-semibold leading-snug text-ink/55">{label}</p>
+    </div>
+  );
+}
+
+function QuoteChip({ children, index }) {
+  return (
+    <motion.li
+      initial={{ opacity: 0, y: 14 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.16 + index * 0.08, duration: 0.45 }}
+      className="rounded-full bg-white px-4 py-2 text-[11px] font-medium leading-relaxed text-ink/62 shadow-[0_10px_30px_rgba(43,88,118,0.06)] md:text-xs"
+    >
+      {children}
+    </motion.li>
+  );
+}
+
+function QuestionSlide({ question }) {
+  return (
+    <div>
+      <p className="text-xl font-semibold text-ink-muted/70">({question.id})</p>
+      <h3 className="mt-5 max-w-3xl text-2xl font-bold leading-tight text-ink md:text-3xl">
+        {question.title}
+      </h3>
+      <p className="mt-3 max-w-4xl text-sm font-medium leading-relaxed text-ink/52 md:text-base">
+        {question.subtitle}
+      </p>
+
+      <ul className="mt-8 flex flex-wrap gap-3">
+        {question.chips.map((chip, chipIndex) => (
+          <QuoteChip key={chip} index={chipIndex}>
+            {chip}
+          </QuoteChip>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function InsightPillar({ pillar, index }) {
+  return (
+    <motion.article
+      initial={{ opacity: 0, y: 22 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.22 + index * 0.1, duration: 0.48 }}
+      className="relative rounded-[1.35rem] bg-white p-5 shadow-[0_20px_60px_rgba(38,119,171,0.08)]"
+    >
+      <p className="w-fit rounded-full bg-sky-50 px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-sky-500">
+        {pillar.label}
+      </p>
+      <h4 className="mt-4 text-lg font-bold text-sky-500">{pillar.title}</h4>
+      <p className="mt-3 text-sm font-medium leading-relaxed text-ink/68">
+        {pillar.description}
+      </p>
+      <p className="mt-4 text-xs font-semibold leading-relaxed text-ink/42">
+        {pillar.evidence}
+      </p>
+    </motion.article>
+  );
+}
+
+function ValuesSlide({ insight }) {
+  return (
+    <div>
+      <p className="text-2xl font-black text-sky-400">*</p>
+      <h3 className="mt-4 max-w-5xl text-2xl font-bold leading-snug text-sky-500 md:text-3xl">
+        {insight.title}
+      </h3>
+      <p className="mt-5 max-w-4xl text-sm font-medium leading-relaxed text-ink/56 md:text-base">
+        {insight.body}
+      </p>
+
+      <div className="mt-8 grid gap-4 md:grid-cols-3">
+        {insight.pillars.map((pillar, index) => (
+          <InsightPillar key={pillar.title} pillar={pillar} index={index} />
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export default function InteractiveShowcase() {
-  return (
-    <section id="showcase" className="py-20 md:py-28 relative overflow-hidden" aria-label="Giải pháp">
-      <div className="orb orb-teal w-[350px] h-[350px] top-20 -left-32 opacity-30" />
-      <div className="orb orb-pink w-[300px] h-[300px] bottom-20 -right-20 opacity-25" />
+  const { eyebrow, title, subtitle, meta, questions, insight } = SHOWCASE_INSIGHT;
+  const [activeSlide, setActiveSlide] = useState(0);
+  const [direction, setDirection] = useState(1);
 
-      <div className="relative z-10 max-w-6xl mx-auto px-6">
+  const slides = useMemo(() => [
+    { id: 'q1', label: 'Vấn đề', eyebrow: 'Câu hỏi 1', type: 'question', question: questions[0] },
+    { id: 'q2', label: 'Niềm tin', eyebrow: 'Câu hỏi 2', type: 'question', question: questions[1] },
+    { id: 'values', label: 'Giá trị', eyebrow: 'Đúc kết', type: 'values', insight },
+  ], [questions, insight]);
+
+  const goToSlide = (nextIndex) => {
+    if (nextIndex === activeSlide) return;
+    setDirection(nextIndex > activeSlide ? 1 : -1);
+    setActiveSlide(nextIndex);
+  };
+
+  const moveSlide = (step) => {
+    const nextIndex = (activeSlide + step + slides.length) % slides.length;
+    setDirection(step > 0 ? 1 : -1);
+    setActiveSlide(nextIndex);
+  };
+
+  const currentSlide = slides[activeSlide];
+
+  return (
+    <section
+      id="showcase"
+      className="relative overflow-hidden bg-white py-20 md:py-28"
+      aria-label="Insight khảo sát người dùng"
+    >
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[48%] bg-gradient-to-b from-sky-50/0 via-sky-50/70 to-sky-100/70" />
+
+      <div className="relative z-10 mx-auto max-w-6xl px-6">
         <FadeInUp>
-          <div className="text-center max-w-3xl mx-auto mb-14 md:mb-16">
-            <Badge color="teal" className="mb-3">Giải pháp cốt lõi</Badge>
-            <h2 className="text-display-sm md:text-display-md">
-              <span className="md:whitespace-nowrap">Mascoteach vận hành trong lớp học ra sao?</span>
-            </h2>
-            <p className="mt-4 text-body-md text-ink/80 font-medium">
-              Hai công cụ mạnh mẽ giúp giáo viên dạy ít hơn — nhưng truyền cảm hứng nhiều hơn.
-            </p>
+          <div className="mx-auto max-w-5xl">
+            <p className="text-sm font-semibold text-sky-400">{eyebrow}</p>
+            <div className="mt-5 grid gap-8 md:grid-cols-[1fr_auto] md:items-end">
+              <div>
+                <h2 className="max-w-4xl text-3xl font-bold leading-tight text-ink md:text-4xl lg:text-5xl">
+                  {title}
+                </h2>
+                <p className="mt-5 max-w-3xl text-sm font-medium leading-relaxed text-ink/62 md:text-base">
+                  {subtitle}
+                </p>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-3 md:w-[360px] md:grid-cols-1">
+                {meta.map((item) => (
+                  <SurveyMetric key={item.label} {...item} />
+                ))}
+              </div>
+            </div>
           </div>
         </FadeInUp>
 
-        {/* ── Zig-zag alternating layout — only 2 core blocks ── */}
-        <div className="space-y-16 md:space-y-24">
-          {SHOWCASE_ITEMS.map((item, idx) => {
-            const isEven = idx % 2 === 0;
+        <motion.div
+          initial={{ opacity: 0, y: 36 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: '-80px' }}
+          transition={{ duration: 0.7, ease: [0.25, 0.4, 0.25, 1] }}
+          className="mx-auto mt-14 max-w-5xl overflow-hidden rounded-[2rem] border border-slate-100 bg-slate-50/85 shadow-[0_28px_90px_rgba(15,23,42,0.055)] md:mt-16"
+        >
+          <div className="flex flex-col gap-4 border-b border-white/80 bg-white/58 px-5 py-4 backdrop-blur md:flex-row md:items-center md:justify-between md:px-7">
+            <div className="flex gap-2 overflow-x-auto pb-1 md:pb-0">
+              {slides.map((slide, index) => {
+                const isActive = index === activeSlide;
 
-            return (
+                return (
+                  <button
+                    key={slide.id}
+                    type="button"
+                    onClick={() => goToSlide(index)}
+                    className={[
+                      'relative whitespace-nowrap rounded-full px-4 py-2 text-xs font-bold transition-all duration-300',
+                      isActive
+                        ? 'bg-sky-500 text-white shadow-[0_12px_30px_rgba(14,165,233,0.28)]'
+                        : 'bg-white text-ink/48 hover:bg-sky-50 hover:text-sky-500',
+                    ].join(' ')}
+                  >
+                    <span className="mr-2 text-[10px] opacity-75">{slide.eyebrow}</span>
+                    {slide.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="flex items-center justify-between gap-4 md:justify-end">
+              <div className="h-1.5 w-28 overflow-hidden rounded-full bg-sky-100">
+                <motion.div
+                  className="h-full rounded-full bg-sky-500"
+                  initial={false}
+                  animate={{ width: `${((activeSlide + 1) / slides.length) * 100}%` }}
+                  transition={{ duration: 0.42, ease: [0.25, 0.4, 0.25, 1] }}
+                />
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => moveSlide(-1)}
+                  className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-ink/60 shadow-sm transition-all duration-300 hover:-translate-x-0.5 hover:bg-sky-50 hover:text-sky-500 active:scale-95"
+                  aria-label="Xem slide trước"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => moveSlide(1)}
+                  className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-ink/60 shadow-sm transition-all duration-300 hover:translate-x-0.5 hover:bg-sky-50 hover:text-sky-500 active:scale-95"
+                  aria-label="Xem slide tiếp theo"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="relative min-h-[390px] bg-gradient-to-br from-slate-50 via-white to-sky-50/70 p-7 md:min-h-[430px] md:p-10">
+            <AnimatePresence mode="wait" custom={direction}>
               <motion.div
-                key={item.id}
-                initial={{ opacity: 0, y: 36 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: '-60px' }}
-                transition={{ duration: 0.7, ease: [0.25, 0.4, 0.25, 1] }}
+                key={currentSlide.id}
+                custom={direction}
+                variants={slideVariants}
+                initial="enter"
+                animate="center"
+                exit="exit"
+                transition={{ duration: 0.45, ease: [0.25, 0.4, 0.25, 1] }}
+                className="h-full"
               >
-                <div className={cn(
-                  'grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-14 items-center',
-                )}>
-                  {/* Text side */}
-                  <div className={cn(
-                    'space-y-5',
-                    !isEven && 'lg:order-2',
-                  )}>
-                    <Badge color={item.badgeColor}>{item.badge}</Badge>
-                    <h3 className="text-display-sm md:text-display-md leading-tight">{item.title}</h3>
-                    <p className="text-body-md text-ink/75 font-medium leading-relaxed">
-                      {item.description}
-                    </p>
-                    <ul className="space-y-3 pt-1">
-                      {item.features.map((feat, i) => (
-                        <motion.li
-                          key={i}
-                          initial={{ opacity: 0, x: -12 }}
-                          whileInView={{ opacity: 1, x: 0 }}
-                          viewport={{ once: true }}
-                          transition={{ delay: 0.3 + i * 0.12 }}
-                          className="flex items-start gap-3"
-                        >
-                          <div className="mt-0.5 w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
-                            <svg className="w-3 h-3 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                            </svg>
-                          </div>
-                          <span className="text-body-sm text-ink/70 font-medium">{feat}</span>
-                        </motion.li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  {/* Visual side with decorative blob — slightly enlarged */}
-                  <div className={cn(!isEven && 'lg:order-1', 'relative')}>
-                    {/* Background blob */}
-                    <motion.div
-                      className={cn(
-                        'absolute -inset-5 rounded-[2.5rem] opacity-60',
-                        BLOB_COLORS[idx],
-                      )}
-                      style={{ filter: 'blur(40px)' }}
-                      animate={{ scale: [1, 1.05, 1], rotate: [0, 2, 0] }}
-                      transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
-                    />
-
-                    {/* Geometric accent shapes */}
-                    <motion.div
-                      className="absolute -top-3 -right-3 w-14 h-14 rounded-2xl bg-gradient-to-br from-brand-blue/15 to-brand-mid/15 rotate-12"
-                      animate={{ rotate: [12, 20, 12] }}
-                      transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
-                    />
-                    <motion.div
-                      className="absolute -bottom-2 -left-4 w-10 h-10 rounded-full bg-gradient-to-br from-brand-light/25 to-brand-mid/15"
-                      animate={{ y: [0, -6, 0] }}
-                      transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
-                    />
-
-                    {/* Video / media mockup — enlarged for 2-item layout */}
-                    <div className="relative rounded-3xl bg-white border border-slate-100/80 shadow-gamma-float overflow-hidden">
-                      <div className="h-1.5 w-full bg-gradient-to-r from-brand-navy via-brand-blue to-brand-mid" />
-                      <div className="p-8 md:p-10 min-h-[280px] lg:min-h-[340px] bg-gradient-to-br from-blue-50/60 via-white to-sky-50/40 flex items-center justify-center">
-                        <div className="text-center space-y-4">
-                          <motion.div
-                            className="w-20 h-20 mx-auto rounded-2xl bg-gradient-to-br from-brand-navy/10 to-brand-blue/15 flex items-center justify-center"
-                            animate={{ y: [0, -10, 0] }}
-                            transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut' }}
-                          >
-                            <div className="w-14 h-14 rounded-xl bg-white shadow-gamma-card flex items-center justify-center">
-                              <span className="text-2xl">
-                                {ITEM_EMOJIS[idx]}
-                              </span>
-                            </div>
-                          </motion.div>
-                          <p className="text-xs text-ink-muted font-medium">
-                            {item.visual === 'lesson-builder' ? 'Content Studio Preview' : 'Live Class Dashboard'}
-                          </p>
-                          <div className="flex justify-center gap-2 mt-2">
-                            <div className="h-2 w-16 rounded-full bg-brand-navy/12" />
-                            <div className="h-2 w-12 rounded-full bg-brand-blue/12" />
-                            <div className="h-2 w-10 rounded-full bg-brand-mid/15" />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                {currentSlide.type === 'question' ? (
+                  <QuestionSlide question={currentSlide.question} />
+                ) : (
+                  <ValuesSlide insight={currentSlide.insight} />
+                )}
               </motion.div>
-            );
-          })}
-        </div>
+            </AnimatePresence>
+          </div>
+        </motion.div>
       </div>
     </section>
   );
 }
-
-

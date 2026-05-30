@@ -7,8 +7,8 @@ const HIGHLIGHTS = [
     icon: Sprout,
   },
   {
-    title: 'Tương tác tự nhiên',
-    description: 'Trò chuyện, hỏi đáp và phản hồi tích cực như một người bạn.',
+    title: 'Hiểu mạch học của từng em',
+    description: 'Nhìn vào tiến độ bài học để nhắc đúng lúc, đúng phần kiến thức cần ôn lại.',
     icon: MessageCircle,
   },
   {
@@ -44,7 +44,7 @@ export default function UnderHeroImage() {
                 Nhiều học sinh gặp khó khăn trong việc duy trì động lực, sự tập trung và thói quen học tập mỗi ngày.
               </p>
               <p>
-                Sumadi là trợ lý học tập thông minh giúp học sinh học tập hiệu quả hơn thông qua tương tác tự nhiên, phản hồi tích cực và trải nghiệm được cá nhân hóa.
+                Sumadi là người bạn học tập thông minh, biết học sinh đang ở đâu trong bài và nhẹ nhàng gợi ý khi các em bắt đầu chậm nhịp.
               </p>
               <p>
                 Từ việc khám phá kiến thức mới đến xây dựng thói quen tự học, Sumadi giúp việc học trở nên thú vị và gần gũi hơn.

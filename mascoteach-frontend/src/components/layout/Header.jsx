@@ -4,9 +4,8 @@ import { SITE } from '@/lib/constants';
 import PillNav from './PillNav';
 
 const SECTION_LINKS = [
-  { label: 'Tính năng', hash: '#features' },
-  { label: 'Giải pháp', hash: '#showcase' },
-  { label: 'Đánh giá', hash: '#testimonials' },
+  { label: 'Insight', hash: '#showcase' },
+  { label: 'Đối tượng', hash: '#targeting' },
 ];
 
 export default function Header() {
