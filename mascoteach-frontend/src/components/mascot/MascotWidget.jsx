@@ -7,9 +7,9 @@ import { mascotLiveService } from '@/services/mascotChatService';
 import './MascotWidget.css';
 
 // Mascot sprite images (swap PNGs keeping these names)
-const MASCOT_IDLE = '/images/mascot-idle.png';
-const MASCOT_SPEAKING = '/images/mascot-speaking.png';
 const MASCOT_HEAD = '/images/mascot-head.png';
+const MASCOT_IDLE = MASCOT_HEAD;
+const MASCOT_SPEAKING = MASCOT_HEAD;
 
 /**
  * Radial menu options — arranged in a Sims-style fan.

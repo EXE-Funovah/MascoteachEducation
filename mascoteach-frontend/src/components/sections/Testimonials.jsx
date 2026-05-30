@@ -7,42 +7,42 @@ import { TESTIMONIALS } from '@/lib/constants';
 
 const STICKERS = [
   {
-    src: '/images/happy_face.png',
+    src: '/images/mascot-head.png',
     width: 120,
     rotate: -12,
     peelDirection: -15,
     style: { top: '6%', left: '4%' },
   },
   {
-    src: '/images/happy_face.png',
+    src: '/images/mascot-head.png',
     width: 100,
     rotate: 18,
     peelDirection: 10,
     style: { bottom: '8%', right: '5%' },
   },
   {
-    src: '/images/happy_face.png',
+    src: '/images/mascot-head.png',
     width: 100,
     rotate: 8,
     peelDirection: 10,
     style: { top: '10%', right: '6%' },
   },
   {
-    src: '/images/happy_face.png',
+    src: '/images/mascot-head.png',
     width: 90,
     rotate: -20,
     peelDirection: -10,
     style: { bottom: '12%', left: '6%' },
   },
   {
-    src: '/images/happy_face.png',
+    src: '/images/mascot-head.png',
     width: 110,
     rotate: 15,
     peelDirection: -20,
     style: { top: '50%', left: '3%' },
   },
   {
-    src: '/images/happy_face.png',
+    src: '/images/mascot-head.png',
     width: 95,
     rotate: -8,
     peelDirection: 15,

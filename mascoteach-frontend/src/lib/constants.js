@@ -21,12 +21,6 @@ export const HERO = {
   visual_caption: 'Giao diện quản lý lớp học Mascoteach',
 };
 
-export const LOGOS = [
-  { name: 'PMP', src: '/images/PMP_Logo.png' },
-  { name: 'FPT University', src: '/images/FPTU_Logo.png' },
-  { name: 'NSG', src: '/images/NSG_Logo.png' },
-];
-
 export const FEATURES = [
   {
     id: 'mascot-ai',

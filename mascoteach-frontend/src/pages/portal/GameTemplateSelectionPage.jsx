@@ -41,7 +41,7 @@ const BUILTIN_TEMPLATES = [
         id: '__adventure__',
         name: 'Mascoteach Adventure',
         logoUrl: '/images/mascot-head.png',
-        bgImage: '/images/mascot-speaking.png',
+        bgImage: '/images/mascot-head.png',
         description:
             'Chế độ phiêu lưu hiện có. Frontend đang cho chạy local trên người chơi để test nhanh câu hỏi.',
         difficulty: 'Trung bình',

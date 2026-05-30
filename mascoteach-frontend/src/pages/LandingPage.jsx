@@ -3,7 +3,7 @@ import { useLocation } from 'react-router-dom';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import HeroSection from '@/components/sections/HeroSection';
-import SocialProofMarquee from '@/components/sections/SocialProofMarquee';
+import UnderHeroImage from '@/components/sections/UnderHeroImage';
 import FeatureBentoGrid from '@/components/sections/FeatureBentoGrid';
 import InteractiveShowcase from '@/components/sections/InteractiveShowcase';
 import Testimonials from '@/components/sections/Testimonials';
@@ -27,7 +27,7 @@ export default function LandingPage() {
             <Header />
             <main>
                 <HeroSection />
-                <SocialProofMarquee />
+                <UnderHeroImage />
                 <FeatureBentoGrid />
                 {/* Showcase on clean white background */}
                 <InteractiveShowcase />

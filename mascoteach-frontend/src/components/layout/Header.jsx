@@ -46,12 +46,12 @@ export default function Header() {
           'mx-auto max-w-7xl flex items-center justify-between gap-4',
           'px-5 py-3 rounded-full transition-all duration-500 md:px-6 md:py-3.5',
           scrolled
-            ? 'bg-black/50 backdrop-blur-xl shadow-[0_10px_36px_rgba(0,0,0,0.4)] border border-white/10'
-            : 'bg-black/20 backdrop-blur-md border border-white/10',
+            ? 'bg-[#FFFDF7]/92 backdrop-blur-xl shadow-[0_12px_34px_rgba(74,46,31,0.14)] border border-[#EAD8C2]'
+            : 'bg-[#FFFDF7]/78 backdrop-blur-md border border-[#EAD8C2]/80 shadow-[0_10px_28px_rgba(74,46,31,0.08)]',
         ].join(' ')}
       >
         <Link to="/" className="flex items-center shrink-0">
-          <img src="/images/Logo.png" alt={SITE.name} className="h-7 object-contain brightness-0 invert md:h-8" />
+          <img src="/images/Logo.png" alt={SITE.name} className="h-7 object-contain md:h-8" />
         </Link>
 
         <div className="flex justify-end md:justify-center flex-1 min-w-0">
@@ -59,10 +59,10 @@ export default function Header() {
             items={navItems}
             activeHref={activeHref}
             mobileExtraItems={mobileAuthItems}
-            baseColor="#ffffff"
-            pillColor="rgba(255,255,255,0.15)"
-            pillTextColor="rgba(255,255,255,0.95)"
-            hoveredPillTextColor="#0F172A"
+            baseColor="#4A2E1F"
+            pillColor="rgba(255, 248, 234, 0.84)"
+            pillTextColor="#4A2E1F"
+            hoveredPillTextColor="#FFF8EA"
             ease="power3.out"
             initialLoadAnimation={false}
           />
@@ -71,13 +71,13 @@ export default function Header() {
         <div className="hidden md:flex items-center gap-2.5 shrink-0">
           <Link
             to="/login"
-            className="inline-flex items-center justify-center px-5 py-2.5 text-[15px] font-medium text-white/75 hover:text-white hover:bg-white/10 rounded-full transition-all duration-200"
+            className="inline-flex items-center justify-center px-5 py-2.5 text-[15px] font-semibold text-[#6F6258] hover:text-[#4A2E1F] hover:bg-[#FFE1B8]/45 rounded-full transition-all duration-200"
           >
             Đăng nhập
           </Link>
           <Link
             to="/signup"
-            className="inline-flex items-center justify-center px-5 py-2.5 text-[15px] font-semibold bg-white text-brand-navy rounded-full hover:bg-white/90 transition-all duration-300 active:scale-[0.97]"
+            className="inline-flex items-center justify-center px-5 py-2.5 text-[15px] font-bold bg-[#4A2E1F] text-[#FFF8EA] rounded-full hover:bg-[#5B3826] transition-all duration-300 active:scale-[0.97]"
           >
             Bắt đầu miễn phí
           </Link>

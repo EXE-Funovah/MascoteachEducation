@@ -149,19 +149,37 @@ export default function FeatureBentoGrid() {
                   {isHero ? (
                     /* ── Hero card: video on top + text below ── */
                     <div className="relative z-10 flex flex-col h-full">
-                      {/* Video area — contained inside the card */}
+                      {/* Product preview area — no legacy media dependency */}
                       <div className="p-4 md:p-6 pb-0">
                         <div className="relative rounded-xl overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.15)] bg-black/5">
                           {/* Top accent bar */}
                           <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-[#00B4D8] via-[#90E0EF] to-[#CAF0F8] z-10" />
-                          <video
-                            className="w-full aspect-video object-cover"
-                            src="/videos/ezgif-807b48b0f627abca.mp4"
-                            autoPlay
-                            loop
-                            muted
-                            playsInline
-                          />
+                          <div className="aspect-video bg-gradient-to-br from-[#CAF0F8] via-white to-[#90E0EF] p-5">
+                            <div className="grid h-full grid-cols-[0.9fr_1.1fr] gap-4">
+                              <div className="flex flex-col justify-between rounded-2xl bg-white/82 p-4 shadow-sm">
+                                <div>
+                                  <div className="h-3 w-20 rounded-full bg-[#0077B6]/18" />
+                                  <div className="mt-3 h-8 w-16 rounded-2xl bg-[#00B4D8]/20" />
+                                </div>
+                                <div className="space-y-2">
+                                  <div className="h-2 w-full rounded-full bg-[#03045E]/12" />
+                                  <div className="h-2 w-3/4 rounded-full bg-[#03045E]/10" />
+                                </div>
+                              </div>
+                              <div className="rounded-2xl bg-[#03045E] p-4 text-white shadow-sm">
+                                <div className="mb-4 flex items-center justify-between">
+                                  <div className="h-3 w-24 rounded-full bg-white/28" />
+                                  <div className="h-8 w-8 rounded-full bg-[#FFD76A]" />
+                                </div>
+                                <div className="grid grid-cols-3 gap-2">
+                                  <div className="h-20 rounded-xl bg-[#90E0EF]/80" />
+                                  <div className="h-20 rounded-xl bg-[#00B4D8]/80" />
+                                  <div className="h-20 rounded-xl bg-[#CAF0F8]/80" />
+                                </div>
+                                <div className="mt-4 h-3 w-32 rounded-full bg-white/24" />
+                              </div>
+                            </div>
+                          </div>
                         </div>
                       </div>
 
