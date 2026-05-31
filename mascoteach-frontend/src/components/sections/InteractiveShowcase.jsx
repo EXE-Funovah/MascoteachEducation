@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import FadeInUp from '@/components/animations/FadeInUp';
 import { SHOWCASE_INSIGHT } from '@/lib/constants';
@@ -26,20 +26,28 @@ const slideVariants = {
 };
 
 function SurveyMetric({ label, value }) {
+  const shouldReduceMotion = useReducedMotion();
+
   return (
-    <div className="rounded-2xl bg-sky-50/70 px-4 py-3.5 text-left">
+    <motion.div
+      className="rounded-2xl border border-sky-100/0 bg-sky-50/70 px-4 py-3.5 text-left transition-colors duration-200 hover:border-sky-200"
+      whileHover={shouldReduceMotion ? undefined : { y: -3, boxShadow: '0 14px 34px rgba(56, 139, 200, 0.12)' }}
+      transition={{ duration: 0.2 }}
+    >
       <p className="text-2xl font-black leading-none text-sky-500 tabular-nums">{value}</p>
       <p className="mt-2 text-xs font-semibold leading-snug text-ink/60 md:text-[13px]">{label}</p>
-    </div>
+    </motion.div>
   );
 }
 
 function QuoteChip({ children, index }) {
+  const shouldReduceMotion = useReducedMotion();
+
   return (
     <motion.li
-      initial={{ opacity: 0, y: 14 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.16 + index * 0.08, duration: 0.45 }}
+      initial={shouldReduceMotion ? false : { opacity: 0, y: 14 }}
+      animate={shouldReduceMotion ? undefined : { opacity: 1, y: 0 }}
+      transition={{ delay: shouldReduceMotion ? 0 : 0.16 + index * 0.08, duration: 0.45 }}
       className="rounded-full bg-white px-4 py-2 text-xs font-medium leading-relaxed text-ink/66 shadow-[0_10px_30px_rgba(43,88,118,0.06)] md:text-[13px]"
     >
       {children}
@@ -51,14 +59,14 @@ function QuestionSlide({ question }) {
   return (
     <div>
       <p className="text-xl font-semibold text-ink-muted/70">({question.id})</p>
-      <h3 className="mt-5 max-w-3xl text-2xl font-bold leading-tight text-ink md:text-3xl">
+      <h3 className="mt-4 max-w-3xl text-2xl font-bold leading-tight text-ink md:text-3xl">
         {question.title}
       </h3>
       <p className="mt-3 max-w-4xl text-[15px] font-medium leading-7 text-ink/62 md:text-base">
         {question.subtitle}
       </p>
 
-      <ul className="mt-8 flex flex-wrap gap-3">
+      <ul className="mt-6 flex flex-wrap gap-3">
         {question.chips.map((chip, chipIndex) => (
           <QuoteChip key={chip} index={chipIndex}>
             {chip}
@@ -67,7 +75,7 @@ function QuestionSlide({ question }) {
       </ul>
 
       {question.note && (
-        <p className="mt-6 max-w-4xl text-[15px] font-semibold leading-7 text-sky-600/90 md:text-base">
+        <p className="mt-5 max-w-4xl text-[15px] font-semibold leading-7 text-sky-600/90 md:text-base">
           {question.note}
         </p>
       )}
@@ -76,21 +84,24 @@ function QuestionSlide({ question }) {
 }
 
 function InsightPillar({ pillar, index }) {
+  const shouldReduceMotion = useReducedMotion();
+
   return (
     <motion.article
-      initial={{ opacity: 0, y: 22 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.22 + index * 0.1, duration: 0.48 }}
-      className="relative rounded-[1.35rem] bg-white p-5 shadow-[0_20px_60px_rgba(38,119,171,0.08)]"
+      initial={shouldReduceMotion ? false : { opacity: 0, y: 22, scale: 0.98 }}
+      animate={shouldReduceMotion ? undefined : { opacity: 1, y: 0, scale: 1 }}
+      whileHover={shouldReduceMotion ? undefined : { y: -3 }}
+      transition={{ delay: shouldReduceMotion ? 0 : 0.22 + index * 0.1, duration: 0.48 }}
+      className="relative rounded-[1.2rem] bg-white p-3.5 shadow-[0_20px_60px_rgba(38,119,171,0.08)] md:p-4"
     >
-      <p className="w-fit rounded-full bg-sky-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-sky-500">
+      <p className="w-fit rounded-full bg-sky-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-sky-500">
         {pillar.label}
       </p>
-      <h4 className="mt-4 text-lg font-bold text-sky-500 md:text-xl">{pillar.title}</h4>
-      <p className="mt-3 text-[15px] font-medium leading-7 text-ink/72">
+      <h4 className="mt-2.5 text-base font-bold text-sky-500 md:text-lg">{pillar.title}</h4>
+      <p className="mt-2 text-sm font-medium leading-6 text-ink/72 md:text-[15px]">
         {pillar.description}
       </p>
-      <p className="mt-4 text-[13px] font-semibold leading-6 text-ink/50">
+      <p className="mt-2.5 text-xs font-semibold leading-5 text-ink/50 md:text-[13px]">
         {pillar.evidence}
       </p>
     </motion.article>
@@ -104,11 +115,11 @@ function ValuesSlide({ insight }) {
       <h3 className="mt-4 max-w-5xl text-2xl font-bold leading-snug text-sky-500 md:text-3xl">
         {insight.title}
       </h3>
-      <p className="mt-5 max-w-4xl text-[15px] font-medium leading-7 text-ink/62 md:text-base">
+      <p className="mt-3 max-w-4xl text-[15px] font-medium leading-7 text-ink/62 md:text-base">
         {insight.body}
       </p>
 
-      <div className="mt-8 grid gap-4 md:grid-cols-3">
+      <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {insight.pillars.map((pillar, index) => (
           <InsightPillar key={pillar.title} pillar={pillar} index={index} />
         ))}
@@ -121,6 +132,7 @@ export default function InteractiveShowcase() {
   const { eyebrow, title, subtitle, meta, questions, insight } = SHOWCASE_INSIGHT;
   const [activeSlide, setActiveSlide] = useState(0);
   const [direction, setDirection] = useState(1);
+  const shouldReduceMotion = useReducedMotion();
 
   const slides = useMemo(() => [
     { id: 'q1', label: 'Vấn đề', eyebrow: 'Câu hỏi 1', type: 'question', question: questions[0] },
@@ -145,7 +157,7 @@ export default function InteractiveShowcase() {
   return (
     <section
       id="showcase"
-      className="relative overflow-hidden bg-white py-20 md:py-28"
+      className="relative overflow-hidden bg-white py-16 md:py-24"
       aria-label="Insight khảo sát người dùng"
     >
       <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[48%] bg-gradient-to-b from-sky-50/0 via-sky-50/70 to-sky-100/70" />
@@ -159,7 +171,7 @@ export default function InteractiveShowcase() {
                 <h2 className="max-w-4xl text-3xl font-bold leading-tight text-ink md:text-4xl lg:text-5xl">
                   {title}
                 </h2>
-                <p className="mt-5 max-w-3xl text-[15px] font-medium leading-7 text-ink/66 md:text-base">
+                <p className="mt-4 max-w-3xl text-[15px] font-medium leading-7 text-ink/66 md:text-base">
                   {subtitle}
                 </p>
               </div>
@@ -174,13 +186,13 @@ export default function InteractiveShowcase() {
         </FadeInUp>
 
         <motion.div
-          initial={{ opacity: 0, y: 36 }}
-          whileInView={{ opacity: 1, y: 0 }}
+          initial={shouldReduceMotion ? false : { opacity: 0, y: 28, scale: 0.98 }}
+          whileInView={shouldReduceMotion ? undefined : { opacity: 1, y: 0, scale: 1 }}
           viewport={{ once: true, margin: '-80px' }}
-          transition={{ duration: 0.7, ease: [0.25, 0.4, 0.25, 1] }}
-          className="mx-auto mt-14 max-w-5xl overflow-hidden rounded-[2rem] border border-slate-100 bg-slate-50/85 shadow-[0_28px_90px_rgba(15,23,42,0.055)] md:mt-16"
+          transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
+          className="mx-auto mt-10 max-w-5xl overflow-hidden rounded-[2rem] border border-slate-100 bg-slate-50/85 shadow-[0_28px_90px_rgba(15,23,42,0.055)] md:mt-12"
         >
-          <div className="flex flex-col gap-4 border-b border-white/80 bg-white/58 px-5 py-4 backdrop-blur md:flex-row md:items-center md:justify-between md:px-7">
+          <div className="flex flex-col gap-3 border-b border-white/80 bg-white/58 px-5 py-3.5 backdrop-blur md:flex-row md:items-center md:justify-between md:px-7">
             <div className="flex gap-2 overflow-x-auto pb-1 md:pb-0">
               {slides.map((slide, index) => {
                 const isActive = index === activeSlide;
@@ -235,16 +247,16 @@ export default function InteractiveShowcase() {
             </div>
           </div>
 
-          <div className="relative min-h-[390px] bg-gradient-to-br from-slate-50 via-white to-sky-50/70 p-7 md:min-h-[430px] md:p-10">
+          <div className="relative bg-gradient-to-br from-slate-50 via-white to-sky-50/70 p-6 md:min-h-[480px] md:p-7">
             <AnimatePresence mode="wait" custom={direction}>
               <motion.div
                 key={currentSlide.id}
                 custom={direction}
-                variants={slideVariants}
-                initial="enter"
-                animate="center"
-                exit="exit"
-                transition={{ duration: 0.45, ease: [0.25, 0.4, 0.25, 1] }}
+                variants={shouldReduceMotion ? undefined : slideVariants}
+                initial={shouldReduceMotion ? false : 'enter'}
+                animate={shouldReduceMotion ? undefined : 'center'}
+                exit={shouldReduceMotion ? undefined : 'exit'}
+                transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
                 className="h-full"
               >
                 {currentSlide.type === 'question' ? (

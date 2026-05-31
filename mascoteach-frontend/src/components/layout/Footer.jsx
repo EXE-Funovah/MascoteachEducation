@@ -1,9 +1,18 @@
-﻿import { Link } from 'react-router-dom';
+import { motion, useReducedMotion } from 'framer-motion';
+import { Link } from 'react-router-dom';
 import { SITE, FOOTER } from '@/lib/constants';
 
 export default function Footer() {
+  const shouldReduceMotion = useReducedMotion();
+
   return (
-    <footer className="bg-surface border-t border-slate-100/80">
+    <motion.footer
+      className="bg-surface border-t border-slate-100/80"
+      initial={shouldReduceMotion ? false : { opacity: 0, y: 12 }}
+      whileInView={shouldReduceMotion ? undefined : { opacity: 1, y: 0 }}
+      viewport={{ once: true, amount: 0.16 }}
+      transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+    >
       <div className="max-w-7xl mx-auto px-6 py-16">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-10">
           <div className="col-span-2 md:col-span-1">
@@ -60,6 +69,6 @@ export default function Footer() {
           </div>
         </div>
       </div>
-    </footer>
+    </motion.footer>
   );
 }

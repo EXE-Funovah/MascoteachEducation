@@ -3,6 +3,7 @@ import Footer from '@/components/layout/Footer';
 import HeroSection from '@/components/sections/HeroSection';
 import UnderHeroImage from '@/components/sections/UnderHeroImage';
 import InteractiveShowcase from '@/components/sections/InteractiveShowcase';
+import HowMascoteachWorks from '@/components/sections/HowMascoteachWorks';
 import TargetPersona from '@/components/sections/TargetPersona';
 
 export default function Home() {
@@ -12,6 +13,7 @@ export default function Home() {
       <main>
         <HeroSection />
         <UnderHeroImage />
+        <HowMascoteachWorks />
         <InteractiveShowcase />
         <TargetPersona />
       </main>

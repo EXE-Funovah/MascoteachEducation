@@ -1,7 +1,7 @@
 ﻿'use client';
 
 import { useRef, useEffect } from 'react';
-import { motion, useInView, useAnimation } from 'framer-motion';
+import { motion, useInView, useAnimation, useReducedMotion } from 'framer-motion';
 
 export default function FadeInUp({
   children,
@@ -14,6 +14,7 @@ export default function FadeInUp({
   const ref = useRef(null);
   const isInView = useInView(ref, { once, margin: '-60px 0px' });
   const controls = useAnimation();
+  const shouldReduceMotion = useReducedMotion();
 
   useEffect(() => {
     if (isInView) {
@@ -27,13 +28,13 @@ export default function FadeInUp({
       initial="hidden"
       animate={controls}
       variants={{
-        hidden: { opacity: 0, y },
+        hidden: { opacity: shouldReduceMotion ? 1 : 0, y: shouldReduceMotion ? 0 : y },
         visible: {
           opacity: 1,
           y: 0,
           transition: {
-            duration,
-            delay,
+            duration: shouldReduceMotion ? 0 : duration,
+            delay: shouldReduceMotion ? 0 : delay,
             ease: [0.25, 0.4, 0.25, 1],
           },
         },

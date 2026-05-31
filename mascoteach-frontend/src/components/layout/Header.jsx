@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { motion, useReducedMotion } from 'framer-motion';
 import { ArrowUpRight, Menu, X } from 'lucide-react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
 import { SITE } from '@/lib/constants';
@@ -17,6 +18,7 @@ export default function Header() {
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapse, setCollapse] = useState(0);
+  const shouldReduceMotion = useReducedMotion();
 
   useEffect(() => {
     let frame = 0;
@@ -55,7 +57,12 @@ export default function Header() {
   ].join(' ');
 
   return (
-    <header className="fixed left-0 right-0 top-0 z-50 px-4 pt-5">
+    <motion.header
+      className="fixed left-0 right-0 top-0 z-50 px-4 pt-5"
+      initial={shouldReduceMotion ? false : { opacity: 0, y: -8 }}
+      animate={shouldReduceMotion ? undefined : { opacity: 1, y: 0 }}
+      transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+    >
       <div
         className="mx-auto flex items-center justify-between overflow-hidden rounded-full border border-white/90 bg-white shadow-[0_12px_42px_rgba(15,23,42,0.11)] backdrop-blur-2xl transition-[border-color,box-shadow] duration-300"
         style={{
@@ -117,7 +124,7 @@ export default function Header() {
               style={{
                 opacity: 1 - clamp(collapse * 1.6),
                 transform: `translateX(${lerp(0, -18, collapse)}px)`,
-              width: `${lerp(72, 0, collapse)}px`,
+                width: `${lerp(72, 0, collapse)}px`,
               }}
             >
               Đăng ký
@@ -136,7 +143,7 @@ export default function Header() {
         <div className="flex items-center gap-3 md:hidden">
           <Link
             to="/register"
-            className="inline-flex h-10 items-center justify-center rounded-full bg-[#6DA6E8] px-4 text-[15px] font-semibold text-white"
+            className="inline-flex h-10 items-center justify-center whitespace-nowrap rounded-full bg-[#6DA6E8] px-4 text-[15px] font-semibold text-white"
           >
             Đăng ký
           </Link>
@@ -175,6 +182,6 @@ export default function Header() {
           </nav>
         </div>
       )}
-    </header>
+    </motion.header>
   );
 }

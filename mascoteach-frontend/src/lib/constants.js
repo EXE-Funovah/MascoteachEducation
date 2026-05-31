@@ -59,10 +59,10 @@ export const FEATURES = [
 ];
 
 export const SHOWCASE_INSIGHT = {
-  eyebrow: 'Insight từ người dùng thử nghiệm',
+  eyebrow: 'Dữ liệu từ khảo sát người dùng',
   title: 'Mascoteach được xây dựng từ nhu cầu thật của lớp học.',
   subtitle:
-    'Kết quả khảo sát thử nghiệm cho thấy người dùng không chỉ muốn lớp học vui hơn. Giáo viên cần giảm thời gian chuẩn bị hoạt động, học sinh cần dễ tập trung hơn, và phụ huynh cần yên tâm rằng việc học vẫn bám sát kiến thức.',
+    'Kết quả khảo sát người dùng cho thấy lớp học không chỉ cần vui hơn, mà còn cần hoạt động tương tác ngắn, dễ triển khai và vẫn bám sát kiến thức chính.',
   meta: [
     { value: '82%', label: 'giáo viên muốn tạo câu hỏi và trò chơi học tập nhanh hơn' },
     {
@@ -134,7 +134,7 @@ export const SHOWCASE_INSIGHT = {
 };
 
 export const TARGET_PERSONA = {
-  eyebrow: 'Đối tượng trọng tâm',
+  eyebrow: 'Dành cho ai?',
   title:
     'Mascoteach dành cho những lớp học cần tương tác nhanh, dễ hiểu và không lệch khỏi bài học chính.',
   subtitle:

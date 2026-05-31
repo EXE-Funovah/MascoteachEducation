@@ -1,4 +1,4 @@
-import { motion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import FadeInUp from '@/components/animations/FadeInUp';
 import { TARGET_PERSONA } from '@/lib/constants';
 
@@ -44,12 +44,19 @@ function MiniList({ title, items }) {
 }
 
 function PersonaCard({ persona, index }) {
+  const shouldReduceMotion = useReducedMotion();
+
   return (
     <motion.article
-      initial={{ opacity: 0, y: 24 }}
-      whileInView={{ opacity: 1, y: 0 }}
+      initial={shouldReduceMotion ? false : { opacity: 0, y: 24, scale: 0.98 }}
+      whileInView={shouldReduceMotion ? undefined : { opacity: 1, y: 0, scale: 1 }}
+      whileHover={shouldReduceMotion ? undefined : { y: -3 }}
       viewport={{ once: true, margin: '-80px' }}
-      transition={{ delay: index * 0.12, duration: 0.58, ease: [0.25, 0.4, 0.25, 1] }}
+      transition={{
+        delay: shouldReduceMotion ? 0 : index * 0.12,
+        duration: shouldReduceMotion ? 0 : 0.58,
+        ease: [0.22, 1, 0.36, 1],
+      }}
       className="target-persona-card"
     >
       <PersonaPortrait persona={persona} />
