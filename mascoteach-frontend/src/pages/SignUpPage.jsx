@@ -58,7 +58,7 @@ export default function SignUpPage() {
                 role: selectedRole,
             });
             // Đăng ký thành công — chuyển về trang đăng nhập
-            navigate('/login', {
+            navigate('/signin', {
                 state: { message: 'Đăng ký thành công! Vui lòng đăng nhập.' }
             });
         } catch {
@@ -197,7 +197,7 @@ export default function SignUpPage() {
             {/* Chuyển về đăng nhập */}
             <p className="mt-4 text-center text-sm text-slate-500">
                 Đã có tài khoản?{' '}
-                <Link to="/login" className="font-semibold text-brand-blue hover:text-brand-navy transition-colors">
+                <Link to="/signin" className="font-semibold text-brand-blue hover:text-brand-navy transition-colors">
                     Đăng nhập
                 </Link>
             </p>

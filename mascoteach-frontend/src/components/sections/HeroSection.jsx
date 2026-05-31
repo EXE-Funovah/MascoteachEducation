@@ -15,7 +15,7 @@ export default function HeroSection() {
         <div className="aspect-video w-full">
           <img
             src="/images/herosection/hero.png"
-            alt="Sumadi, người bạn học tập thông minh của Mascoteach, đang học cùng một em nhỏ."
+            alt="Sumadi - người bạn đồng hành học tập của Mascoteach."
             className="h-full w-full object-cover object-center"
           />
         </div>

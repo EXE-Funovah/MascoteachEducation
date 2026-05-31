@@ -27,9 +27,9 @@ const slideVariants = {
 
 function SurveyMetric({ label, value }) {
   return (
-    <div className="rounded-2xl bg-sky-50/70 px-4 py-3 text-left">
+    <div className="rounded-2xl bg-sky-50/70 px-4 py-3.5 text-left">
       <p className="text-2xl font-black leading-none text-sky-500 tabular-nums">{value}</p>
-      <p className="mt-2 text-[11px] font-semibold leading-snug text-ink/55">{label}</p>
+      <p className="mt-2 text-xs font-semibold leading-snug text-ink/60 md:text-[13px]">{label}</p>
     </div>
   );
 }
@@ -40,7 +40,7 @@ function QuoteChip({ children, index }) {
       initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.16 + index * 0.08, duration: 0.45 }}
-      className="rounded-full bg-white px-4 py-2 text-[11px] font-medium leading-relaxed text-ink/62 shadow-[0_10px_30px_rgba(43,88,118,0.06)] md:text-xs"
+      className="rounded-full bg-white px-4 py-2 text-xs font-medium leading-relaxed text-ink/66 shadow-[0_10px_30px_rgba(43,88,118,0.06)] md:text-[13px]"
     >
       {children}
     </motion.li>
@@ -54,7 +54,7 @@ function QuestionSlide({ question }) {
       <h3 className="mt-5 max-w-3xl text-2xl font-bold leading-tight text-ink md:text-3xl">
         {question.title}
       </h3>
-      <p className="mt-3 max-w-4xl text-sm font-medium leading-relaxed text-ink/52 md:text-base">
+      <p className="mt-3 max-w-4xl text-[15px] font-medium leading-7 text-ink/62 md:text-base">
         {question.subtitle}
       </p>
 
@@ -65,6 +65,12 @@ function QuestionSlide({ question }) {
           </QuoteChip>
         ))}
       </ul>
+
+      {question.note && (
+        <p className="mt-6 max-w-4xl text-[15px] font-semibold leading-7 text-sky-600/90 md:text-base">
+          {question.note}
+        </p>
+      )}
     </div>
   );
 }
@@ -77,14 +83,14 @@ function InsightPillar({ pillar, index }) {
       transition={{ delay: 0.22 + index * 0.1, duration: 0.48 }}
       className="relative rounded-[1.35rem] bg-white p-5 shadow-[0_20px_60px_rgba(38,119,171,0.08)]"
     >
-      <p className="w-fit rounded-full bg-sky-50 px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-sky-500">
+      <p className="w-fit rounded-full bg-sky-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-sky-500">
         {pillar.label}
       </p>
-      <h4 className="mt-4 text-lg font-bold text-sky-500">{pillar.title}</h4>
-      <p className="mt-3 text-sm font-medium leading-relaxed text-ink/68">
+      <h4 className="mt-4 text-lg font-bold text-sky-500 md:text-xl">{pillar.title}</h4>
+      <p className="mt-3 text-[15px] font-medium leading-7 text-ink/72">
         {pillar.description}
       </p>
-      <p className="mt-4 text-xs font-semibold leading-relaxed text-ink/42">
+      <p className="mt-4 text-[13px] font-semibold leading-6 text-ink/50">
         {pillar.evidence}
       </p>
     </motion.article>
@@ -98,7 +104,7 @@ function ValuesSlide({ insight }) {
       <h3 className="mt-4 max-w-5xl text-2xl font-bold leading-snug text-sky-500 md:text-3xl">
         {insight.title}
       </h3>
-      <p className="mt-5 max-w-4xl text-sm font-medium leading-relaxed text-ink/56 md:text-base">
+      <p className="mt-5 max-w-4xl text-[15px] font-medium leading-7 text-ink/62 md:text-base">
         {insight.body}
       </p>
 
@@ -147,13 +153,13 @@ export default function InteractiveShowcase() {
       <div className="relative z-10 mx-auto max-w-6xl px-6">
         <FadeInUp>
           <div className="mx-auto max-w-5xl">
-            <p className="text-sm font-semibold text-sky-400">{eyebrow}</p>
+            <p className="text-[15px] font-semibold text-sky-400 md:text-base">{eyebrow}</p>
             <div className="mt-5 grid gap-8 md:grid-cols-[1fr_auto] md:items-end">
               <div>
                 <h2 className="max-w-4xl text-3xl font-bold leading-tight text-ink md:text-4xl lg:text-5xl">
                   {title}
                 </h2>
-                <p className="mt-5 max-w-3xl text-sm font-medium leading-relaxed text-ink/62 md:text-base">
+                <p className="mt-5 max-w-3xl text-[15px] font-medium leading-7 text-ink/66 md:text-base">
                   {subtitle}
                 </p>
               </div>
@@ -185,13 +191,13 @@ export default function InteractiveShowcase() {
                     type="button"
                     onClick={() => goToSlide(index)}
                     className={[
-                      'relative whitespace-nowrap rounded-full px-4 py-2 text-xs font-bold transition-all duration-300',
+                      'relative whitespace-nowrap rounded-full px-4 py-2 text-[13px] font-bold transition-all duration-300 md:text-sm',
                       isActive
                         ? 'bg-sky-500 text-white shadow-[0_12px_30px_rgba(14,165,233,0.28)]'
                         : 'bg-white text-ink/48 hover:bg-sky-50 hover:text-sky-500',
                     ].join(' ')}
                   >
-                    <span className="mr-2 text-[10px] opacity-75">{slide.eyebrow}</span>
+                    <span className="mr-2 text-[11px] opacity-75 md:text-xs">{slide.eyebrow}</span>
                     {slide.label}
                   </button>
                 );

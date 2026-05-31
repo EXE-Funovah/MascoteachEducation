@@ -74,7 +74,7 @@ export default function ForgotPasswordPage() {
             {/* Quay về đăng nhập */}
             <div className="mt-8 text-center">
                 <Link
-                    to="/login"
+                    to="/signin"
                     className="inline-flex items-center gap-2 text-sm font-semibold text-brand-blue hover:text-brand-navy transition-colors"
                 >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

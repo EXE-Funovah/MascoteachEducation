@@ -91,11 +91,21 @@ export async function apiRequest(endpoint, options = {}) {
             clearAuth();
 
             // Only redirect if currently on a protected route (not public pages)
-            const publicPaths = ['/', '/pricing', '/login', '/signup', '/forgot-password'];
+            const publicPaths = [
+                '/',
+                '/product',
+                '/features',
+                '/pricing',
+                '/signin',
+                '/register',
+                '/login',
+                '/signup',
+                '/forgot-password',
+            ];
             const isPublicPage = publicPaths.includes(window.location.pathname)
                 || window.location.pathname.startsWith('/play');
             if (!isPublicPage) {
-                window.location.href = '/login';
+                window.location.href = '/signin';
             }
             throw new ApiError('Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.', 401);
         }

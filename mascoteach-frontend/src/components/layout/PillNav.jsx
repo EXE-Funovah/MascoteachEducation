@@ -221,7 +221,7 @@ const PillNav = ({
     `inline-flex items-center justify-center h-full px-[18px] rounded-full
      font-medium text-[15px] whitespace-nowrap cursor-pointer
      relative overflow-hidden border-0 outline-none leading-none
-     ${isActive ? 'after:content-[\'\'] after:absolute after:-bottom-1.5 after:left-1/2 after:-translate-x-1/2 after:w-3 after:h-3 after:rounded-full after:z-[4]' : ''}`;
+     ${isActive ? 'font-semibold after:content-[\'\'] after:absolute after:-bottom-1.5 after:left-1/2 after:-translate-x-1/2 after:w-3 after:h-3 after:rounded-full after:bg-[#5865F2] after:z-[4]' : ''}`;
 
   const pillStyle = { background: pillColor, color: resolvedPillTextColor };
 

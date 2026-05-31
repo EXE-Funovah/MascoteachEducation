@@ -19,7 +19,7 @@ export function MascotProvider({ children }) {
     const [messages, setMessages] = useState([
         {
             role: 'assistant',
-            content: 'Xin chào! 👋 Mình là Tanuki, bạn đồng hành của bạn trên Mascoteach! Hỏi mình bất cứ điều gì nhé!',
+            content: 'Xin chào! 👋 Mình là Sumadi, trợ lý học tập trong Mascoteach! Hỏi mình bất cứ điều gì nhé!',
         },
     ]);
 

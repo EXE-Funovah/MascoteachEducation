@@ -10,7 +10,7 @@ export default function Footer() {
             <Link to="/" className="inline-block mb-4">
               <img src="/images/Logo.png" alt={SITE.name} className="h-7 object-contain" />
             </Link>
-            <p className="text-sm text-ink-muted leading-relaxed max-w-[240px]">
+            <p className="max-w-[260px] text-[15px] leading-7 text-ink-muted md:text-base">
               {SITE.description}
             </p>
             <div className="flex gap-3 mt-6">
@@ -29,7 +29,7 @@ export default function Footer() {
 
           {FOOTER.columns.map((col) => (
             <nav key={col.title} aria-label={col.title}>
-              <h4 className="text-sm font-semibold text-ink mb-4 tracking-wide">
+              <h4 className="mb-4 text-base font-semibold tracking-wide text-ink">
                 {col.title}
               </h4>
               <ul className="space-y-3">
@@ -37,7 +37,7 @@ export default function Footer() {
                   <li key={link.label}>
                     <a
                       href={link.href}
-                      className="text-sm text-ink-muted hover:text-brand-blue transition-colors"
+                      className="text-[15px] text-ink-muted transition-colors hover:text-brand-blue md:text-base"
                     >
                       {link.label}
                     </a>
@@ -49,8 +49,8 @@ export default function Footer() {
         </div>
 
         <div className="mt-16 pt-8 border-t border-slate-100/80 flex flex-col md:flex-row items-center justify-between gap-4">
-          <p className="text-sm text-ink-muted">{FOOTER.copyright}</p>
-          <div className="flex gap-6 text-sm text-ink-muted">
+          <p className="text-[15px] text-ink-muted md:text-base">{FOOTER.copyright}</p>
+          <div className="flex gap-6 text-[15px] text-ink-muted md:text-base">
             <a href="#" className="hover:text-brand-blue transition-colors">
               Chính sách bảo mật
             </a>

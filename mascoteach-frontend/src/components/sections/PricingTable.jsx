@@ -110,7 +110,7 @@ function PlanBack({ plan, accent }) {
           variant={plan.popular ? 'primary' : 'secondary'}
           size="lg"
           className="w-full text-base"
-          href="/signup"
+          href="/register"
         >
           {plan.cta}
         </Button>

@@ -17,7 +17,7 @@ function PersonaPortrait({ persona }) {
         </h3>
         <div className="mt-2 flex max-w-[92%] flex-wrap gap-1.5">
           {persona.tags.slice(0, 2).map((tag) => (
-            <span key={tag} className="rounded-full bg-white px-2.5 py-1 text-[9.5px] font-medium leading-none text-[#0F172A] shadow-[0_6px_18px_rgba(15,23,42,0.12)]">
+            <span key={tag} className="rounded-full bg-white px-2.5 py-1 text-xs font-medium leading-none text-[#0F172A] shadow-[0_6px_18px_rgba(15,23,42,0.12)]">
               {tag}
             </span>
           ))}
@@ -30,10 +30,10 @@ function PersonaPortrait({ persona }) {
 function MiniList({ title, items }) {
   return (
     <div>
-      <p className="text-sm font-semibold text-sky-500">{title}</p>
+      <p className="text-[15px] font-semibold text-sky-500 md:text-base">{title}</p>
       <ul className="mt-2.5 space-y-2">
         {items.slice(0, 2).map((item) => (
-          <li key={item} className="flex gap-2 text-sm font-medium leading-relaxed text-ink/68">
+          <li key={item} className="flex gap-2 text-[15px] font-medium leading-7 text-ink/72 md:text-base">
             <span className="mt-2 h-1.5 w-1.5 flex-none rounded-full bg-sky-300" />
             <span>{item}</span>
           </li>
@@ -55,7 +55,7 @@ function PersonaCard({ persona, index }) {
       <PersonaPortrait persona={persona} />
 
       <div className="grid min-w-0 content-between gap-5 py-1">
-        <p className="rounded-full bg-white px-5 py-3 text-sm font-semibold leading-relaxed text-ink/82 shadow-[0_14px_38px_rgba(63,133,181,0.08)]">
+        <p className="rounded-[1.5rem] bg-white px-5 py-3.5 text-[15px] font-semibold leading-7 text-ink/82 shadow-[0_14px_38px_rgba(63,133,181,0.08)] md:text-base">
           {persona.quote}
         </p>
 
@@ -65,8 +65,8 @@ function PersonaCard({ persona, index }) {
         </div>
 
         <div className="border-t border-sky-200/70 pt-4">
-          <p className="text-sm font-semibold text-sky-500">Tình huống sử dụng</p>
-          <p className="mt-2 text-sm font-medium leading-relaxed text-ink/68">
+          <p className="text-[15px] font-semibold text-sky-500 md:text-base">Tình huống sử dụng</p>
+          <p className="mt-2 text-[15px] font-medium leading-7 text-ink/72 md:text-base">
             {persona.scenario}
           </p>
         </div>
@@ -85,11 +85,11 @@ export default function TargetPersona() {
       <div className="relative z-10 mx-auto max-w-6xl px-6">
         <FadeInUp>
           <div className="max-w-[820px]">
-            <p className="text-sm font-semibold text-sky-400">{eyebrow}</p>
-            <h2 className="mt-5 max-w-[780px] text-3xl font-bold leading-[0.98] text-ink md:text-4xl lg:text-[44px]">
+            <p className="text-[15px] font-semibold text-sky-400 md:text-base">{eyebrow}</p>
+            <h2 className="mt-5 max-w-[820px] text-3xl font-bold leading-tight text-ink md:text-4xl lg:text-[44px]">
               {title}
             </h2>
-            <p className="mt-5 max-w-3xl text-sm font-medium leading-relaxed text-ink/62 md:text-base">
+            <p className="mt-5 max-w-3xl text-[15px] font-medium leading-7 text-ink/66 md:text-base">
               {subtitle}
             </p>
           </div>

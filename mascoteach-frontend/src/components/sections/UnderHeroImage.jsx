@@ -1,20 +1,20 @@
-import { Heart, MessageCircle, Sprout } from 'lucide-react';
+import { FileText, Gamepad2, TimerReset } from 'lucide-react';
 
 const HIGHLIGHTS = [
   {
-    title: 'Học tập cá nhân hóa',
-    description: 'Nội dung phù hợp với năng lực và mục tiêu của từng học sinh.',
-    icon: Sprout,
+    title: 'Tạo hoạt động từ tài liệu',
+    description: 'Biến giáo án, slide hoặc nội dung bài học thành câu hỏi và trò chơi tương tác.',
+    icon: FileText,
   },
   {
-    title: 'Hiểu mạch học của từng em',
-    description: 'Nhìn vào tiến độ bài học để nhắc đúng lúc, đúng phần kiến thức cần ôn lại.',
-    icon: MessageCircle,
+    title: 'Giữ nhịp lớp học',
+    description: 'Hoạt động ngắn, phản hồi nhanh, giúp học sinh quay lại đúng phần kiến thức cần học.',
+    icon: TimerReset,
   },
   {
-    title: 'Xây dựng thói quen tốt',
-    description: 'Đồng hành mỗi ngày để hình thành thói quen tự học bền vững.',
-    icon: Heart,
+    title: 'Học vui nhưng vẫn bám bài',
+    description: 'Game hóa trải nghiệm học tập mà không làm lệch khỏi mục tiêu bài học.',
+    icon: Gamepad2,
   },
 ];
 
@@ -36,18 +36,18 @@ export default function UnderHeroImage() {
               className="max-w-[920px] text-[clamp(2.35rem,3.7vw,4.65rem)] font-extrabold leading-[1.08] tracking-normal text-[#173154]"
             >
               <span className="text-[#6DA6E8]">Sumadi:</span>
-              <span className="block">Người bạn đồng hành học tập tương tác cho học sinh</span>
+              <span className="block">Người bạn đồng hành học tập trong Mascoteach</span>
             </h2>
 
             <div className="mt-8 max-w-[830px] space-y-4 text-base font-medium leading-8 text-[#2F3D52] sm:text-lg">
               <p>
-                Nhiều học sinh gặp khó khăn trong việc duy trì động lực, sự tập trung và thói quen học tập mỗi ngày.
+                Nhiều học sinh dễ mất tập trung khi bài học chỉ xoay quanh lý thuyết hoặc câu hỏi một chiều.
+                Mascoteach giúp giáo viên biến tài liệu học tập thành các hoạt động ngắn, trực quan và dễ tham gia hơn.
               </p>
               <p>
-                Sumadi là người bạn học tập thông minh, biết học sinh đang ở đâu trong bài và nhẹ nhàng gợi ý khi các em bắt đầu chậm nhịp.
-              </p>
-              <p>
-                Từ việc khám phá kiến thức mới đến xây dựng thói quen tự học, Sumadi giúp việc học trở nên thú vị và gần gũi hơn.
+                Sumadi là mascot/trợ lý học tập của Mascoteach, đồng hành cùng học sinh trong các câu hỏi, trò chơi
+                và hoạt động tương tác. Dù xuất hiện dưới dạng robot 3D hay nhân vật 2D, Sumadi giúp bài học trở nên
+                thân thiện hơn nhưng vẫn bám sát nội dung giáo viên đang dạy.
               </p>
             </div>
           </div>

@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Home from '@/pages/Home';
+import MarketingPlaceholderPage from '@/pages/MarketingPlaceholderPage';
 import PricingPage from '@/pages/PricingPage';
 import LoginPage from '@/pages/LoginPage';
 import SignUpPage from '@/pages/SignUpPage';
@@ -32,7 +33,11 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Home />} />
+        <Route path="/product" element={<MarketingPlaceholderPage type="product" />} />
+        <Route path="/features" element={<MarketingPlaceholderPage type="features" />} />
         <Route path="/pricing" element={<PricingPage />} />
+        <Route path="/signin" element={<LoginPage />} />
+        <Route path="/register" element={<SignUpPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignUpPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />

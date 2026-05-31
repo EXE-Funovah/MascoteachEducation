@@ -309,7 +309,7 @@ export default function MascotWidget() {
                 break;
             case 'help':
                 speakForDuration(2000);
-                showBubble('Mình là Tanuki! Bấm Gợi ý học để Sumadi xem mạch bài và gợi ý bước tiếp theo nhé!', 4000);
+                showBubble('Mình là Sumadi! Bấm Gợi ý học để mình xem mạch bài và gợi ý bước tiếp theo nhé!', 4000);
                 break;
             case 'quiz':
                 speakForDuration(2000);
@@ -341,7 +341,17 @@ export default function MascotWidget() {
     const mascotImage = isSpeaking ? MASCOT_SPEAKING : MASCOT_IDLE;
 
     // Hide on public/auth pages and when not logged in
-    const PUBLIC_PATHS = ['/', '/login', '/signup', '/forgot-password'];
+    const PUBLIC_PATHS = [
+        '/',
+        '/product',
+        '/features',
+        '/pricing',
+        '/signin',
+        '/register',
+        '/login',
+        '/signup',
+        '/forgot-password',
+    ];
     if (!isLoggedIn || PUBLIC_PATHS.includes(pathname)) return null;
 
     // ── Hardcoded positions for Sims-style fan (left of mascot) ──
@@ -372,7 +382,7 @@ export default function MascotWidget() {
                         exit="exit"
                         whileHover={{ scale: 1.08 }}
                         whileTap={{ scale: 0.92 }}
-                        aria-label="Gọi Tanuki"
+                        aria-label="Gọi Sumadi"
                     >
                         <img
                             src={MASCOT_HEAD}
@@ -483,7 +493,7 @@ export default function MascotWidget() {
                             onClick={handleMascotClick}
                             role="button"
                             tabIndex={0}
-                            aria-label={isSessionActive ? "Dừng gợi ý học với Tanuki" : "Tương tác với Tanuki"}
+                            aria-label={isSessionActive ? "Dừng gợi ý học với Sumadi" : "Tương tác với Sumadi"}
                         >
                             <motion.img
                                 key={mascotImage}

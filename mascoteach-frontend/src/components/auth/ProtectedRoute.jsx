@@ -22,7 +22,7 @@ export default function ProtectedRoute({ children, allowedRoles }) {
     }
 
     if (!isLoggedIn) {
-        return <Navigate to="/login" state={{ from: location }} replace />;
+        return <Navigate to="/signin" state={{ from: location }} replace />;
     }
 
     // Role check — if allowedRoles specified, verify user has the right role

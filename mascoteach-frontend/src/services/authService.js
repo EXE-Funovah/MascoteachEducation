@@ -46,7 +46,7 @@ export async function login(credentials) {
  */
 export function logout() {
     clearAuth();
-    window.location.href = '/login';
+    window.location.href = '/signin';
 }
 
 /**

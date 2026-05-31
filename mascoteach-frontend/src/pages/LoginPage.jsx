@@ -155,7 +155,7 @@ export default function LoginPage() {
             {/* Chuyển sang đăng ký */}
             <p className="mt-8 text-center text-sm text-slate-500">
                 Chưa có tài khoản?{' '}
-                <Link to="/signup" className="font-semibold text-brand-blue hover:text-brand-navy transition-colors">
+                <Link to="/register" className="font-semibold text-brand-blue hover:text-brand-navy transition-colors">
                     Đăng ký ngay
                 </Link>
             </p>
