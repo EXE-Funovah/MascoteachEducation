@@ -4,9 +4,9 @@ import PricingTable from '@/components/sections/PricingTable';
 
 export default function PricingPage() {
     return (
-        <div className="min-h-screen bg-surface font-sans antialiased">
+        <div className="min-h-screen bg-white font-sans antialiased">
             <Header />
-            <main className="pt-24">
+            <main className="pt-20 md:pt-24">
                 <PricingTable />
             </main>
             <Footer />

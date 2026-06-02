@@ -1,174 +1,197 @@
-﻿import { motion } from 'framer-motion';
-import FadeInUp from '@/components/animations/FadeInUp';
-import PixelTransition from '@/components/animations/PixelTransition';
-import Badge from '@/components/common/Badge';
-import Button from '@/components/common/Button';
+import { useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { Check, Sparkle, ShieldCheck } from 'lucide-react';
 import { PRICING_PLANS } from '@/lib/pricingData';
 import { cn } from '@/lib/utils';
 
-const ACCENT = {
-  starter: {
-    bg: 'bg-gradient-to-br from-slate-50 to-slate-100',
-    ring: 'ring-slate-200',
-    pixel: '#cbd5e1',
-    label: 'text-slate-700',
+const cardTone = {
+  free: {
+    card: 'border border-[#BFD8FA] bg-white',
+    glow: 'shadow-[0_24px_70px_rgba(93,156,236,0.10)]',
+    text: 'text-[#1E293B]',
+    muted: 'text-[#64748B]',
+    border: 'border-[#1E293B]',
+    badgeBg: 'bg-[#F0F7FF]',
+    divider: 'border-[#D8E8FC]',
+    check: 'bg-[#1E293B] text-white',
+    cta: 'bg-[#1E293B] text-white shadow-[0_14px_34px_rgba(30,41,59,0.22)] hover:bg-[#0F172A]',
+    note: 'text-[#0B6FB8]',
   },
   pro: {
-    bg: 'bg-gradient-to-br from-blue-50 to-sky-100',
-    ring: 'ring-brand-blue/30',
-    pixel: '#2b7ab5',
-    label: 'text-brand-navy',
-  },
-  school: {
-    bg: 'bg-gradient-to-br from-violet-50 to-purple-100',
-    ring: 'ring-violet-300/30',
-    pixel: '#7c3aed',
-    label: 'text-violet-700',
+    card: 'border border-[#8CBDFC] bg-[#EAF4FF]',
+    glow: 'shadow-[0_28px_82px_rgba(93,156,236,0.20)]',
+    text: 'text-[#1E293B]',
+    muted: 'text-[#52657D]',
+    border: 'border-[#5D9CEC]',
+    badgeBg: 'bg-white/62',
+    divider: 'border-[#BFD8FA]',
+    check: 'bg-[#5D9CEC] text-white',
+    cta: 'bg-[#5D9CEC] text-white shadow-[0_16px_36px_rgba(93,156,236,0.26)] hover:bg-[#4A8DDF]',
+    note: 'text-[#0B6FB8]',
   },
 };
 
-function CheckIcon({ included }) {
-  if (included) {
-    return (
-      <div className="mt-0.5 h-5 w-5 flex-shrink-0 rounded-full bg-emerald-100 flex items-center justify-center">
-        <svg className="h-3 w-3 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-        </svg>
-      </div>
-    );
-  }
+function BillingToggle({ billing, setBilling }) {
+  const yearly = billing === 'yearly';
 
   return (
-    <div className="mt-0.5 h-5 w-5 flex-shrink-0 rounded-full bg-slate-100 flex items-center justify-center">
-      <svg className="h-3 w-3 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
-      </svg>
+    <div className="mt-8 flex flex-col items-center">
+      <div className="flex items-center gap-4 text-[15px] font-bold text-[#1E293B]">
+        <button
+          type="button"
+          className={cn('transition-colors', !yearly ? 'text-[#1E293B]' : 'text-[#64748B]')}
+          onClick={() => setBilling('monthly')}
+        >
+          Theo tháng
+        </button>
+
+        <button
+          type="button"
+          role="switch"
+          aria-checked={yearly}
+          aria-label="Chuyển chu kỳ thanh toán"
+          className="relative h-7 w-14 rounded-full bg-[#5D9CEC] p-1 shadow-[inset_0_1px_2px_rgba(15,23,42,0.12),0_8px_18px_rgba(93,156,236,0.24)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#5D9CEC]/30"
+          onClick={() => setBilling(yearly ? 'monthly' : 'yearly')}
+        >
+          <span
+            className={cn(
+              'block h-5 w-5 rounded-full bg-white shadow-[0_2px_8px_rgba(15,23,42,0.18)] transition-transform duration-300',
+              yearly ? 'translate-x-7' : 'translate-x-0'
+            )}
+          />
+        </button>
+
+        <button
+          type="button"
+          className={cn('transition-colors', yearly ? 'text-[#1E293B]' : 'text-[#64748B]')}
+          onClick={() => setBilling('yearly')}
+        >
+          Theo năm
+        </button>
+      </div>
     </div>
   );
 }
 
-function PlanFront({ plan, accent }) {
+function PricingCard({ plan, billing, index }) {
+  const tone = cardTone[plan.tone] || cardTone.free;
+  const price = billing === 'yearly' ? plan.yearlyPriceLabel : plan.monthlyPriceLabel;
+  const unit = billing === 'yearly' ? plan.yearlyUnit : plan.monthlyUnit;
+  const billingNote = billing === 'yearly' ? plan.yearlyBillingNote : plan.monthlyBillingNote;
+
   return (
-    <div className={cn('flex h-full w-full flex-col p-8 md:p-9', accent.bg)}>
-      <div className="mx-auto flex w-full max-w-[240px] flex-1 flex-col items-center justify-center text-center">
-        <div className="mb-5 flex min-h-[32px] items-center justify-center">
-          {plan.badge ? (
-            <span
-              className={cn(
-                'rounded-full px-4 py-1.5 text-[11px] font-bold text-white shadow-md',
-                plan.popular
-                  ? 'bg-gradient-to-r from-brand-navy via-brand-blue to-brand-mid'
-                  : 'bg-gradient-to-r from-slate-500 to-slate-600'
-              )}
+    <motion.article
+      className={cn(
+        'grid min-h-[320px] overflow-hidden rounded-[18px] p-7 md:grid-cols-[1.08fr_1fr] md:p-8',
+        tone.card,
+        tone.text,
+        tone.glow
+      )}
+      initial={{ opacity: 0, y: 24 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: '-80px' }}
+      transition={{ duration: 0.52, delay: index * 0.1, ease: [0.22, 1, 0.36, 1] }}
+    >
+      <div className="flex min-w-0 flex-col">
+        <div className={cn('inline-flex h-10 w-fit items-center rounded-[5px] border px-4 text-sm font-extrabold uppercase tracking-[0.08em]', tone.border, tone.badgeBg)}>
+          {plan.name}
+        </div>
+
+        <p className={cn('mt-4 max-w-[260px] text-sm font-semibold', tone.muted)}>
+          {plan.eyebrow}
+        </p>
+
+        <div className="mt-7">
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div
+              key={`${plan.id}-${billing}-price`}
+              initial={{ opacity: 0, y: 10, filter: 'blur(4px)' }}
+              animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+              exit={{ opacity: 0, y: -10, filter: 'blur(4px)' }}
+              transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
             >
-              {plan.popular && <span className="mr-1">✦</span>}
-              {plan.badge}
-            </span>
-          ) : (
-            <span className="invisible rounded-full px-4 py-1.5 text-[11px] font-bold">placeholder</span>
-          )}
+              <div className={cn('font-display text-[46px] font-black leading-none tracking-[-0.03em] md:text-[50px]', tone.text)}>
+                {price}
+              </div>
+              <div className="mt-4 text-base font-semibold text-[#1E293B]/82">
+                {unit}
+              </div>
+              {billingNote && (
+                <div className={cn('mt-2 text-xs font-bold uppercase tracking-[0.06em]', tone.note)}>
+                  {billingNote}
+                </div>
+              )}
+            </motion.div>
+          </AnimatePresence>
         </div>
 
-        <div className="min-h-[120px] flex flex-col items-center justify-center">
-          <h3 className={cn('text-center text-4xl font-extrabold tracking-tight md:text-5xl', accent.label)}>
-            {plan.name}
-          </h3>
-          <p className="mt-4 max-w-[220px] text-center text-sm leading-relaxed text-ink-muted">
-            {plan.description}
-          </p>
-        </div>
+        <p className={cn('mt-4 max-w-[320px] text-sm leading-6', tone.muted)}>
+          {plan.description}
+        </p>
       </div>
-    </div>
-  );
-}
 
-function PlanBack({ plan, accent }) {
-  const topFeatures = plan.features.filter(f => f.included).slice(0, 5);
-
-  return (
-    <div className={cn('flex h-full w-full flex-col p-8 md:p-9', accent.bg)}>
-      <div className="flex w-full flex-1 flex-col">
-        <div className="min-h-[82px] text-left">
-          <div className="text-4xl font-extrabold text-ink md:text-5xl">{plan.priceLabel}</div>
-          {plan.priceUnit ? (
-            <div className="mt-1 text-base text-ink-muted">{plan.priceUnit}</div>
-          ) : null}
-        </div>
-
-        <ul className="space-y-3 text-left">
-          {topFeatures.map((feat, i) => (
-            <li key={i} className="flex items-start gap-2.5">
-              <CheckIcon included={feat.included} />
-              <span className="text-sm leading-relaxed text-ink-secondary md:text-base">{feat.text}</span>
+      <div className={cn('mt-8 flex min-w-0 flex-col border-t pt-7 md:mt-0 md:border-l md:border-t-0 md:pl-8 md:pt-0', tone.divider)}>
+        <ul className="space-y-3">
+          {plan.features.map((feature) => (
+            <li key={feature} className="flex items-start gap-3 text-sm font-semibold leading-6 text-[#1E293B]/86">
+              <span className={cn('mt-0.5 grid h-5 w-5 flex-none place-items-center rounded-full', tone.check)}>
+                <Check className="h-3.5 w-3.5" strokeWidth={3} />
+              </span>
+              <span>{feature}</span>
             </li>
           ))}
         </ul>
-      </div>
 
-      <div className="mt-auto w-full pt-6">
-        <Button
-          variant={plan.popular ? 'primary' : 'secondary'}
-          size="lg"
-          className="w-full text-base"
-          href="/register"
+        <a
+          href={plan.href}
+          className={cn('mt-auto inline-flex h-12 w-full items-center justify-center rounded-[7px] px-5 text-sm font-extrabold transition duration-300 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#5D9CEC]/35', tone.cta)}
         >
           {plan.cta}
-        </Button>
+        </a>
       </div>
-    </div>
+    </motion.article>
   );
 }
 
 export default function PricingTable() {
+  const [billing, setBilling] = useState('yearly');
+
   return (
-    <section id="pricing" className="mesh-pricing relative overflow-hidden py-24 md:py-32" aria-label="Bảng giá">
-      <div className="orb orb-violet h-[450px] w-[450px] -top-32 left-1/2 -translate-x-1/2 opacity-30" />
-      <div className="orb orb-peach h-[300px] w-[300px] bottom-0 right-0 opacity-25" />
-
-      <div className="relative z-10 mx-auto max-w-7xl px-6">
-        <FadeInUp>
-          <div className="mx-auto mb-16 max-w-2xl text-center">
-            <Badge color="pink" className="mb-4">Bảng giá</Badge>
-            <h2 className="text-display-md md:text-display-lg">Chọn gói phù hợp cho bạn</h2>
-            <p className="mt-6 text-body-lg text-ink-secondary">
-              Bắt đầu miễn phí, mở rộng khi cần — không ràng buộc hợp đồng.
-            </p>
+    <section id="pricing" className="relative overflow-hidden bg-[#F8FBFF] pb-20 pt-14 text-[#1E293B] md:pb-24 md:pt-16" aria-label="Bảng giá">
+      <div className="mx-auto max-w-[1200px] px-5 md:px-8">
+        <motion.div
+          className="mx-auto max-w-[760px] text-center"
+          initial={{ opacity: 0, y: 18 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.48, ease: [0.22, 1, 0.36, 1] }}
+        >
+          <div className="inline-flex items-center gap-2 rounded-[5px] border border-[#1E293B] bg-white px-4 py-2 text-sm font-extrabold uppercase tracking-[0.08em] shadow-[0_8px_24px_rgba(30,41,59,0.06)]">
+            <Sparkle className="h-4 w-4" fill="currentColor" />
+            Bảng giá
           </div>
-        </FadeInUp>
 
-        <div className="grid grid-cols-1 items-stretch gap-6 md:grid-cols-3 md:gap-8">
-          {PRICING_PLANS.map((plan, idx) => {
-            const accent = ACCENT[plan.id] || ACCENT.starter;
+          <h1 className="mt-6 text-balance font-display text-[42px] font-black leading-[0.98] tracking-[-0.03em] text-[#1E293B] sm:text-[56px] md:text-[64px]">
+            Chọn gói học phù hợp cho lớp của bạn
+          </h1>
 
-            return (
-              <motion.div
-                key={plan.id}
-                className={cn('relative', plan.popular && 'z-10 md:-my-4 md:scale-[1.04]')}
-                initial={{ opacity: 0, y: 28 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: '-60px' }}
-                transition={{ duration: 0.5, delay: idx * 0.12, ease: [0.25, 0.4, 0.25, 1] }}
-              >
-                <PixelTransition
-                  firstContent={<PlanFront plan={plan} accent={accent} />}
-                  secondContent={<PlanBack plan={plan} accent={accent} />}
-                  gridSize={8}
-                  pixelColor={accent.pixel}
-                  animationStepDuration={0.2}
-                  className={cn(
-                    'rounded-4xl ring-1 bg-white',
-                    accent.ring,
-                    plan.popular ? 'shadow-gamma-float' : 'shadow-gamma-card hover:shadow-gamma-hover'
-                  )}
-                  style={{ borderRadius: '2rem' }}
-                  aspectRatio="140%"
-                />
-              </motion.div>
-            );
-          })}
+          <p className="mx-auto mt-5 max-w-[590px] text-base font-medium leading-7 text-[#64748B] md:text-lg">
+            Giá đơn giản, minh bạch. Bắt đầu miễn phí và nâng cấp khi lớp học cần nhiều công cụ hơn.
+          </p>
+
+          <BillingToggle billing={billing} setBilling={setBilling} />
+        </motion.div>
+
+        <div className="mt-10 grid gap-8 lg:grid-cols-2">
+          {PRICING_PLANS.map((plan, index) => (
+            <PricingCard key={plan.id} plan={plan} billing={billing} index={index} />
+          ))}
+        </div>
+
+        <div className="mx-auto mt-7 flex max-w-fit items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-[#64748B]">
+          <ShieldCheck className="h-4 w-4 text-[#5D9CEC]" />
+          Bạn có thể nâng cấp, hạ cấp hoặc hủy bất kỳ lúc nào.
         </div>
       </div>
     </section>
   );
 }
-
