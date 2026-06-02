@@ -1,10 +1,17 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { ArrowRight } from 'lucide-react';
 import AuthLayout from '@/components/auth/AuthLayout';
 import AuthInput from '@/components/auth/AuthInput';
 import GoogleLogo from '@/components/auth/GoogleLogo';
 import { useAuth } from '@/contexts/AuthContext';
+
+const roles = [
+    { value: 'Teacher', label: 'Giáo viên', available: true },
+    { value: 'Student', label: 'Học sinh', available: false },
+    { value: 'Parent', label: 'Phụ huynh', available: false },
+];
 
 export default function SignUpPage() {
     const [form, setForm] = useState({
@@ -33,7 +40,6 @@ export default function SignUpPage() {
         clearError();
         setLocalError('');
 
-        // Kiểm tra phía client
         if (!form.fullName || !form.email || !form.password) {
             setLocalError('Vui lòng điền đầy đủ thông tin.');
             return;
@@ -57,11 +63,11 @@ export default function SignUpPage() {
                 password: form.password,
                 role: selectedRole,
             });
-            // Đăng ký thành công — chuyển về trang đăng nhập
             navigate('/signin', {
-                state: { message: 'Đăng ký thành công! Vui lòng đăng nhập.' }
+                state: { message: 'Đăng ký thành công. Vui lòng đăng nhập.' },
             });
         } catch {
+            // AuthContext owns the visible error message.
         } finally {
             setSubmitting(false);
         }
@@ -71,49 +77,44 @@ export default function SignUpPage() {
 
     return (
         <AuthLayout>
-            <header className="text-center mb-8">
-                <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 leading-tight">
-                    Tạo tài khoản Mascoteach
-                </h1>
-                <p className="mt-2 text-sm text-slate-500">
-                    Đăng ký để trải nghiệm lớp học thông minh.
+            <header className="auth-form-header">
+                <h1>Chào mừng đến Mascoteach</h1>
+                <p>
+                    Đã có tài khoản? <Link to="/signin">Đăng nhập</Link>
                 </p>
             </header>
 
-            {/* Thông báo lỗi */}
             {displayError && (
-                <div className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-sm text-rose-600 text-center"
-                    role="alert">
+                <div className="auth-alert auth-alert--error" role="alert">
                     {displayError}
                 </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-5">
-                <div>
-                    <label htmlFor="signup-role" className="block text-sm font-medium text-slate-700 mb-1.5">
-                        Bạn là? <span className="text-rose-400">*</span>
-                    </label>
-                    <select
-                        id="signup-role"
-                        value={selectedRole}
-                        onChange={(e) => { setSelectedRole(e.target.value); setLocalError(''); clearError(); }}
-                        className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white
-                                   text-sm text-slate-700
-                                   focus:outline-none focus:ring-2 focus:ring-sky-200 focus:border-sky-300
-                                   transition-all duration-200 appearance-none
-                                   bg-[url('data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2012%2012%22%3E%3Cpath%20fill%3D%22%2394a3b8%22%20d%3D%22M2%204l4%204%204-4%22/%3E%3C/svg%3E')]
-                                   bg-[length:12px] bg-[right_16px_center] bg-no-repeat"
-                    >
-                        <option value="Teacher">Giáo viên</option>
-                        <option value="Student" disabled>Học sinh (Sắp ra mắt)</option>
-                        <option value="Parent" disabled>Phụ huynh (Sắp ra mắt)</option>
-                    </select>
+            <form onSubmit={handleSubmit} className="auth-form">
+                <div className="auth-role-group" role="radiogroup" aria-label="Chọn vai trò">
+                    {roles.map((role) => (
+                        <button
+                            key={role.value}
+                            type="button"
+                            className={selectedRole === role.value ? 'is-active' : ''}
+                            disabled={!role.available}
+                            onClick={() => {
+                                if (!role.available) return;
+                                setSelectedRole(role.value);
+                                setLocalError('');
+                                clearError();
+                            }}
+                        >
+                            <span>{role.label}</span>
+                            {!role.available && <small>Sắp ra mắt</small>}
+                        </button>
+                    ))}
                 </div>
 
                 <AuthInput
                     id="signup-fullname"
                     label="Họ và tên"
-                    placeholder="Nguyễn Văn A"
+                    placeholder="Nguyễn Minh Anh"
                     value={form.fullName}
                     onChange={update('fullName')}
                     required
@@ -121,7 +122,7 @@ export default function SignUpPage() {
 
                 <AuthInput
                     id="signup-email"
-                    label="Địa chỉ Email"
+                    label="Email"
                     type="email"
                     placeholder="email@example.com"
                     value={form.email}
@@ -149,57 +150,44 @@ export default function SignUpPage() {
                     required
                 />
 
-                {/* Nút tạo tài khoản */}
                 <motion.button
                     type="submit"
                     className="auth-btn auth-btn--primary disabled:opacity-60 disabled:cursor-not-allowed"
-                    whileHover={!submitting ? { scale: 1.015, y: -1 } : {}}
-                    whileTap={!submitting ? { scale: 0.98 } : {}}
+                    whileHover={!submitting ? { y: -1 } : {}}
+                    whileTap={!submitting ? { scale: 0.985 } : {}}
                     disabled={submitting}
                 >
                     {submitting ? (
-                        <span className="flex items-center justify-center gap-2">
-                            <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                            Đang tạo tài khoản...
+                        <span className="auth-loading">
+                            <span />
+                            Đang tạo tài khoản
                         </span>
                     ) : (
-                        'Tạo tài khoản'
+                        <>
+                            Tạo tài khoản
+                            <ArrowRight size={17} strokeWidth={2.2} />
+                        </>
                     )}
-                </motion.button>
-
-                {/* Đường phân cách */}
-                <div className="flex items-center gap-4">
-                    <span className="flex-1 h-px bg-slate-200" />
-                    <span className="text-xs text-slate-400 font-medium">hoặc</span>
-                    <span className="flex-1 h-px bg-slate-200" />
-                </div>
-
-                {/* Google */}
-                <motion.button
-                    type="button"
-                    className="auth-btn auth-btn--google"
-                    whileHover={{ scale: 1.015, y: -1 }}
-                    whileTap={{ scale: 0.98 }}
-                >
-                    <GoogleLogo />
-                    Tiếp tục với Google
                 </motion.button>
             </form>
 
-            {/* Điều khoản */}
-            <p className="mt-6 text-center text-xs text-slate-400 leading-relaxed max-w-xs mx-auto">
-                Bằng việc đăng ký, bạn đồng ý với{' '}
-                <a href="#" className="underline hover:text-brand-blue transition-colors">Điều khoản dịch vụ</a>{' '}
-                và{' '}
-                <a href="#" className="underline hover:text-brand-blue transition-colors">Chính sách bảo mật</a>.
-            </p>
+            <div className="auth-divider">
+                <span>Phương thức khác</span>
+            </div>
 
-            {/* Chuyển về đăng nhập */}
-            <p className="mt-4 text-center text-sm text-slate-500">
-                Đã có tài khoản?{' '}
-                <Link to="/signin" className="font-semibold text-brand-blue hover:text-brand-navy transition-colors">
-                    Đăng nhập
-                </Link>
+            <motion.button
+                type="button"
+                className="auth-provider"
+                whileHover={{ y: -1 }}
+                whileTap={{ scale: 0.985 }}
+            >
+                <GoogleLogo />
+                <span>Tiếp tục với Google</span>
+                <ArrowRight size={17} strokeWidth={2.2} />
+            </motion.button>
+
+            <p className="auth-legal">
+                Bằng việc đăng ký, bạn đồng ý với điều khoản dịch vụ và chính sách bảo mật của Mascoteach.
             </p>
         </AuthLayout>
     );

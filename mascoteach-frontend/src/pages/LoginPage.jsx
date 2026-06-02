@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { ArrowRight } from 'lucide-react';
 import AuthLayout from '@/components/auth/AuthLayout';
 import AuthInput from '@/components/auth/AuthInput';
 import GoogleLogo from '@/components/auth/GoogleLogo';
@@ -16,16 +17,14 @@ export default function LoginPage() {
     const navigate = useNavigate();
     const location = useLocation();
 
-    // Redirect sau khi đăng nhập — dựa trên role
     const from = location.state?.from?.pathname;
-    // Thông báo thành công từ trang đăng ký
     const successMessage = location.state?.message;
 
     function getRoleRedirect(profile) {
         const role = (profile?.role || profile?.roleName || '').toLowerCase();
         if (role === 'student') return '/student';
         if (role === 'parent') return '/parent';
-        return '/teacher'; // default
+        return '/teacher';
     }
 
     async function handleSubmit(e) {
@@ -37,10 +36,9 @@ export default function LoginPage() {
         setSubmitting(true);
         try {
             const profile = await login(email, password);
-            const redirectTo = from || getRoleRedirect(profile);
-            navigate(redirectTo, { replace: true });
+            navigate(from || getRoleRedirect(profile), { replace: true });
         } catch {
-            // Error đã được set trong AuthContext
+            // AuthContext owns the visible error message.
         } finally {
             setSubmitting(false);
         }
@@ -48,35 +46,30 @@ export default function LoginPage() {
 
     return (
         <AuthLayout>
-            <header className="text-center mb-8">
-                <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 leading-tight">
-                    Chào mừng đến Mascoteach
-                </h1>
-                <p className="mt-2 text-sm text-slate-500">
-                    Đăng nhập để tiếp tục trải nghiệm lớp học thông minh.
+            <header className="auth-form-header">
+                <h1>Đăng nhập vào Mascoteach</h1>
+                <p>
+                    Chưa có tài khoản?{' '}
+                    <Link to="/register">Tạo tài khoản miễn phí</Link>
                 </p>
             </header>
 
-            {/* Thông báo đăng ký thành công */}
             {successMessage && (
-                <div className="mb-4 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-sm text-emerald-600 text-center"
-                    role="status">
+                <div className="auth-alert auth-alert--success" role="status">
                     {successMessage}
                 </div>
             )}
 
-            {/* Thông báo lỗi */}
             {error && (
-                <div className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-sm text-rose-600 text-center"
-                    role="alert">
+                <div className="auth-alert auth-alert--error" role="alert">
                     {error}
                 </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-5">
+            <form onSubmit={handleSubmit} className="auth-form">
                 <AuthInput
                     id="login-email"
-                    label="Địa chỉ Email"
+                    label="Email"
                     type="email"
                     placeholder="email@example.com"
                     value={email}
@@ -94,9 +87,8 @@ export default function LoginPage() {
                     required
                 />
 
-                {/* Ghi nhớ + Quên mật khẩu */}
-                <div className="flex items-center justify-between">
-                    <label htmlFor="remember-me" className="flex items-center gap-2 cursor-pointer select-none">
+                <div className="auth-options">
+                    <label htmlFor="remember-me" className="auth-check-row">
                         <input
                             id="remember-me"
                             type="checkbox"
@@ -104,61 +96,47 @@ export default function LoginPage() {
                             onChange={(e) => setRemember(e.target.checked)}
                             className="auth-checkbox"
                         />
-                        <span className="text-sm text-slate-500">Ghi nhớ đăng nhập</span>
+                        <span>Ghi nhớ đăng nhập</span>
                     </label>
 
-                    <Link
-                        to="/forgot-password"
-                        className="text-sm font-semibold text-brand-blue hover:text-brand-navy transition-colors"
-                    >
-                        Quên mật khẩu?
-                    </Link>
+                    <Link to="/forgot-password">Quên mật khẩu?</Link>
                 </div>
 
-                {/* Nút đăng nhập */}
                 <motion.button
                     type="submit"
                     className="auth-btn auth-btn--primary disabled:opacity-60 disabled:cursor-not-allowed"
-                    whileHover={!submitting ? { scale: 1.015, y: -1 } : {}}
-                    whileTap={!submitting ? { scale: 0.98 } : {}}
+                    whileHover={!submitting ? { y: -1 } : {}}
+                    whileTap={!submitting ? { scale: 0.985 } : {}}
                     disabled={submitting}
                 >
                     {submitting ? (
-                        <span className="flex items-center justify-center gap-2">
-                            <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                            Đang đăng nhập...
+                        <span className="auth-loading">
+                            <span />
+                            Đang đăng nhập
                         </span>
                     ) : (
-                        'Đăng nhập'
+                        <>
+                            Đăng nhập
+                            <ArrowRight size={17} strokeWidth={2.2} />
+                        </>
                     )}
-                </motion.button>
-
-                {/* Đường phân cách */}
-                <div className="flex items-center gap-4">
-                    <span className="flex-1 h-px bg-slate-200" />
-                    <span className="text-xs text-slate-400 font-medium">hoặc</span>
-                    <span className="flex-1 h-px bg-slate-200" />
-                </div>
-
-                {/* Google */}
-                <motion.button
-                    type="button"
-                    className="auth-btn auth-btn--google"
-                    whileHover={{ scale: 1.015, y: -1 }}
-                    whileTap={{ scale: 0.98 }}
-                >
-                    <GoogleLogo />
-                    Tiếp tục với Google
                 </motion.button>
             </form>
 
-            {/* Chuyển sang đăng ký */}
-            <p className="mt-8 text-center text-sm text-slate-500">
-                Chưa có tài khoản?{' '}
-                <Link to="/register" className="font-semibold text-brand-blue hover:text-brand-navy transition-colors">
-                    Đăng ký ngay
-                </Link>
-            </p>
+            <div className="auth-divider">
+                <span>Phương thức khác</span>
+            </div>
+
+            <motion.button
+                type="button"
+                className="auth-provider"
+                whileHover={{ y: -1 }}
+                whileTap={{ scale: 0.985 }}
+            >
+                <GoogleLogo />
+                <span>Tiếp tục với Google</span>
+                <ArrowRight size={17} strokeWidth={2.2} />
+            </motion.button>
         </AuthLayout>
     );
 }
