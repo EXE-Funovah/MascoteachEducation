@@ -246,7 +246,7 @@ export const FOOTER = {
       ],
     },
     {
-      title: 'Tài nguyên',
+      title: 'Tài liệu',
       links: [
         { label: 'Tài liệu hướng dẫn', href: '/features' },
         { label: 'Blog giáo dục', href: '/features' },

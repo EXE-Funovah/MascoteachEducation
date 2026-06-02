@@ -1,11 +1,21 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
-    FileText, Pencil, Layers, Settings2,
-    ArrowRight, Loader2, ChevronDown,
-    Minus, Plus, Sliders
+    ArrowRight,
+    CheckCircle2,
+    ChevronDown,
+    CloudUpload,
+    FileText,
+    Layers,
+    ListChecks,
+    Loader2,
+    Pencil,
+    Settings2,
+    Sparkles,
+    X,
 } from 'lucide-react';
+import { createDocument, generateUploadUrl } from '@/services/documentService';
 
 const STRUCTURE_OPTIONS = [
     'Phát triển chuyên môn',
@@ -15,29 +25,26 @@ const STRUCTURE_OPTIONS = [
 ];
 
 const DIFFICULTY_LEVELS = [
-    { id: 1, label: 'Nhận biết', sublabel: 'Cấp độ 1', color: 'emerald', emoji: '🟢' },
-    { id: 2, label: 'Thông hiểu', sublabel: 'Cấp độ 2', color: 'amber', emoji: '🟡' },
-    { id: 3, label: 'Vận dụng', sublabel: 'Cấp độ 3', color: 'rose', emoji: '🔴' },
+    { id: 1, label: 'Nhận biết', name: 'Câu hỏi kiểm tra ghi nhớ và nhận diện kiến thức' },
+    { id: 2, label: 'Thông hiểu', name: 'Câu hỏi yêu cầu giải thích và liên hệ kiến thức' },
+    { id: 3, label: 'Nâng cao', name: 'Câu hỏi vận dụng và xử lý tình huống' },
 ];
 
-const DIFFICULTY_PRESETS = [
-    { id: 'easy', label: 'Dễ trước', desc: 'Ưu tiên nhận biết', distribution: { 1: 50, 2: 30, 3: 20 } },
-    { id: 'balanced', label: 'Cân bằng', desc: 'Phân bổ đều', distribution: { 1: 40, 2: 40, 3: 20 } },
-    { id: 'advanced', label: 'Nâng cao', desc: 'Ưu tiên vận dụng', distribution: { 1: 20, 2: 40, 3: 40 } },
-    { id: 'custom', label: 'Tùy chỉnh', desc: 'Tự điều chỉnh', distribution: null },
-];
-
-const DEFAULT_DIFFICULTY_DISTRIBUTION = {
-    1: 40,
-    2: 40,
-    3: 20,
-};
-
-const QUESTION_TYPES = [
-    { id: 'MCQ', label: 'MCQ', active: true },
-    { id: 'FillBlank', label: 'Điền vào chỗ trống', active: false },
-    { id: 'Open', label: 'Mở', active: false },
-    { id: 'Essay', label: 'Đoạn văn', active: false },
+const ACTIVITY_TYPES = [
+    {
+        id: 'quiz',
+        label: 'Trắc nghiệm',
+        description: 'Câu hỏi nhanh và tương tác',
+        Icon: ListChecks,
+        color: 'bg-[#6DA6E8]',
+    },
+    {
+        id: 'flashcards',
+        label: 'Flashcards',
+        description: 'Thẻ ghi nhớ để ôn tập',
+        Icon: Layers,
+        color: 'bg-[#4F92DD]',
+    },
 ];
 
 const QUESTION_COUNTS = [
@@ -53,114 +60,244 @@ const LANGUAGES = [
     { value: 'en', label: 'English' },
 ];
 
+function buildDifficultyDistribution(difficulties) {
+    const selected = difficulties.length ? difficulties : [1];
+    const distribution = { 1: 0, 2: 0, 3: 0 };
+    const base = Math.floor(100 / selected.length);
+    let remainder = 100 - base * selected.length;
+
+    selected.forEach((levelId) => {
+        distribution[levelId] = base + (remainder > 0 ? 1 : 0);
+        remainder -= 1;
+    });
+
+    return distribution;
+}
+
+function uploadFileWithProgress(uploadUrl, file, onProgress) {
+    return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('PUT', uploadUrl);
+        xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+
+        xhr.upload.onprogress = (event) => {
+            if (!event.lengthComputable) return;
+            const percent = Math.round((event.loaded / event.total) * 100);
+            onProgress(Math.max(1, Math.min(99, percent)));
+        };
+
+        xhr.onload = () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+                onProgress(100);
+                resolve();
+                return;
+            }
+            reject(new Error(`Upload failed: ${xhr.status} ${xhr.statusText}`));
+        };
+
+        xhr.onerror = () => reject(new Error('Upload failed. Please try again.'));
+        xhr.send(file);
+    });
+}
+
+function formatFileSize(size) {
+    if (!size) return '';
+    return `${(size / 1024).toFixed(1)} KB`;
+}
+
+function SelectControl({ value, onChange, options, ariaLabel }) {
+    return (
+        <label className="relative inline-flex min-w-[178px]">
+            <span className="sr-only">{ariaLabel}</span>
+            <select
+                value={value}
+                onChange={onChange}
+                className="h-10 w-full appearance-none rounded-[10px] border border-slate-300 bg-white px-4 pr-9 text-[13px] font-semibold text-slate-700 outline-none transition focus:border-[#6DA6E8] focus:ring-4 focus:ring-[#EAF4FF]"
+            >
+                {options.map((option) => (
+                    <option key={option.value || option} value={option.value || option}>
+                        {option.label || option}
+                    </option>
+                ))}
+            </select>
+            <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+        </label>
+    );
+}
+
+function SettingRow({ label, children }) {
+    return (
+        <div className="grid min-h-[64px] grid-cols-[minmax(160px,1fr)_auto] items-center gap-4 border-b border-slate-200 px-4 py-3 last:border-b-0">
+            <p className="text-[14px] font-medium text-slate-600">{label}</p>
+            <div className="flex flex-wrap items-center justify-end gap-2">{children}</div>
+        </div>
+    );
+}
+
+function StepDot({ active, done, Icon }) {
+    return (
+        <span
+            className={[
+                'absolute -left-[42px] grid h-6 w-6 place-items-center rounded-full',
+                active
+                    ? 'border-[5px] border-[#EAF4FF] bg-[#6DA6E8] text-white'
+                    : done
+                        ? 'bg-[#EAF4FF] text-[#4F92DD]'
+                        : 'bg-slate-100 text-slate-500',
+            ].join(' ')}
+        >
+            {Icon ? <Icon className="h-3.5 w-3.5" /> : null}
+        </span>
+    );
+}
+
+const editPanelMotion = {
+    initial: { height: 0, opacity: 0, y: -8, scale: 0.985 },
+    animate: { height: 'auto', opacity: 1, y: 0, scale: 1 },
+    exit: { height: 0, opacity: 0, y: -8, scale: 0.985 },
+    transition: { duration: 0.28, ease: [0.22, 1, 0.36, 1] },
+};
+
 export default function QuizSettingsPage() {
     const location = useLocation();
     const navigate = useNavigate();
+    const fileInputRef = useRef(null);
+    const generatingRef = useRef(false);
 
-    const fileName = location.state?.fileName;
-    const fileSize = location.state?.fileSize;
+    const isDevPreview = location.pathname.startsWith('/dev/teacher');
+    const initialFileName = location.state?.fileName;
+    const initialFileSize = location.state?.fileSize;
     const documentId = location.state?.documentId;
     const fileUrl = location.state?.fileUrl;
 
+    const [activityType, setActivityType] = useState(location.state?.activityType || 'quiz');
+    const [draftActivityType, setDraftActivityType] = useState(location.state?.activityType || 'quiz');
+    const [currentFile, setCurrentFile] = useState({
+        fileName: initialFileName,
+        fileSize: initialFileSize,
+        documentId,
+        fileUrl,
+    });
+    const [editingStep, setEditingStep] = useState(null);
+    const [editingTitle, setEditingTitle] = useState(false);
+    const [isGenerating, setIsGenerating] = useState(false);
+    const [isReplacingFile, setIsReplacingFile] = useState(false);
+    const [replaceProgress, setReplaceProgress] = useState(0);
+    const [replaceError, setReplaceError] = useState('');
     const [settings, setSettings] = useState({
         title: 'Bài kiểm tra',
         structure: 'Phát triển chuyên môn',
-        difficulties: [1, 2, 3],
-        difficultyDistribution: DEFAULT_DIFFICULTY_DISTRIBUTION,
+        difficulties: [1],
         questionType: 'MCQ',
-        questionCount: 20,
+        questionCount: 0,
         language: 'vi',
     });
 
-    const [selectedPreset, setSelectedPreset] = useState('balanced');
-    const [isGenerating, setIsGenerating] = useState(false);
-    const [editingTitle, setEditingTitle] = useState(false);
-    const generatingRef = useRef(false);
+    const creationCopy = useMemo(() => {
+        if (activityType === 'flashcards') {
+            return {
+                typeLabel: 'Flashcards',
+                intro: 'Tạo bộ flashcard',
+                customize: 'Tùy chỉnh bộ flashcard',
+                action: 'Tạo bộ flashcard',
+                generating: 'Đang tạo flashcard...',
+                footer: 'AI có thể mắc lỗi. Hãy xem lại và tùy chỉnh flashcard trước khi dùng trong lớp.',
+                titleLabel: 'Tên bộ flashcard',
+                titleFallback: 'Bộ flashcard',
+            };
+        }
+
+        return {
+            typeLabel: 'Trắc nghiệm',
+            intro: 'Tạo bộ câu hỏi',
+            customize: 'Tùy chỉnh bộ câu hỏi',
+            action: 'Tạo bộ câu hỏi',
+            generating: 'Đang tạo câu hỏi...',
+            footer: 'AI có thể mắc lỗi. Hãy xem lại và tùy chỉnh bộ câu hỏi trước khi dùng trong lớp.',
+            titleLabel: 'Tên bộ câu hỏi',
+            titleFallback: 'Bài kiểm tra',
+        };
+    }, [activityType]);
 
     useEffect(() => {
-        if (!fileName && !documentId) {
-            navigate('/teacher');
+        if (!currentFile.fileName && !currentFile.documentId) {
+            navigate(isDevPreview ? '/dev/teacher' : '/teacher');
         }
-    }, [fileName, documentId, navigate]);
+    }, [currentFile.fileName, currentFile.documentId, isDevPreview, navigate]);
 
-    function handlePresetSelect(presetId) {
-        setSelectedPreset(presetId);
-        const preset = DIFFICULTY_PRESETS.find(p => p.id === presetId);
-        if (preset && preset.distribution) {
-            setSettings(prev => ({
-                ...prev,
-                difficultyDistribution: { ...preset.distribution },
-                difficulties: DIFFICULTY_LEVELS.filter(l => preset.distribution[l.id] > 0).map(l => l.id),
-            }));
-        }
+    useEffect(() => {
+        setSettings((prev) => ({
+            ...prev,
+            title: activityType === 'flashcards' && prev.title === 'Bài kiểm tra'
+                ? 'Bộ flashcard'
+                : activityType === 'quiz' && prev.title === 'Bộ flashcard'
+                    ? 'Bài kiểm tra'
+                    : prev.title,
+            questionType: 'MCQ',
+        }));
+    }, [activityType]);
+
+    function routeFor(path) {
+        return isDevPreview ? path.replace('/teacher', '/dev/teacher') : path;
     }
 
-    function handleCustomStep(levelId, delta) {
-        setSettings(prev => {
-            const current = { ...(prev.difficultyDistribution || DEFAULT_DIFFICULTY_DISTRIBUTION) };
-            const newVal = Math.max(0, Math.min(100, (current[levelId] || 0) + delta));
-            const diff = newVal - (current[levelId] || 0);
-
-            if (diff === 0) return prev;
-
-            current[levelId] = newVal;
-
-            // Redistribute the difference among other levels proportionally
-            const others = DIFFICULTY_LEVELS.filter(l => l.id !== levelId);
-            const otherTotal = others.reduce((sum, l) => sum + (current[l.id] || 0), 0);
-
-            if (otherTotal === 0 && diff > 0) {
-                // If other levels are 0, we can't reduce them further
-                // Distribute remaining evenly
-                const remaining = 100 - newVal;
-                const evenShare = Math.floor(remaining / others.length);
-                let leftover = remaining - evenShare * others.length;
-                others.forEach(l => {
-                    current[l.id] = evenShare + (leftover > 0 ? 1 : 0);
-                    if (leftover > 0) leftover--;
-                });
-            } else if (diff > 0) {
-                // Increased this level → decrease others proportionally
-                let toReduce = diff;
-                // Sort by descending value so we take from the biggest first
-                const sortedOthers = [...others].sort((a, b) => (current[b.id] || 0) - (current[a.id] || 0));
-                for (const l of sortedOthers) {
-                    const canTake = Math.min(current[l.id] || 0, toReduce);
-                    current[l.id] -= canTake;
-                    toReduce -= canTake;
-                    if (toReduce <= 0) break;
-                }
-            } else {
-                // Decreased this level → increase others proportionally
-                let toAdd = Math.abs(diff);
-                if (otherTotal > 0) {
-                    let assigned = 0;
-                    others.forEach((l, idx) => {
-                        if (idx === others.length - 1) {
-                            current[l.id] += (toAdd - assigned);
-                        } else {
-                            const share = Math.round(((current[l.id] || 0) / otherTotal) * toAdd);
-                            current[l.id] += share;
-                            assigned += share;
-                        }
-                    });
-                } else {
-                    const evenShare = Math.floor(toAdd / others.length);
-                    let leftover = toAdd - evenShare * others.length;
-                    others.forEach(l => {
-                        current[l.id] = (current[l.id] || 0) + evenShare + (leftover > 0 ? 1 : 0);
-                        if (leftover > 0) leftover--;
-                    });
-                }
-            }
+    function handleDifficultyToggle(levelId) {
+        setSettings((prev) => {
+            const exists = prev.difficulties.includes(levelId);
+            const next = exists
+                ? prev.difficulties.filter((id) => id !== levelId)
+                : [...prev.difficulties, levelId].sort((a, b) => a - b);
 
             return {
                 ...prev,
-                difficultyDistribution: current,
-                difficulties: DIFFICULTY_LEVELS.filter(l => current[l.id] > 0).map(l => l.id),
+                difficulties: next.length > 0 ? next : [levelId],
             };
         });
-        setSelectedPreset('custom');
+    }
+
+    async function handleFileChange(event) {
+        const file = event.target.files?.[0];
+        event.target.value = '';
+        if (!file) return;
+
+        setReplaceError('');
+        setReplaceProgress(0);
+
+        if (isDevPreview) {
+            setIsReplacingFile(true);
+            for (const value of [24, 52, 76, 100]) {
+                await new Promise((resolve) => setTimeout(resolve, 110));
+                setReplaceProgress(value);
+            }
+            setCurrentFile({
+                fileName: file.name,
+                fileSize: file.size,
+                documentId: 'dev-replaced-upload',
+                fileUrl: null,
+            });
+            setIsReplacingFile(false);
+            setEditingStep(null);
+            return;
+        }
+
+        setIsReplacingFile(true);
+        try {
+            const { uploadUrl, s3Key } = await generateUploadUrl(file.name, file.type);
+            await uploadFileWithProgress(uploadUrl, file, setReplaceProgress);
+            const doc = await createDocument({ s3Key });
+
+            setCurrentFile({
+                fileName: file.name,
+                fileSize: file.size,
+                documentId: doc?.id ?? doc?.documentId ?? null,
+                fileUrl: doc?.presignedUrl ?? null,
+            });
+            setEditingStep(null);
+        } catch (error) {
+            setReplaceError(error.message || 'Không thể tải tài liệu mới. Vui lòng thử lại.');
+        } finally {
+            setIsReplacingFile(false);
+        }
     }
 
     async function handleGenerate() {
@@ -168,329 +305,388 @@ export default function QuizSettingsPage() {
         generatingRef.current = true;
         setIsGenerating(true);
 
+        const finalSettings = {
+            ...settings,
+            questionType: 'MCQ',
+            difficultyDistribution: buildDifficultyDistribution(settings.difficulties),
+        };
+
         setTimeout(() => {
-            navigate('/teacher/quiz-preview', {
+            navigate(routeFor('/teacher/quiz-preview'), {
                 state: {
-                    fileName,
-                    fileSize,
-                    documentId,
-                    fileUrl,
-                    settings,
+                    fileName: currentFile.fileName,
+                    fileSize: currentFile.fileSize,
+                    documentId: currentFile.documentId,
+                    fileUrl: currentFile.fileUrl,
+                    activityType,
+                    settings: finalSettings,
                 },
             });
         }, 600);
     }
 
-    if (!fileName && !documentId) return null;
-
-    const colorMap = {
-        emerald: {
-            bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-700',
-            barBg: 'bg-emerald-400', btnHover: 'hover:bg-emerald-100',
-            btnActive: 'bg-emerald-100 text-emerald-700',
-        },
-        amber: {
-            bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-700',
-            barBg: 'bg-amber-400', btnHover: 'hover:bg-amber-100',
-            btnActive: 'bg-amber-100 text-amber-700',
-        },
-        rose: {
-            bg: 'bg-rose-50', border: 'border-rose-200', text: 'text-rose-700',
-            barBg: 'bg-rose-400', btnHover: 'hover:bg-rose-100',
-            btnActive: 'bg-rose-100 text-rose-700',
-        },
-    };
+    if (!currentFile.fileName && !currentFile.documentId) return null;
 
     return (
-        <section className="max-w-2xl mx-auto px-4 py-8">
+        <section className="mx-auto max-w-[920px] px-4 py-8">
             <motion.article
-                className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden"
+                className="min-h-[760px] overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-[0_22px_80px_rgba(109,166,232,0.12)]"
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4 }}
+                transition={{ duration: 0.35, ease: 'easeOut' }}
             >
-                <header className="px-8 py-6 border-b border-slate-100/60">
-                    <div className="flex items-center gap-3 mb-1">
-                        <div className="w-8 h-8 rounded-lg bg-sky-50 flex items-center justify-center">
-                            <Settings2 className="w-[18px] h-[18px] text-sky-500" />
-                        </div>
-                        <h1 className="text-[16px] font-bold text-slate-800">
-                            Hãy cùng tạo tài nguyên của bạn
+                <header className="flex items-center justify-between gap-5 px-8 py-7">
+                    <div className="flex items-center gap-3">
+                        <span className="grid h-9 w-9 place-items-center text-[#6DA6E8]">
+                            <Sparkles className="h-8 w-8" />
+                        </span>
+                        <h1 className="text-[23px] font-extrabold tracking-[-0.02em] text-slate-950">
+                            {creationCopy.intro}
                         </h1>
                     </div>
+                    <button
+                        type="button"
+                        onClick={() => navigate(routeFor('/teacher'))}
+                        className="grid h-10 w-10 place-items-center rounded-[10px] border border-slate-300 text-slate-900 transition hover:-translate-y-0.5 hover:bg-[#F0F7FC]"
+                        aria-label="Đóng"
+                    >
+                        <X className="h-5 w-5" />
+                    </button>
                 </header>
 
-                <div className="px-8 py-6 space-y-6">
-                    <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-50/60 border border-slate-100">
-                        <div className="w-9 h-9 rounded-lg bg-slate-200/60 flex items-center justify-center flex-shrink-0">
-                            <FileText className="w-5 h-5 text-slate-500" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                            <p className="text-[13px] font-medium text-slate-700 truncate">
-                                {fileName || `Document #${documentId}`}
-                            </p>
-                            {fileSize && (
-                                <p className="text-[11px] text-slate-400">
-                                    {(fileSize / 1024).toFixed(1)} KB
+                <div className="relative px-8 pb-6 pl-[78px]">
+                    <div className="absolute bottom-12 left-[42px] top-8 w-px bg-gradient-to-b from-slate-200 via-slate-200 to-transparent" aria-hidden="true" />
+
+                    <div className="relative mb-7">
+                        <StepDot active={editingStep === 'document'} done Icon={FileText} />
+                        <div className="flex items-center gap-3">
+                            <div className="min-w-0">
+                                <p className="truncate text-[15px] font-semibold text-slate-700">
+                                    {currentFile.fileName || `Tài liệu #${currentFile.documentId}`}
                                 </p>
-                            )}
-                        </div>
-                        <Pencil className="w-4 h-4 text-slate-300" />
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                        <div className="w-3 h-3 rounded-full bg-emerald-400 flex-shrink-0" />
-                        {editingTitle ? (
-                            <input
-                                type="text"
-                                value={settings.title}
-                                onChange={e => setSettings(p => ({ ...p, title: e.target.value }))}
-                                onBlur={() => setEditingTitle(false)}
-                                onKeyDown={e => e.key === 'Enter' && setEditingTitle(false)}
-                                className="text-[14px] font-medium text-slate-700 border-b-2 border-sky-400 outline-none bg-transparent pb-0.5"
-                                autoFocus
-                            />
-                        ) : (
+                                {currentFile.fileSize && (
+                                    <p className="mt-0.5 text-[11px] font-medium text-slate-400">
+                                        {formatFileSize(currentFile.fileSize)}
+                                    </p>
+                                )}
+                            </div>
                             <button
-                                onClick={() => setEditingTitle(true)}
-                                className="flex items-center gap-2 text-[14px] font-medium text-slate-700 hover:text-sky-600 transition-colors"
+                                type="button"
+                                onClick={() => setEditingStep(editingStep === 'document' ? null : 'document')}
+                                className="grid h-8 w-8 place-items-center rounded-lg text-slate-700 transition hover:bg-[#EAF4FF] hover:text-[#4F92DD]"
+                                aria-label="Chọn lại tài liệu"
                             >
-                                {settings.title}
-                                <Pencil className="w-3.5 h-3.5 text-slate-300" />
+                                <motion.span
+                                    animate={{ rotate: editingStep === 'document' ? -12 : 0, scale: editingStep === 'document' ? 1.08 : 1 }}
+                                    transition={{ type: 'spring', stiffness: 420, damping: 24 }}
+                                >
+                                    <Pencil className="h-4 w-4" />
+                                </motion.span>
                             </button>
-                        )}
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                        <div className="w-3 h-3 rounded-full bg-sky-400 flex-shrink-0" />
-                        <div className="flex items-center gap-2 text-[14px] text-slate-600">
-                            <Layers className="w-4 h-4 text-slate-400" />
-                            <span>Toàn bộ tài liệu đã chọn</span>
-                            <Pencil className="w-3.5 h-3.5 text-slate-300" />
-                        </div>
-                    </div>
-
-                    <div className="pt-2">
-                        <div className="flex items-center gap-2 mb-5">
-                            <div className="w-3 h-3 rounded-full bg-violet-400 flex-shrink-0" />
-                            <h2 className="text-[14px] font-semibold text-slate-700">
-                                Tùy chỉnh tài nguyên của bạn
-                            </h2>
                         </div>
 
-                        <div className="space-y-5">
-                            <div className="flex items-center justify-between">
-                                <span className="text-[13px] text-slate-500 font-medium">Cấu trúc</span>
-                                <div className="relative">
-                                    <select
-                                        value={settings.structure}
-                                        onChange={e => setSettings(p => ({ ...p, structure: e.target.value }))}
-                                        className="appearance-none text-[13px] text-slate-600 font-medium bg-white border border-slate-200 rounded-lg px-4 py-2 pr-8 focus:outline-none focus:ring-2 focus:ring-sky-200 focus:border-sky-300 transition-all cursor-pointer"
-                                    >
-                                        {STRUCTURE_OPTIONS.map(opt => (
-                                            <option key={opt} value={opt}>{opt}</option>
-                                        ))}
-                                    </select>
-                                    <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                                </div>
-                            </div>
-
-                            {/* ── Difficulty Distribution ── */}
-                            <div className="space-y-3">
-                                <div className="flex items-center gap-2">
-                                    <Sliders className="w-4 h-4 text-slate-400" />
-                                    <span className="text-[13px] text-slate-500 font-medium">
-                                        Phân bổ độ khó
-                                    </span>
-                                </div>
-
-                                {/* Preset buttons */}
-                                <div className="grid grid-cols-4 gap-2">
-                                    {DIFFICULTY_PRESETS.map(preset => (
-                                        <button
-                                            key={preset.id}
-                                            onClick={() => handlePresetSelect(preset.id)}
-                                            className={`relative flex flex-col items-center gap-1 px-3 py-3 rounded-xl border-2 text-center transition-all duration-200
-                                                ${selectedPreset === preset.id
-                                                    ? 'border-sky-400 bg-sky-50 shadow-sm'
-                                                    : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
-                                                }`}
-                                        >
-                                            <span className={`text-[12px] font-bold ${selectedPreset === preset.id ? 'text-sky-700' : 'text-slate-700'}`}>
-                                                {preset.label}
-                                            </span>
-                                            <span className={`text-[10px] ${selectedPreset === preset.id ? 'text-sky-500' : 'text-slate-400'}`}>
-                                                {preset.desc}
-                                            </span>
-                                            {selectedPreset === preset.id && (
-                                                <motion.div
-                                                    className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-sky-500 flex items-center justify-center"
-                                                    initial={{ scale: 0 }}
-                                                    animate={{ scale: 1 }}
-                                                    transition={{ type: 'spring', stiffness: 500, damping: 25 }}
-                                                >
-                                                    <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                                                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                                                    </svg>
-                                                </motion.div>
-                                            )}
-                                        </button>
-                                    ))}
-                                </div>
-
-                                {/* Visual bar + level breakdown */}
-                                <div className="rounded-xl border border-slate-200 bg-slate-50/40 p-4 space-y-3">
-                                    {/* Stacked bar */}
-                                    <div className="flex h-3 rounded-full overflow-hidden bg-slate-200/60">
-                                        {DIFFICULTY_LEVELS.map(level => {
-                                            const pct = settings.difficultyDistribution?.[level.id] || 0;
-                                            if (pct === 0) return null;
-                                            return (
-                                                <motion.div
-                                                    key={level.id}
-                                                    className={`${colorMap[level.color].barBg}`}
-                                                    initial={{ width: 0 }}
-                                                    animate={{ width: `${pct}%` }}
-                                                    transition={{ duration: 0.3, ease: 'easeOut' }}
-                                                />
-                                            );
-                                        })}
-                                    </div>
-
-                                    {/* Level rows */}
-                                    <div className="space-y-2">
-                                        {DIFFICULTY_LEVELS.map(level => {
-                                            const pct = settings.difficultyDistribution?.[level.id] || 0;
-                                            const colors = colorMap[level.color];
-                                            const isCustom = selectedPreset === 'custom';
-
-                                            return (
-                                                <div
-                                                    key={level.id}
-                                                    className={`flex items-center gap-3 rounded-lg px-3 py-2 ${colors.bg} border ${colors.border}`}
-                                                >
-                                                    <span className="text-[14px]">{level.emoji}</span>
-                                                    <div className="flex-1 min-w-0">
-                                                        <p className={`text-[12px] font-bold ${colors.text}`}>{level.label}</p>
-                                                        <p className="text-[10px] text-slate-400">{level.sublabel}</p>
-                                                    </div>
-
-                                                    {isCustom ? (
-                                                        <div className="flex items-center gap-1">
-                                                            <button
-                                                                onClick={() => handleCustomStep(level.id, -5)}
-                                                                disabled={pct <= 0}
-                                                                className={`w-7 h-7 rounded-lg flex items-center justify-center border transition-all duration-150
-                                                                    ${pct <= 0
-                                                                        ? 'border-slate-200 text-slate-300 cursor-not-allowed'
-                                                                        : `border-slate-200 text-slate-500 ${colors.btnHover} active:scale-95`
-                                                                    }`}
-                                                            >
-                                                                <Minus className="w-3.5 h-3.5" />
-                                                            </button>
-                                                            <span className={`w-12 text-center text-[14px] font-bold tabular-nums ${colors.text}`}>
-                                                                {pct}%
-                                                            </span>
-                                                            <button
-                                                                onClick={() => handleCustomStep(level.id, 5)}
-                                                                disabled={pct >= 100}
-                                                                className={`w-7 h-7 rounded-lg flex items-center justify-center border transition-all duration-150
-                                                                    ${pct >= 100
-                                                                        ? 'border-slate-200 text-slate-300 cursor-not-allowed'
-                                                                        : `border-slate-200 text-slate-500 ${colors.btnHover} active:scale-95`
-                                                                    }`}
-                                                            >
-                                                                <Plus className="w-3.5 h-3.5" />
-                                                            </button>
-                                                        </div>
-                                                    ) : (
-                                                        <span className={`text-[14px] font-bold tabular-nums ${colors.text}`}>
-                                                            {pct}%
-                                                        </span>
-                                                    )}
+                        <AnimatePresence initial={false}>
+                            {editingStep === 'document' && (
+                                <motion.div
+                                    {...editPanelMotion}
+                                    className="overflow-hidden"
+                                >
+                                    <div className="mt-4 rounded-[14px] border border-dashed border-[#BFDDFB] bg-[#F8FBFF] p-5">
+                                        <div className="grid gap-5 md:grid-cols-[1fr_1.1fr] md:items-center">
+                                            <div className="relative min-h-[170px] overflow-hidden rounded-xl border border-[#D7EAF4] bg-white">
+                                                <div className="absolute left-1/2 top-1/2 h-36 w-36 -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#D7EAF4]" />
+                                                <div className="absolute left-[18%] top-[24%] grid h-9 w-9 place-items-center rounded-full bg-white text-[#6DA6E8] shadow-sm">
+                                                    <FileText className="h-4 w-4" />
                                                 </div>
-                                            );
-                                        })}
+                                                <div className="absolute right-[18%] top-[30%] grid h-9 w-9 place-items-center rounded-full bg-white text-[#4F92DD] shadow-sm">
+                                                    <Layers className="h-4 w-4" />
+                                                </div>
+                                                <div className="absolute bottom-6 left-1/2 grid h-20 w-28 -translate-x-1/2 place-items-center rounded-xl border border-[#BFDCEB] bg-[#F0F7FC] shadow-sm">
+                                                    <CloudUpload className="h-8 w-8 text-[#6DA6E8]" />
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <h3 className="text-xl font-extrabold tracking-[-0.02em] text-slate-950">
+                                                    Chọn tài liệu khác
+                                                </h3>
+                                                <p className="mt-2 text-sm leading-6 text-slate-500">
+                                                    Tải lên PDF, DOCX hoặc PPTX. File mới sẽ được dùng cho lần tạo này.
+                                                </p>
+                                                <input
+                                                    ref={fileInputRef}
+                                                    type="file"
+                                                    accept=".pdf,.doc,.docx,.pptx"
+                                                    className="hidden"
+                                                    onChange={handleFileChange}
+                                                />
+                                                <div className="mt-4 flex flex-wrap gap-3">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => fileInputRef.current?.click()}
+                                                        disabled={isReplacingFile}
+                                                        className="inline-flex h-10 items-center gap-2 rounded-[10px] bg-[#6DA6E8] px-4 text-[13px] font-extrabold text-white shadow-[0_12px_24px_rgba(109,166,232,0.28)] transition hover:-translate-y-0.5 hover:bg-[#4F92DD] disabled:cursor-not-allowed disabled:opacity-60"
+                                                    >
+                                                        {isReplacingFile ? <Loader2 className="h-4 w-4 animate-spin" /> : <CloudUpload className="h-4 w-4" />}
+                                                        {isReplacingFile ? 'Đang tải lên...' : 'Chọn từ thiết bị'}
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setEditingStep(null)}
+                                                        className="h-10 rounded-[10px] border border-slate-300 bg-white px-4 text-[13px] font-bold text-slate-700 transition hover:bg-slate-50"
+                                                    >
+                                                        Hủy
+                                                    </button>
+                                                </div>
+                                                {isReplacingFile && (
+                                                    <div className="mt-4 max-w-sm">
+                                                        <div className="mb-2 flex items-center justify-between text-xs font-bold text-slate-500">
+                                                            <span>Đang tải tài liệu</span>
+                                                            <span>{replaceProgress}%</span>
+                                                        </div>
+                                                        <div className="h-2 overflow-hidden rounded-full bg-white">
+                                                            <div
+                                                                className="h-full rounded-full bg-[#6DA6E8] transition-all duration-300 ease-out"
+                                                                style={{ width: `${replaceProgress}%` }}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                )}
+                                                {replaceError && (
+                                                    <p className="mt-3 text-sm font-semibold text-rose-500">{replaceError}</p>
+                                                )}
+                                            </div>
+                                        </div>
                                     </div>
-                                </div>
-                            </div>
-
-                            <div className="flex items-center justify-between">
-                                <span className="text-[13px] text-slate-500 font-medium">Loại câu hỏi</span>
-                                <div className="flex items-center gap-2">
-                                    {QUESTION_TYPES.map(qt => (
-                                        <button
-                                            key={qt.id}
-                                            onClick={() => qt.active && setSettings(p => ({ ...p, questionType: qt.id }))}
-                                            disabled={!qt.active}
-                                            className={`px-3 py-1.5 rounded-lg text-[12px] font-semibold border transition-all duration-200 ${settings.questionType === qt.id ? 'bg-sky-50 border-sky-300 text-sky-600' : qt.active ? 'bg-white border-slate-200 text-slate-500 hover:border-slate-300 cursor-pointer' : 'bg-slate-50 border-slate-100 text-slate-300 cursor-not-allowed'}`}
-                                        >
-                                            {settings.questionType === qt.id ? '✓ ' : '+ '}
-                                            {qt.label}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            <div className="flex items-center justify-between">
-                                <span className="text-[13px] text-slate-500 font-medium">Số lượng câu hỏi</span>
-                                <div className="flex items-center gap-1.5">
-                                    {QUESTION_COUNTS.map(qc => (
-                                        <button
-                                            key={qc.value}
-                                            onClick={() => setSettings(p => ({ ...p, questionCount: qc.value }))}
-                                            className={`px-3 py-1.5 rounded-lg text-[12px] font-semibold border transition-all duration-200 ${settings.questionCount === qc.value ? 'bg-slate-800 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'}`}
-                                        >
-                                            {qc.label}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            <div className="flex items-center justify-between">
-                                <span className="text-[13px] text-slate-500 font-medium">Ngôn ngữ đầu ra</span>
-                                <div className="relative">
-                                    <select
-                                        value={settings.language}
-                                        onChange={e => setSettings(p => ({ ...p, language: e.target.value }))}
-                                        className="appearance-none text-[13px] text-slate-600 font-medium bg-white border border-slate-200 rounded-lg px-4 py-2 pr-8 focus:outline-none focus:ring-2 focus:ring-sky-200 focus:border-sky-300 transition-all cursor-pointer"
-                                    >
-                                        {LANGUAGES.map(lang => (
-                                            <option key={lang.value} value={lang.value}>{lang.label}</option>
-                                        ))}
-                                    </select>
-                                    <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                                </div>
-                            </div>
-                        </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
                     </div>
 
-                    <div className="flex justify-end pt-4 border-t border-slate-100/60">
-                        <motion.button
-                            onClick={handleGenerate}
-                            disabled={isGenerating}
-                            className="flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-[13px] font-bold hover:from-emerald-600 hover:to-teal-600 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-60 disabled:cursor-not-allowed"
-                            whileHover={!isGenerating ? { scale: 1.02, y: -1 } : {}}
-                            whileTap={!isGenerating ? { scale: 0.98 } : {}}
-                        >
-                            {isGenerating ? (
-                                <>
-                                    <Loader2 className="w-4 h-4 animate-spin" />
-                                    Đang tạo...
-                                </>
-                            ) : (
-                                <>
-                                    Tạo tài nguyên
-                                    <ArrowRight className="w-4 h-4" />
-                                </>
+                    <div className="relative mb-7">
+                        <StepDot active={editingStep === 'type'} done Icon={Settings2} />
+                        <div className="flex items-center gap-3">
+                            <p className="text-[15px] font-semibold text-slate-700">{creationCopy.typeLabel}</p>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setDraftActivityType(activityType);
+                                    setEditingStep(editingStep === 'type' ? null : 'type');
+                                }}
+                                className="grid h-8 w-8 place-items-center rounded-lg text-slate-700 transition hover:bg-[#EAF4FF] hover:text-[#4F92DD]"
+                                aria-label="Chọn lại loại nội dung"
+                            >
+                                <motion.span
+                                    animate={{ rotate: editingStep === 'type' ? -12 : 0, scale: editingStep === 'type' ? 1.08 : 1 }}
+                                    transition={{ type: 'spring', stiffness: 420, damping: 24 }}
+                                >
+                                    <Pencil className="h-4 w-4" />
+                                </motion.span>
+                            </button>
+                        </div>
+
+                        <AnimatePresence initial={false}>
+                            {editingStep === 'type' && (
+                                <motion.div
+                                    {...editPanelMotion}
+                                    className="overflow-hidden"
+                                >
+                                    <div className="mt-4">
+                                        <p className="mb-3 text-[15px] font-extrabold text-slate-950">Chọn loại nội dung</p>
+                                        <div className="grid gap-4 md:grid-cols-2">
+                                            {ACTIVITY_TYPES.map((type, index) => {
+                                                const active = draftActivityType === type.id;
+                                                return (
+                                                    <motion.button
+                                                        key={type.id}
+                                                        type="button"
+                                                        onClick={() => setDraftActivityType(type.id)}
+                                                        initial={{ opacity: 0, y: 10 }}
+                                                        animate={{ opacity: 1, y: 0 }}
+                                                        transition={{ delay: index * 0.04, duration: 0.22, ease: 'easeOut' }}
+                                                        className={[
+                                                            'relative flex min-h-[170px] flex-col items-center justify-center gap-2 rounded-[14px] border bg-white text-center transition',
+                                                            active
+                                                                ? 'border-2 border-[#6DA6E8] bg-[#F8FBFF] shadow-[0_16px_38px_rgba(109,166,232,0.16)]'
+                                                                : 'border-slate-200 hover:border-[#BFDDFB] hover:shadow-[0_12px_28px_rgba(109,166,232,0.12)]',
+                                                        ].join(' ')}
+                                                    >
+                                                        <span className={`grid h-16 w-16 place-items-center rounded-[10px] text-white ${type.color}`}>
+                                                            <type.Icon className="h-9 w-9" />
+                                                        </span>
+                                                        <span className="mt-2 text-[16px] font-extrabold text-slate-950">{type.label}</span>
+                                                        <span className="max-w-[180px] text-[13px] leading-5 text-slate-500">{type.description}</span>
+                                                        <AnimatePresence>
+                                                            {active && (
+                                                                <motion.span
+                                                                    initial={{ scale: 0.65, opacity: 0 }}
+                                                                    animate={{ scale: 1, opacity: 1 }}
+                                                                    exit={{ scale: 0.65, opacity: 0 }}
+                                                                    transition={{ type: 'spring', stiffness: 520, damping: 26 }}
+                                                                    className="absolute right-4 top-4 grid h-6 w-6 place-items-center rounded-full bg-[#6DA6E8] text-white"
+                                                                >
+                                                                    <CheckCircle2 className="h-5 w-5" />
+                                                                </motion.span>
+                                                            )}
+                                                        </AnimatePresence>
+                                                    </motion.button>
+                                                );
+                                            })}
+                                        </div>
+                                        <div className="mt-4 flex justify-end gap-3">
+                                            <button
+                                                type="button"
+                                                onClick={() => setEditingStep(null)}
+                                                className="h-10 rounded-[10px] border border-slate-300 bg-white px-5 text-[13px] font-bold text-slate-700 transition hover:bg-slate-50"
+                                            >
+                                                Hủy
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setActivityType(draftActivityType);
+                                                    setEditingStep(null);
+                                                }}
+                                                className="h-10 rounded-[10px] bg-[#6DA6E8] px-5 text-[13px] font-extrabold text-white shadow-[0_12px_24px_rgba(109,166,232,0.28)] transition hover:-translate-y-0.5 hover:bg-[#4F92DD]"
+                                            >
+                                                Áp dụng
+                                            </button>
+                                        </div>
+                                    </div>
+                                </motion.div>
                             )}
-                        </motion.button>
+                        </AnimatePresence>
+                    </div>
+
+                    <div className="relative mb-7 flex items-center gap-3">
+                        <StepDot done Icon={Layers} />
+                        <p className="text-[15px] font-semibold text-slate-700">Toàn bộ tài liệu đã chọn</p>
+                    </div>
+
+                    <div className="relative">
+                        <StepDot active />
+                        <div className="mb-4">
+                            <h2 className="text-[16px] font-extrabold text-slate-900">{creationCopy.customize}</h2>
+                        </div>
+
+                        <div className="overflow-hidden rounded-[10px] border border-slate-300 bg-white">
+                            <SettingRow label={creationCopy.titleLabel}>
+                                {editingTitle ? (
+                                    <input
+                                        type="text"
+                                        value={settings.title}
+                                        onChange={(event) => setSettings((prev) => ({ ...prev, title: event.target.value }))}
+                                        onBlur={() => setEditingTitle(false)}
+                                        onKeyDown={(event) => event.key === 'Enter' && setEditingTitle(false)}
+                                        className="h-10 min-w-[220px] rounded-[10px] border border-[#6DA6E8] px-3 text-[13px] font-semibold text-slate-700 outline-none ring-4 ring-[#EAF4FF]"
+                                        autoFocus
+                                    />
+                                ) : (
+                                    <button
+                                        type="button"
+                                        onClick={() => setEditingTitle(true)}
+                                        className="inline-flex h-10 min-w-[178px] items-center justify-between gap-3 rounded-[10px] border border-slate-300 bg-white px-4 text-[13px] font-semibold text-slate-700 transition hover:border-[#6DA6E8]"
+                                    >
+                                        <span>{settings.title || creationCopy.titleFallback}</span>
+                                        <Pencil className="h-3.5 w-3.5 text-slate-400" />
+                                    </button>
+                                )}
+                            </SettingRow>
+
+                            <SettingRow label="Mục tiêu bài học">
+                                <SelectControl
+                                    value={settings.structure}
+                                    onChange={(event) => setSettings((prev) => ({ ...prev, structure: event.target.value }))}
+                                    options={STRUCTURE_OPTIONS}
+                                    ariaLabel="Chọn mục tiêu bài học"
+                                />
+                            </SettingRow>
+
+                            <SettingRow label="Độ sâu kiến thức (DOK)">
+                                {DIFFICULTY_LEVELS.map((level) => {
+                                    const active = settings.difficulties.includes(level.id);
+                                    return (
+                                        <button
+                                            key={level.id}
+                                            type="button"
+                                            onClick={() => handleDifficultyToggle(level.id)}
+                                            title={level.name}
+                                            className={[
+                                                'h-8 rounded-full border px-4 text-[12px] font-extrabold transition',
+                                                active
+                                                    ? 'border-[#6DA6E8] bg-[#EAF4FF] text-[#173154] shadow-[0_8px_18px_rgba(109,166,232,0.14)]'
+                                                    : 'border-slate-300 bg-white text-slate-600 hover:border-[#6DA6E8]',
+                                            ].join(' ')}
+                                        >
+                                            {level.label}
+                                        </button>
+                                    );
+                                })}
+                            </SettingRow>
+
+                            {activityType === 'quiz' && (
+                                <SettingRow label="Loại câu hỏi">
+                                    <span className="h-8 rounded-full border border-[#6DA6E8] bg-[#EAF4FF] px-4 py-1.5 text-[12px] font-extrabold text-[#173154]">
+                                        Trắc nghiệm
+                                    </span>
+                                </SettingRow>
+                            )}
+
+                            <SettingRow label={activityType === 'flashcards' ? 'Số lượng thẻ' : 'Số lượng câu hỏi'}>
+                                {QUESTION_COUNTS.map((count) => (
+                                    <button
+                                        key={count.value}
+                                        type="button"
+                                        onClick={() => setSettings((prev) => ({ ...prev, questionCount: count.value }))}
+                                        className={[
+                                            'h-8 rounded-full border px-4 text-[12px] font-extrabold transition',
+                                            settings.questionCount === count.value
+                                                ? 'border-[#6DA6E8] bg-[#6DA6E8] text-white'
+                                                : 'border-slate-300 bg-white text-slate-600 hover:border-[#6DA6E8]',
+                                        ].join(' ')}
+                                    >
+                                        {count.label}
+                                    </button>
+                                ))}
+                            </SettingRow>
+
+                            <SettingRow label="Ngôn ngữ đầu ra">
+                                <SelectControl
+                                    value={settings.language}
+                                    onChange={(event) => setSettings((prev) => ({ ...prev, language: event.target.value }))}
+                                    options={LANGUAGES}
+                                    ariaLabel="Chọn ngôn ngữ đầu ra"
+                                />
+                            </SettingRow>
+                        </div>
+
+                        <div className="mt-6 flex justify-end">
+                            <motion.button
+                                type="button"
+                                onClick={handleGenerate}
+                                disabled={isGenerating}
+                                className="inline-flex h-12 items-center justify-center gap-2 rounded-[10px] bg-[#6DA6E8] px-7 text-[13px] font-extrabold text-white shadow-[0_16px_34px_rgba(109,166,232,0.3)] transition hover:bg-[#4F92DD] disabled:cursor-not-allowed disabled:opacity-60"
+                                whileHover={!isGenerating ? { scale: 1.02, y: -1 } : {}}
+                                whileTap={!isGenerating ? { scale: 0.98 } : {}}
+                            >
+                                {isGenerating ? (
+                                    <>
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                        {creationCopy.generating}
+                                    </>
+                                ) : (
+                                    <>
+                                        {creationCopy.action}
+                                        <ArrowRight className="h-4 w-4" />
+                                    </>
+                                )}
+                            </motion.button>
+                        </div>
                     </div>
                 </div>
 
-                <footer className="px-8 py-3 bg-slate-50/50 border-t border-slate-100/60 text-center">
-                    <p className="text-[11px] text-slate-400">
-                        AI sẽ phân tích tài liệu. Hãy xem xét và tùy chỉnh tài nguyên để điều chỉnh theo nhu cầu của bạn.
+                <footer className="mt-auto border-t border-slate-100 px-8 py-4 text-center">
+                    <p className="text-[11px] font-medium text-slate-400">
+                        {creationCopy.footer}
                     </p>
                 </footer>
             </motion.article>

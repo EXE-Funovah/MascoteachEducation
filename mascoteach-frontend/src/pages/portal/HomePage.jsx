@@ -1,683 +1,658 @@
-import { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
-    Plus, Clock, Users, Play, FileText, Sparkles, Search,
-    CloudUpload, Loader2, AlertCircle, ArrowRight, CheckCircle2,
-    X, ListChecks
+    ArrowRight,
+    CheckCircle2,
+    Clock,
+    CloudUpload,
+    FileText,
+    Layers,
+    Library,
+    ListChecks,
+    Loader2,
+    PencilLine,
+    Plus,
+    Presentation,
+    Search,
+    Sparkles,
+    X,
 } from 'lucide-react';
-import CreateFlowModal from '@/components/portal/create/CreateFlowModal';
 import { useAuth } from '@/contexts/AuthContext';
+import { createDocument, generateUploadUrl, getMyDocuments } from '@/services/documentService';
 import { getMySessions } from '@/services/liveSessionService';
-import { getMyDocuments } from '@/services/documentService';
 
-/* ── Tab definitions ── */
 const TABS = [
-    { id: 'create', label: 'Tạo mới', Icon: Sparkles },
-    { id: 'search', label: 'Tìm kiếm', Icon: Search },
-    { id: 'upload', label: 'Tải lên', Icon: CloudUpload },
+    { id: 'create', label: 'Tạo mới', hint: 'từ tài liệu', Icon: PencilLine },
+    { id: 'search', label: 'Tìm kiếm', hint: 'trong thư viện', Icon: Search },
+    { id: 'upload', label: 'Tải lên', hint: 'và tăng cường', Icon: CloudUpload },
 ];
 
-/* ── Activity types available (only Quiz for now) ── */
 const ACTIVITY_TYPES = [
     {
         id: 'quiz',
         label: 'Trắc nghiệm',
-        description: 'Tạo bộ câu hỏi trắc nghiệm từ tài liệu bằng AI',
+        description: 'Tạo bộ câu hỏi nhanh từ tài liệu bằng AI.',
         Icon: ListChecks,
-        color: 'sky',
+        color: 'bg-[#5D9CEC]',
+        available: true,
+    },
+    {
+        id: 'flashcards',
+        label: 'Flashcards',
+        description: 'Tạo thẻ ghi nhớ cho thuật ngữ, khái niệm và ôn tập.',
+        Icon: Layers,
+        color: 'bg-[#6F7DEB]',
         available: true,
     },
 ];
 
-const RECENT_DOCS_LIMIT = 5;
+const DEMO_DOCS = [
+    { id: 'demo-1', title: 'Sinh học 10 - Tế bào và trao đổi chất.pdf', uploadedAt: '2026-05-28T09:30:00Z' },
+    { id: 'demo-2', title: 'Ôn tập lịch sử thế giới hiện đại.docx', uploadedAt: '2026-05-25T14:20:00Z' },
+    { id: 'demo-3', title: 'Bài giảng phân số lớp 5.pptx', uploadedAt: '2026-05-21T07:10:00Z' },
+];
 
-/**
- * Extract a human-readable file name from an S3 key or file URL.
- * E.g. "uploads/abc123-lecture_notes.pdf" → "lecture_notes.pdf"
- */
+const DEMO_SESSIONS = [
+    { id: 's-1', title: 'Quiz Sinh học 10', participants: 31, createdAt: '2026-05-28T10:00:00Z' },
+    { id: 's-2', title: 'Ôn tập phân số', participants: 24, createdAt: '2026-05-22T08:00:00Z' },
+];
+
 function extractFileName(doc) {
     if (doc.title) return doc.title;
     if (doc.fileName) return doc.fileName;
     const raw = doc.s3Key || doc.fileUrl || '';
-    const segments = raw.split('/');
-    const last = segments[segments.length - 1] || '';
-    // Strip leading UUID prefix (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx-)
-    const withoutUuid = last.replace(
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}-?/i,
-        '',
+    const last = raw.split('/').pop() || '';
+    return last.replace(/^[0-9a-f-]{12,}-?/i, '') || `Tài liệu #${doc.id}`;
+}
+
+function uploadFileWithProgress(uploadUrl, file, onProgress) {
+    return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('PUT', uploadUrl);
+        xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+
+        xhr.upload.onprogress = (event) => {
+            if (!event.lengthComputable) return;
+            const percent = Math.round((event.loaded / event.total) * 100);
+            onProgress(Math.max(1, Math.min(99, percent)));
+        };
+
+        xhr.onload = () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+                onProgress(100);
+                resolve();
+                return;
+            }
+            reject(new Error(`S3 upload failed: ${xhr.status} ${xhr.statusText}`));
+        };
+
+        xhr.onerror = () => reject(new Error('Upload failed. Please try again.'));
+        xhr.send(file);
+    });
+}
+
+function UploadIllustration() {
+    const orbitItems = [
+        { label: 'PDF', className: 'teacher-orbit-item--pdf', Icon: FileText },
+        { label: 'DOC', className: 'teacher-orbit-item--doc', Icon: FileText },
+        { label: 'PPT', className: 'teacher-orbit-item--ppt', Icon: Presentation },
+    ];
+
+    return (
+        <div className="teacher-upload-visual" aria-hidden="true">
+            <div className="teacher-orbit teacher-orbit--outer" />
+            <div className="teacher-orbit teacher-orbit--inner" />
+            {orbitItems.map((item) => (
+                <span key={item.label} className={`teacher-orbit-item ${item.className}`}>
+                    <item.Icon className="h-4 w-4" />
+                    <span>{item.label}</span>
+                </span>
+            ))}
+            <div className="teacher-file-stack">
+                <div className="teacher-file-card teacher-file-card--back" />
+                <div className="teacher-file-card teacher-file-card--mid" />
+                <div className="teacher-file-card teacher-file-card--front">
+                    <FileText className="h-7 w-7 text-[#5D9CEC]" />
+                </div>
+            </div>
+        </div>
     );
-    return withoutUuid || last || `Tài liệu #${doc.id}`;
+}
+
+function ActivityCard({ type, onSelect }) {
+    return (
+        <button
+            type="button"
+            onClick={() => {
+                if (type.available) onSelect(type.id);
+            }}
+            disabled={!type.available}
+            className={[
+                'group flex flex-col items-center justify-center gap-3 rounded-[18px] px-5 py-6 text-center transition duration-300',
+                type.available
+                    ? 'bg-white text-slate-800 hover:-translate-y-1 hover:shadow-[0_18px_46px_rgba(93,156,236,0.16)]'
+                    : 'bg-slate-50 text-slate-400 cursor-not-allowed',
+            ].join(' ')}
+        >
+            <span className={`grid h-16 w-16 place-items-center rounded-[16px] text-white shadow-[0_14px_30px_rgba(15,23,42,0.14)] ${type.color}`}>
+                <type.Icon className="h-8 w-8" />
+            </span>
+            <span className="text-[15px] font-bold">{type.label}</span>
+            <span className="max-w-[190px] text-[12px] leading-5 text-slate-500">{type.description}</span>
+            {type.badge && (
+                <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-bold text-slate-500">
+                    {type.badge}
+                </span>
+            )}
+        </button>
+    );
 }
 
 export default function HomePage() {
     const navigate = useNavigate();
-    const [showCreateModal, setShowCreateModal] = useState(false);
-    const [activeTab, setActiveTab] = useState('search');
-    const [animKey, setAnimKey] = useState(0);
-
-    // ── Sessions ──
-    const [recentSessions, setRecentSessions] = useState([]);
-    const [loadingSessions, setLoadingSessions] = useState(true);
-    const [sessionsError, setSessionsError] = useState(null);
-
-    // ── Documents ──
-    const [documents, setDocuments] = useState([]);
-    const [loadingDocs, setLoadingDocs] = useState(true);
-    const [docsError, setDocsError] = useState(null);
+    const location = useLocation();
+    const isDevPreview = location.pathname.startsWith('/dev/teacher');
+    const fileInputRef = useRef(null);
+    const [activeTab, setActiveTab] = useState('create');
+    const [selectedDoc, setSelectedDoc] = useState(null);
+    const [selectedType, setSelectedType] = useState(null);
+    const [documents, setDocuments] = useState(isDevPreview ? DEMO_DOCS : []);
+    const [recentSessions, setRecentSessions] = useState(isDevPreview ? DEMO_SESSIONS : []);
+    const [loadingDocs, setLoadingDocs] = useState(!isDevPreview);
+    const [loadingSessions, setLoadingSessions] = useState(!isDevPreview);
+    const [docsError, setDocsError] = useState('');
+    const [uploadError, setUploadError] = useState('');
+    const [isUploading, setIsUploading] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState(0);
+    const [pendingUpload, setPendingUpload] = useState(null);
+    const [pendingType, setPendingType] = useState('quiz');
     const [searchQuery, setSearchQuery] = useState('');
 
-    // ── Document → Activity type selection (overlay) ──
-    const [selectedDoc, setSelectedDoc] = useState(null);
-
-    // ── Create flow: step-based ──
-    const [createStep, setCreateStep] = useState('type'); // 'type' | 'document'
-    const [selectedType, setSelectedType] = useState(null);
-
     const { user } = useAuth();
-    const displayName = user?.fullName || user?.name || 'Giáo viên';
+    const displayName = user?.fullName || user?.name || (isDevPreview ? 'Minh Anh' : 'Giáo viên');
+    const greeting = new Date().getHours() < 18 ? 'Chào ngày mới' : 'Chào buổi tối';
 
-    const hour = new Date().getHours();
-    const greeting = hour < 12 ? 'Chào buổi sáng' : hour < 17 ? 'Chào buổi chiều' : 'Chào buổi tối';
-
-    // ── Fetch sessions ──
     useEffect(() => {
-        async function fetchSessions() {
-            try {
-                setLoadingSessions(true);
-                const data = await getMySessions();
-                setRecentSessions(Array.isArray(data) ? data.slice(0, 5) : []);
-            } catch (err) {
-                setSessionsError(err.message || 'Không thể tải hoạt động gần đây');
-            } finally {
-                setLoadingSessions(false);
-            }
-        }
-        fetchSessions();
-    }, []);
+        if (isDevPreview) return;
 
-    // ── Fetch user documents ──
-    useEffect(() => {
-        async function fetchDocs() {
+        async function loadDashboardData() {
             try {
                 setLoadingDocs(true);
-                const data = await getMyDocuments();
-                const docs = Array.isArray(data) ? data.filter((d) => !d.isDeleted) : [];
-                // Sort by uploadedAt descending (newest first)
-                docs.sort((a, b) => new Date(b.uploadedAt || 0) - new Date(a.uploadedAt || 0));
-                setDocuments(docs);
+                const docs = await getMyDocuments();
+                setDocuments(Array.isArray(docs) ? docs.filter((doc) => !doc.isDeleted) : []);
             } catch (err) {
                 setDocsError(err.message || 'Không thể tải tài liệu');
             } finally {
                 setLoadingDocs(false);
             }
+
+            try {
+                setLoadingSessions(true);
+                const sessions = await getMySessions();
+                setRecentSessions(Array.isArray(sessions) ? sessions.slice(0, 4) : []);
+            } catch {
+                setRecentSessions([]);
+            } finally {
+                setLoadingSessions(false);
+            }
         }
-        fetchDocs();
-    }, []);
 
-    // ── Re-trigger mount animation when tab changes ──
-    useEffect(() => {
-        setAnimKey((k) => k + 1);
-    }, [activeTab]);
+        loadDashboardData();
+    }, [isDevPreview]);
 
-    // ── Reset create step when switching away from create tab ──
-    useEffect(() => {
-        if (activeTab !== 'create') {
-            setCreateStep('type');
-            setSelectedType(null);
-        }
-    }, [activeTab]);
-
-    // ── Filtered documents for search ──
     const filteredDocuments = useMemo(() => {
-        if (!searchQuery.trim()) return documents.slice(0, RECENT_DOCS_LIMIT);
-        const q = searchQuery.toLowerCase().trim();
-        return documents.filter((doc) => {
-            const name = extractFileName(doc).toLowerCase();
-            return name.includes(q);
-        });
+        const query = searchQuery.trim().toLowerCase();
+        if (!query) return documents;
+        return documents.filter((doc) => extractFileName(doc).toLowerCase().includes(query));
     }, [documents, searchQuery]);
 
-    // ── Navigate to quiz settings with a doc ──
-    function navigateToQuizSettings(doc) {
-        navigate('/teacher/quiz-settings', {
+    function routeFor(path) {
+        return isDevPreview ? path.replace('/teacher', '/dev/teacher') : path;
+    }
+
+    function handleTypeSelection(typeId) {
+        setSelectedType(typeId);
+        setActiveTab('upload');
+    }
+
+    function navigateToCustomizer(upload, typeId) {
+        navigate(routeFor('/teacher/quiz-settings'), {
             state: {
-                fileName: extractFileName(doc),
-                documentId: doc.id,
-                fileUrl: doc.presignedUrl || null,
+                fileName: upload.fileName,
+                fileSize: upload.fileSize,
+                documentId: upload.documentId,
+                fileUrl: upload.fileUrl,
+                activityType: typeId,
             },
         });
     }
 
-    // ── Handle document click from search (show type picker) ──
-    function handleDocClickFromSearch(doc) {
-        setSelectedDoc(doc);
-    }
+    function handleDocumentAction(doc) {
+        const upload = {
+            fileName: extractFileName(doc),
+            fileSize: doc.fileSize || null,
+            documentId: doc.id,
+            fileUrl: doc.presignedUrl || null,
+        };
 
-    // ── Handle type selection from search overlay ──
-    function handleTypeFromSearch(typeId) {
-        if (typeId === 'quiz' && selectedDoc) {
-            navigateToQuizSettings(selectedDoc);
+        if (selectedType) {
+            navigateToCustomizer(upload, selectedType);
+            return;
         }
-        setSelectedDoc(null);
+
+        setPendingType('quiz');
+        setPendingUpload(upload);
     }
 
-    // ── Handle document click from create flow step 2 ──
-    function handleDocClickFromCreate(doc) {
-        if (selectedType === 'quiz') {
-            navigateToQuizSettings(doc);
+    async function handleDirectUpload(event) {
+        const file = event.target.files?.[0];
+        event.target.value = '';
+        if (!file || isUploading) return;
+
+        setUploadError('');
+        setUploadProgress(0);
+
+        if (isDevPreview) {
+            setIsUploading(true);
+            for (const value of [16, 38, 62, 84, 100]) {
+                await new Promise((resolve) => setTimeout(resolve, 120));
+                setUploadProgress(value);
+            }
+            setIsUploading(false);
+
+            const upload = {
+                fileName: file.name,
+                fileSize: file.size,
+                documentId: 'dev-upload',
+                fileUrl: null,
+            };
+
+            if (selectedType) {
+                navigateToCustomizer(upload, selectedType);
+            } else {
+                setPendingType('quiz');
+                setPendingUpload(upload);
+            }
+            return;
+        }
+
+        setIsUploading(true);
+        try {
+            const { uploadUrl, s3Key } = await generateUploadUrl(file.name, file.type);
+            await uploadFileWithProgress(uploadUrl, file, setUploadProgress);
+            const doc = await createDocument({ s3Key });
+
+            const upload = {
+                fileName: file.name,
+                fileSize: file.size,
+                documentId: doc?.id ?? doc?.documentId ?? null,
+                fileUrl: doc?.presignedUrl ?? null,
+            };
+
+            if (selectedType) {
+                navigateToCustomizer(upload, selectedType);
+            } else {
+                setPendingType('quiz');
+                setPendingUpload(upload);
+            }
+        } catch (err) {
+            setUploadError(err.message || 'Tải lên thất bại. Vui lòng thử lại.');
+        } finally {
+            setIsUploading(false);
         }
     }
 
-    /* SEARCH TAB — Quick actions: recent docs + search */
-    const renderSearchContent = () => (
-        <section aria-label="Tìm kiếm tài liệu" className="space-y-6">
-            {/* Search bar */}
-            <div className="relative">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+    const renderCreate = () => (
+        <section className="teacher-panel" aria-label="Tạo nội dung mới">
+            <div className="mb-8 text-center">
+                <p className="text-[13px] font-semibold uppercase tracking-[0.12em] text-[#5D9CEC]">Chọn định dạng</p>
+                <h2 className="mt-2 text-2xl font-extrabold tracking-[-0.02em] text-slate-900">
+                    Bạn muốn tạo gì hôm nay?
+                </h2>
+            </div>
+            <div className="grid gap-5 md:grid-cols-2">
+                {ACTIVITY_TYPES.map((type) => (
+                    <ActivityCard key={type.id} type={type} onSelect={handleTypeSelection} />
+                ))}
+            </div>
+        </section>
+    );
+
+    const renderSearch = () => (
+        <section className="teacher-panel" aria-label="Tìm kiếm tài liệu">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                    <p className="text-[13px] font-semibold uppercase tracking-[0.12em] text-[#5D9CEC]">Thư viện</p>
+                    <h2 className="mt-1 text-2xl font-extrabold tracking-[-0.02em] text-slate-900">Chọn tài liệu để bắt đầu</h2>
+                </div>
+                <button
+                    type="button"
+                    onClick={() => setActiveTab('upload')}
+                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#1E293B] px-4 py-3 text-sm font-bold text-white transition hover:-translate-y-0.5"
+                >
+                    <Plus className="h-4 w-4" />
+                    Tải tài liệu mới
+                </button>
+            </div>
+
+            <div className="relative mt-6">
+                <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
                 <input
-                    type="text"
                     value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Tìm kiếm tài liệu theo tên..."
-                    className="w-full pl-12 pr-4 py-3.5 rounded-xl border border-slate-200
-                               bg-white text-sm text-slate-700 placeholder:text-slate-400
-                               focus:outline-none focus:ring-2 focus:ring-sky-200 focus:border-sky-300
-                               transition-all duration-200"
+                    onChange={(event) => setSearchQuery(event.target.value)}
+                    placeholder="Tìm theo tên tài liệu..."
+                    className="h-[52px] w-full rounded-2xl border border-slate-200 bg-white pl-12 pr-11 text-sm font-medium text-slate-700 outline-none transition focus:border-[#5D9CEC] focus:ring-4 focus:ring-[#5D9CEC]/12"
                 />
                 {searchQuery && (
                     <button
+                        type="button"
                         onClick={() => setSearchQuery('')}
-                        className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400
-                                   hover:text-slate-600 transition-colors"
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700"
+                        aria-label="Xóa tìm kiếm"
                     >
-                        <X className="w-4 h-4" />
+                        <X className="h-4 w-4" />
                     </button>
                 )}
             </div>
 
-            {/* Section title */}
-            <div className="flex items-center justify-between">
-                <h2 className="text-[14px] font-semibold text-slate-600">
-                    {searchQuery.trim()
-                        ? `Kết quả tìm kiếm "${searchQuery}"`
-                        : 'Tài liệu gần đây'}
-                </h2>
-                {!searchQuery.trim() && documents.length > RECENT_DOCS_LIMIT && (
-                    <span className="text-[12px] text-slate-400">
-                        {RECENT_DOCS_LIMIT} / {documents.length} tài liệu
-                    </span>
+            <div className="mt-5 space-y-3">
+                {loadingDocs ? (
+                    <div className="flex items-center justify-center gap-3 py-12 text-sm font-semibold text-slate-500">
+                        <Loader2 className="h-5 w-5 animate-spin text-[#5D9CEC]" />
+                        Đang tải tài liệu...
+                    </div>
+                ) : docsError ? (
+                    <div className="rounded-2xl border border-slate-200 bg-white p-6 text-sm font-semibold text-slate-500">{docsError}</div>
+                ) : filteredDocuments.length === 0 ? (
+                    <div className="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center">
+                        <Library className="mx-auto h-8 w-8 text-slate-300" />
+                        <p className="mt-3 text-sm font-semibold text-slate-600">Chưa có tài liệu phù hợp</p>
+                    </div>
+                ) : (
+                    filteredDocuments.map((doc) => (
+                        <button
+                            key={doc.id}
+                            type="button"
+                            onClick={() => handleDocumentAction(doc)}
+                            className="group flex w-full items-center justify-between rounded-2xl border border-slate-100 bg-white p-4 text-left transition hover:-translate-y-0.5 hover:border-[#BFD8FA] hover:shadow-[0_14px_38px_rgba(93,156,236,0.12)]"
+                        >
+                            <span className="flex min-w-0 items-center gap-4">
+                                <span className="grid h-11 w-11 flex-none place-items-center rounded-xl bg-[#F0F7FF] text-[#5D9CEC]">
+                                    <FileText className="h-5 w-5" />
+                                </span>
+                                <span className="min-w-0">
+                                    <span className="block truncate text-sm font-bold text-slate-800">{extractFileName(doc)}</span>
+                                    <span className="mt-1 flex items-center gap-1 text-xs font-medium text-slate-400">
+                                        <Clock className="h-3 w-3" />
+                                        {doc.uploadedAt
+                                            ? new Date(doc.uploadedAt).toLocaleDateString('vi-VN', { day: 'numeric', month: 'short' })
+                                            : 'Mới tải lên'}
+                                    </span>
+                                </span>
+                            </span>
+                            <ArrowRight className="h-4 w-4 flex-none text-slate-300 transition group-hover:text-[#5D9CEC]" />
+                        </button>
+                    ))
                 )}
             </div>
-
-            {/* Document list */}
-            {loadingDocs ? (
-                <div className="flex items-center justify-center py-16">
-                    <Loader2 className="w-6 h-6 text-sky-500 animate-spin" />
-                    <span className="ml-3 text-sm text-slate-400">Đang tải tài liệu...</span>
-                </div>
-            ) : docsError ? (
-                <div className="flex flex-col items-center justify-center py-16 text-center">
-                    <AlertCircle className="w-8 h-8 text-slate-300 mb-3" />
-                    <p className="text-sm text-slate-400">{docsError}</p>
-                </div>
-            ) : filteredDocuments.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-16 text-center">
-                    <div className="w-14 h-14 rounded-2xl bg-slate-50 flex items-center justify-center mb-4">
-                        <FileText className="w-7 h-7 text-slate-300" />
-                    </div>
-                    {searchQuery.trim() ? (
-                        <>
-                            <h3 className="text-[14px] font-medium text-slate-500 mb-1">
-                                Không tìm thấy tài liệu
-                            </h3>
-                            <p className="text-[13px] text-slate-400">
-                                Thử tìm kiếm với từ khóa khác
-                            </p>
-                        </>
-                    ) : (
-                        <>
-                            <h3 className="text-[14px] font-medium text-slate-500 mb-1">
-                                Chưa có tài liệu nào
-                            </h3>
-                            <p className="text-[13px] text-slate-400 mb-4">
-                                Tải lên tài liệu để bắt đầu tạo quiz
-                            </p>
-                            <button
-                                onClick={() => setShowCreateModal(true)}
-                                className="px-5 py-2.5 rounded-xl text-[13px] font-semibold
-                                           bg-sky-500 text-white hover:bg-sky-600
-                                           transition-all duration-200 cursor-pointer"
-                            >
-                                Tải lên tài liệu
-                            </button>
-                        </>
-                    )}
-                </div>
-            ) : (
-                <div className="space-y-2">
-                    {filteredDocuments.map((doc) => {
-                        const name = extractFileName(doc);
-                        return (
-                            <article
-                                key={doc.id}
-                                onClick={() => handleDocClickFromSearch(doc)}
-                                className="flex items-center justify-between p-4 rounded-xl
-                                           border border-slate-100/80 bg-white
-                                           hover:border-sky-200 hover:bg-sky-50/30
-                                           hover:shadow-sm
-                                           transition-all duration-200 group cursor-pointer"
-                            >
-                                <div className="flex items-center gap-4 min-w-0 flex-1">
-                                    <div className="w-10 h-10 rounded-lg bg-sky-50 flex items-center
-                                                    justify-center flex-shrink-0
-                                                    group-hover:bg-sky-100 transition-colors">
-                                        <FileText className="w-5 h-5 text-sky-500" />
-                                    </div>
-                                    <div className="min-w-0">
-                                        <h3 className="text-[13px] font-medium text-slate-700
-                                                       group-hover:text-sky-700 transition-colors
-                                                       truncate">
-                                            {name}
-                                        </h3>
-                                        <div className="flex items-center gap-3 mt-1">
-                                            {doc.uploadedAt && (
-                                                <span className="flex items-center gap-1 text-[11px] text-slate-400">
-                                                    <Clock className="w-3 h-3" />
-                                                    {new Date(doc.uploadedAt).toLocaleDateString('vi-VN', {
-                                                        day: 'numeric',
-                                                        month: 'short',
-                                                    })}
-                                                </span>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-                                <ArrowRight className="w-4 h-4 text-slate-300 group-hover:text-sky-500
-                                                       transition-colors flex-shrink-0" />
-                            </article>
-                        );
-                    })}
-                </div>
-            )}
         </section>
     );
 
-    /* CREATE TAB — Step 1: choose type, Step 2: choose document */
-    const renderCreateContent = () => (
-        <section aria-label="Tạo mới" className="space-y-6">
-            {/* Step indicator */}
-            <div className="flex items-center gap-3">
-                <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-[12px] font-semibold
-                                transition-all duration-200
-                                ${createStep === 'type'
-                        ? 'bg-sky-100 text-sky-700 border border-sky-200'
-                        : 'bg-emerald-100 text-emerald-700 border border-emerald-200'
-                    }`}
-                >
-                    {createStep === 'type' ? (
-                        <span className="w-5 h-5 rounded-full bg-sky-500 text-white
-                                         flex items-center justify-center text-[11px] font-bold">1</span>
-                    ) : (
-                        <CheckCircle2 className="w-4 h-4" />
-                    )}
-                    Chọn loại
-                </div>
-                <div className="w-6 h-px bg-slate-200" />
-                <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-[12px] font-semibold
-                                transition-all duration-200
-                                ${createStep === 'document'
-                        ? 'bg-sky-100 text-sky-700 border border-sky-200'
-                        : 'bg-slate-100 text-slate-400 border border-slate-200'
-                    }`}
-                >
-                    <span className={`w-5 h-5 rounded-full flex items-center justify-center
-                                      text-[11px] font-bold
-                                      ${createStep === 'document'
-                            ? 'bg-sky-500 text-white'
-                            : 'bg-slate-300 text-white'
-                        }`}>2</span>
-                    Chọn tài liệu
-                </div>
-            </div>
-
-            {/* Step 1: Choose activity type */}
-            {createStep === 'type' && (
-                <div className="space-y-3">
-                    <p className="text-[13px] text-slate-500">
-                        Chọn loại nội dung bạn muốn tạo từ tài liệu
+    const renderUpload = () => (
+        <section className="teacher-upload-shell" aria-label="Tải tài liệu">
+            <div className="teacher-upload-dropzone">
+                <UploadIllustration />
+                <div className="min-w-0">
+                    <h2 className="text-2xl font-extrabold tracking-[-0.02em] text-slate-950">
+                        Biến tài liệu thành hoạt động tương tác
+                    </h2>
+                    <p className="mt-2 max-w-md text-sm leading-6 text-slate-500">
+                        Tải lên PDF, DOCX hoặc PPTX. Mascoteach sẽ chuẩn bị nội dung để tạo trắc nghiệm, và sẵn sàng mở rộng sang flashcards.
                     </p>
-                    <div className="grid gap-3">
-                        {ACTIVITY_TYPES.map((type) => (
-                            <button
-                                key={type.id}
-                                onClick={() => {
-                                    if (!type.available) return;
-                                    setSelectedType(type.id);
-                                    setCreateStep('document');
-                                }}
-                                disabled={!type.available}
-                                className={`flex items-center gap-4 p-5 rounded-xl border-2
-                                           text-left transition-all duration-200 group
-                                           ${type.available
-                                        ? 'border-slate-200 bg-white hover:border-sky-300 hover:bg-sky-50/40 hover:shadow-sm cursor-pointer'
-                                        : 'border-slate-100 bg-slate-50/50 cursor-not-allowed opacity-60'
-                                    }`}
-                            >
-                                <div className={`w-12 h-12 rounded-xl flex items-center justify-center
-                                                flex-shrink-0 transition-colors
-                                                ${type.available
-                                        ? 'bg-sky-50 group-hover:bg-sky-100'
-                                        : 'bg-slate-100'
-                                    }`}>
-                                    <type.Icon className={`w-6 h-6 ${type.available ? 'text-sky-500' : 'text-slate-400'}`} />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <h3 className={`text-[14px] font-semibold mb-0.5
-                                                   ${type.available
-                                            ? 'text-slate-700 group-hover:text-sky-700'
-                                            : 'text-slate-400'
-                                        }`}>
-                                        {type.label}
-                                    </h3>
-                                    <p className="text-[12px] text-slate-400">
-                                        {type.description}
-                                    </p>
-                                </div>
-                                <ArrowRight className={`w-5 h-5 flex-shrink-0 transition-colors
-                                                       ${type.available
-                                        ? 'text-slate-300 group-hover:text-sky-500'
-                                        : 'text-slate-200'
-                                    }`} />
-                            </button>
-                        ))}
-                    </div>
-                </div>
-            )}
-
-            {/* Step 2: Choose document */}
-            {createStep === 'document' && (
-                <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                        <p className="text-[13px] text-slate-500">
-                            Chọn tài liệu để tạo <span className="font-semibold text-sky-600">
-                                {ACTIVITY_TYPES.find((t) => t.id === selectedType)?.label}
-                            </span>
-                        </p>
+                    <div className="mt-5 flex flex-wrap gap-3">
+                        <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept=".pdf,.doc,.docx,.pptx"
+                            className="hidden"
+                            onChange={handleDirectUpload}
+                        />
                         <button
-                            onClick={() => {
-                                setCreateStep('type');
-                                setSelectedType(null);
-                            }}
-                            className="text-[12px] text-slate-400 hover:text-slate-600
-                                       transition-colors cursor-pointer"
+                            type="button"
+                            onClick={() => fileInputRef.current?.click()}
+                            disabled={isUploading}
+                            className="inline-flex items-center gap-2 rounded-xl bg-[#1E293B] px-5 py-3 text-sm font-bold text-white shadow-[0_14px_34px_rgba(30,41,59,0.18)] transition hover:-translate-y-0.5"
                         >
-                            ← Quay lại
+                            {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CloudUpload className="h-4 w-4" />}
+                            {isUploading ? 'Đang tải lên...' : 'Tải lên tài liệu'}
+                        </button>
+                        <button
+                            type="button"
+                            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-600 transition hover:border-[#BFD8FA] hover:text-[#5D9CEC]"
+                        >
+                            <img src="/images/Google_Drive.svg" alt="" className="h-5 w-5" aria-hidden="true" />
+                            Google Drive
                         </button>
                     </div>
-
-                    {/* Option to upload new doc */}
-                    <button
-                        onClick={() => setShowCreateModal(true)}
-                        className="flex items-center gap-3 w-full p-4 rounded-xl
-                                   border-2 border-dashed border-slate-200
-                                   bg-slate-50/50 hover:border-sky-300 hover:bg-sky-50/30
-                                   transition-all duration-200 cursor-pointer group"
-                    >
-                        <div className="w-10 h-10 rounded-lg bg-sky-50 flex items-center justify-center
-                                        group-hover:bg-sky-100 transition-colors">
-                            <Plus className="w-5 h-5 text-sky-500" />
-                        </div>
-                        <div className="text-left">
-                            <p className="text-[13px] font-medium text-slate-600
-                                          group-hover:text-sky-700 transition-colors">
-                                Tải lên tài liệu mới
-                            </p>
-                            <p className="text-[11px] text-slate-400">PDF, DOCX, PPTX</p>
-                        </div>
-                    </button>
-
-                    {/* Existing documents */}
-                    {loadingDocs ? (
-                        <div className="flex items-center justify-center py-12">
-                            <Loader2 className="w-5 h-5 text-sky-500 animate-spin" />
-                            <span className="ml-3 text-sm text-slate-400">Đang tải...</span>
-                        </div>
-                    ) : documents.length === 0 ? (
-                        <div className="flex flex-col items-center py-12 text-center">
-                            <FileText className="w-8 h-8 text-slate-300 mb-3" />
-                            <p className="text-[13px] text-slate-400">
-                                Chưa có tài liệu. Hãy tải lên tài liệu mới.
-                            </p>
-                        </div>
-                    ) : (
-                        <div className="space-y-2">
-                            <p className="text-[12px] text-slate-400 font-medium">
-                                Hoặc chọn tài liệu có sẵn
-                            </p>
-                            {documents.map((doc) => {
-                                const name = extractFileName(doc);
-                                return (
-                                    <article
-                                        key={doc.id}
-                                        onClick={() => handleDocClickFromCreate(doc)}
-                                        className="flex items-center justify-between p-4 rounded-xl
-                                                   border border-slate-100/80 bg-white
-                                                   hover:border-sky-200 hover:bg-sky-50/30
-                                                   hover:shadow-sm
-                                                   transition-all duration-200 group cursor-pointer"
-                                    >
-                                        <div className="flex items-center gap-4 min-w-0 flex-1">
-                                            <div className="w-10 h-10 rounded-lg bg-sky-50
-                                                            flex items-center justify-center flex-shrink-0
-                                                            group-hover:bg-sky-100 transition-colors">
-                                                <FileText className="w-5 h-5 text-sky-500" />
-                                            </div>
-                                            <div className="min-w-0">
-                                                <h3 className="text-[13px] font-medium text-slate-700
-                                                               group-hover:text-sky-700 transition-colors
-                                                               truncate">
-                                                    {name}
-                                                </h3>
-                                                {doc.uploadedAt && (
-                                                    <span className="flex items-center gap-1 mt-1
-                                                                     text-[11px] text-slate-400">
-                                                        <Clock className="w-3 h-3" />
-                                                        {new Date(doc.uploadedAt).toLocaleDateString('vi-VN', {
-                                                            day: 'numeric',
-                                                            month: 'short',
-                                                        })}
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </div>
-                                        <ArrowRight className="w-4 h-4 text-slate-300
-                                                               group-hover:text-sky-500
-                                                               transition-colors flex-shrink-0" />
-                                    </article>
-                                );
-                            })}
+                    {uploadError && (
+                        <p className="mt-3 text-sm font-semibold text-rose-500">
+                            {uploadError}
+                        </p>
+                    )}
+                    {isUploading && (
+                        <div className="mt-4 max-w-sm">
+                            <div className="mb-2 flex items-center justify-between text-xs font-bold text-slate-500">
+                                <span>Đang tải tài liệu</span>
+                                <span>{uploadProgress}%</span>
+                            </div>
+                            <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+                                <div
+                                    className="h-full rounded-full bg-[#5D9CEC] transition-all duration-300 ease-out"
+                                    style={{ width: `${uploadProgress}%` }}
+                                />
+                            </div>
                         </div>
                     )}
                 </div>
-            )}
-        </section>
-    );
-
-    /* UPLOAD TAB — drag & drop (existing) */
-    const renderUploadContent = () => (
-        <section aria-label="Tải lên">
-            <div className="flex flex-col items-center justify-center py-16 px-6
-                            rounded-2xl border-2 border-dashed border-slate-200
-                            bg-slate-50/50 hover:border-sky-300 hover:bg-sky-50/30
-                            transition-all duration-300 cursor-pointer group">
-                <div className="w-14 h-14 rounded-2xl bg-sky-50 flex items-center justify-center mb-4
-                                group-hover:bg-sky-100 transition-colors duration-300">
-                    <CloudUpload className="w-7 h-7 text-sky-500" />
-                </div>
-                <p className="text-[15px] font-semibold text-slate-700 mb-1">
-                    Tải lên tài liệu của bạn
-                </p>
-                <p className="text-[13px] text-slate-400 mb-5">
-                    Kéo thả hoặc nhấn để chọn PDF, DOCX, PPTX
-                </p>
-                <button
-                    onClick={() => setShowCreateModal(true)}
-                    className="px-5 py-2.5 rounded-xl text-[13px] font-semibold
-                               bg-sky-500 text-white shadow-gamma-btn
-                               hover:bg-sky-600 hover:shadow-gamma-btn-hover
-                               transition-all duration-200 cursor-pointer"
-                >
-                    Chọn tệp
-                </button>
             </div>
         </section>
     );
 
-    const contentMap = {
-        search: renderSearchContent,
-        create: renderCreateContent,
-        upload: renderUploadContent,
+    const content = {
+        create: renderCreate,
+        search: renderSearch,
+        upload: renderUpload,
     };
 
     return (
         <>
-            <div className="space-y-10">
-                {/* ── Centered Hero / Greeting ── */}
-                <header className="flex flex-col items-center text-center pt-4">
-                    <h1 className="text-2xl font-bold text-slate-800">
-                        {greeting}, {displayName} 👋
-                    </h1>
-                    <p className="text-sm text-slate-400 mt-1.5 max-w-md">
-                        Bắt đầu tạo quiz hoặc xem lại hoạt động gần đây.
-                    </p>
-                </header>
+            <div className="teacher-home">
+                <div className="teacher-top-action">Nhập mã lớp</div>
 
-                {/* ── Compact Tab Row ── */}
-                <nav aria-label="Chức năng chính" className="flex justify-center">
-                    <div className="inline-flex items-center gap-1 p-1.5 rounded-2xl bg-slate-100/60">
-                        {TABS.map(({ id, label, Icon }) => {
-                            const isActive = activeTab === id;
+                <header className="teacher-hero">
+                    <p className="text-[15px] font-semibold text-slate-600">
+                        {greeting}, {displayName}. Bắt đầu nhé.
+                    </p>
+
+                    <nav className="teacher-tab-strip" aria-label="Chức năng chính">
+                        {TABS.map(({ id, label, hint, Icon }) => {
+                            const active = activeTab === id;
                             return (
                                 <button
                                     key={id}
+                                    type="button"
                                     onClick={() => setActiveTab(id)}
-                                    className={`
-                                        relative flex flex-col items-center gap-1 px-6 py-3 rounded-xl
-                                        text-[13px] font-medium transition-all duration-250 cursor-pointer
-                                        ${isActive
-                                            ? 'bg-white text-sky-600 shadow-gamma-soft border-b-2 border-sky-500'
-                                            : 'text-slate-400 hover:text-slate-600 hover:bg-white/50'
-                                        }
-                                    `}
+                                    className={`teacher-tab-card ${active ? 'is-active' : ''}`}
                                 >
-                                    <Icon className={`w-5 h-5 transition-colors duration-250 ${isActive ? 'text-sky-500' : 'text-slate-400'}`} />
-                                    <span>{label}</span>
+                                    <span className="teacher-tab-icon">
+                                        <Icon className="h-5 w-5" />
+                                    </span>
+                                    <span className="text-sm font-extrabold">{label}</span>
+                                    <span className="text-xs font-semibold text-slate-400">{hint}</span>
                                 </button>
                             );
                         })}
-                    </div>
-                </nav>
+                    </nav>
+                </header>
 
-                {/* ── Dynamic Content Area (animated) ── */}
-                <div
-                    key={animKey}
-                    className="animate-fade-slide-up"
-                >
-                    {contentMap[activeTab]()}
+                <div className="teacher-content animate-fade-slide-up" key={activeTab}>
+                    {content[activeTab]()}
                 </div>
+
+                {recentSessions.length > 0 && (
+                    <section className="mx-auto mt-10 max-w-4xl">
+                        <h2 className="mb-3 text-sm font-extrabold uppercase tracking-[0.1em] text-slate-400">Hoạt động gần đây</h2>
+                        <div className="grid gap-3 sm:grid-cols-2">
+                            {recentSessions.map((session) => (
+                                <article key={session.id} className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+                                    <p className="text-sm font-bold text-slate-800">{session.title || `Phiên #${session.id}`}</p>
+                                    <p className="mt-1 text-xs font-medium text-slate-400">{session.participants || 0} học sinh đã tham gia</p>
+                                </article>
+                            ))}
+                        </div>
+                    </section>
+                )}
+                {loadingSessions && null}
             </div>
 
-            {/* ── Create Flow Modal ── */}
-            {showCreateModal && (
-                <CreateFlowModal onClose={() => setShowCreateModal(false)} />
-            )}
-
-            {/* ── Activity Type Selection Overlay ── */}
             {selectedDoc && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center">
-                    {/* Backdrop */}
-                    <div
-                        className="absolute inset-0 bg-black/20 backdrop-blur-sm"
-                        onClick={() => setSelectedDoc(null)}
-                        aria-hidden="true"
-                    />
-
-                    {/* Modal */}
-                    <div className="relative w-full max-w-md bg-white rounded-2xl
-                                    border border-slate-200/80 shadow-xl overflow-hidden
-                                    animate-in"
-                        role="dialog"
-                        aria-modal="true"
-                        aria-label="Chọn loại nội dung"
-                    >
-                        {/* Header */}
-                        <div className="flex items-center justify-between px-6 py-5
-                                        border-b border-slate-100/60">
-                            <div className="flex items-center gap-3 min-w-0">
-                                <div className="w-9 h-9 rounded-lg bg-sky-50 flex items-center
-                                                justify-center flex-shrink-0">
-                                    <FileText className="w-[18px] h-[18px] text-sky-500" />
-                                </div>
-                                <div className="min-w-0">
-                                    <h2 className="text-[14px] font-bold text-slate-800 truncate">
-                                        {extractFileName(selectedDoc)}
-                                    </h2>
-                                    <p className="text-[12px] text-slate-400 mt-0.5">
-                                        Chọn loại nội dung muốn tạo
-                                    </p>
-                                </div>
+                <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/20 px-4 backdrop-blur-sm">
+                    <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl">
+                        <div className="flex items-start justify-between gap-4">
+                            <div>
+                                <p className="text-sm font-extrabold text-slate-900">{extractFileName(selectedDoc)}</p>
+                                <p className="mt-1 text-xs font-medium text-slate-400">Chọn định dạng muốn tạo</p>
                             </div>
-                            <button
-                                onClick={() => setSelectedDoc(null)}
-                                className="w-8 h-8 rounded-lg flex items-center justify-center
-                                           text-slate-400 hover:text-slate-600 hover:bg-slate-100
-                                           transition-all duration-200"
-                                aria-label="Đóng"
-                            >
-                                <X className="w-5 h-5" />
+                            <button type="button" onClick={() => setSelectedDoc(null)} className="text-slate-400">
+                                <X className="h-5 w-5" />
                             </button>
                         </div>
-
-                        {/* Activity type options */}
-                        <div className="px-6 py-5 space-y-3">
+                        <div className="mt-5 grid gap-3">
                             {ACTIVITY_TYPES.map((type) => (
-                                <button
-                                    key={type.id}
-                                    onClick={() => handleTypeFromSearch(type.id)}
-                                    disabled={!type.available}
-                                    className={`flex items-center gap-4 w-full p-4 rounded-xl border-2
-                                               text-left transition-all duration-200 group
-                                               ${type.available
-                                            ? 'border-slate-200 bg-white hover:border-sky-300 hover:bg-sky-50/40 hover:shadow-sm cursor-pointer'
-                                            : 'border-slate-100 bg-slate-50/50 cursor-not-allowed opacity-60'
-                                        }`}
-                                >
-                                    <div className={`w-11 h-11 rounded-xl flex items-center justify-center
-                                                    flex-shrink-0 transition-colors
-                                                    ${type.available
-                                            ? 'bg-sky-50 group-hover:bg-sky-100'
-                                            : 'bg-slate-100'
-                                        }`}>
-                                        <type.Icon className={`w-5 h-5 ${type.available ? 'text-sky-500' : 'text-slate-400'}`} />
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <h3 className={`text-[14px] font-semibold mb-0.5
-                                                       ${type.available
-                                                ? 'text-slate-700 group-hover:text-sky-700'
-                                                : 'text-slate-400'
-                                            }`}>
-                                            {type.label}
-                                        </h3>
-                                        <p className="text-[12px] text-slate-400">
-                                            {type.description}
-                                        </p>
-                                    </div>
-                                    <ArrowRight className={`w-5 h-5 flex-shrink-0 transition-colors
-                                                           ${type.available
-                                            ? 'text-slate-300 group-hover:text-sky-500'
-                                            : 'text-slate-200'
-                                        }`} />
+                                <ActivityCard key={type.id} type={type} onSelect={handleTypeSelection} />
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {pendingUpload && !selectedType && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/20 px-4 py-6 backdrop-blur-sm">
+                    <div className="teacher-resource-modal" role="dialog" aria-modal="true" aria-labelledby="resource-modal-title">
+                        <header className="teacher-resource-modal__header">
+                            <div className="flex items-center gap-3">
+                                <span className="teacher-resource-sparkle">
+                                    <Sparkles className="h-7 w-7" />
+                                </span>
+                                <h2 id="resource-modal-title" className="text-[22px] font-extrabold tracking-[-0.02em] text-slate-950">
+                                    Tạo hoạt động học tập
+                                </h2>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setPendingUpload(null)}
+                                className="teacher-resource-close"
+                                aria-label="Đóng"
+                            >
+                                <X className="h-5 w-5" />
+                            </button>
+                        </header>
+
+                        <div className="teacher-resource-modal__body">
+                            <div className="teacher-resource-timeline" aria-hidden="true">
+                                <span className="teacher-resource-dot teacher-resource-dot--file" />
+                                <span className="teacher-resource-line" />
+                                <span className="teacher-resource-dot teacher-resource-dot--active" />
+                            </div>
+
+                            <div className="teacher-resource-file-row">
+                                <span className="teacher-resource-file-icon">
+                                    <FileText className="h-4 w-4" />
+                                </span>
+                                <span className="min-w-0 truncate text-sm font-semibold text-slate-500">
+                                    {pendingUpload.fileName}
+                                </span>
+                                <button type="button" className="teacher-resource-edit" aria-label="Đổi tên tài liệu">
+                                    <PencilLine className="h-4 w-4" />
                                 </button>
+                            </div>
+
+                            <section className="teacher-resource-section">
+                                <p className="teacher-resource-section__title">Chọn loại nội dung</p>
+                                <div className="teacher-resource-grid">
+                                    {ACTIVITY_TYPES.map((type) => {
+                                        const active = pendingType === type.id;
+                                        return (
+                                            <button
+                                                key={type.id}
+                                                type="button"
+                                                onClick={() => setPendingType(type.id)}
+                                                className={`teacher-resource-card ${active ? 'is-selected' : ''}`}
+                                            >
+                                                <span className={`teacher-resource-card__icon ${type.color}`}>
+                                                    <type.Icon className="h-10 w-10" />
+                                                </span>
+                                                <span className="teacher-resource-card__label">{type.label}</span>
+                                                <span className="teacher-resource-card__description">
+                                                    {type.id === 'quiz'
+                                                        ? 'Câu hỏi nhanh và tương tác'
+                                                        : 'Thẻ ghi nhớ để ôn tập'}
+                                                </span>
+                                                {active && (
+                                                    <span className="teacher-resource-card__check">
+                                                        <CheckCircle2 className="h-5 w-5" />
+                                                    </span>
+                                                )}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </section>
+                        </div>
+
+                        <footer className="teacher-resource-modal__footer">
+                            <p>AI có thể mắc lỗi. Hãy xem lại và tùy chỉnh hoạt động trước khi dùng trong lớp.</p>
+                            <button
+                                type="button"
+                                className="teacher-resource-next"
+                                onClick={() => {
+                                    navigateToCustomizer(pendingUpload, pendingType);
+                                    setPendingUpload(null);
+                                }}
+                            >
+                                Tiếp tục
+                            </button>
+                        </footer>
+                    </div>
+                </div>
+            )}
+
+            {false && pendingUpload && !selectedType && (
+                <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/20 px-4 backdrop-blur-sm">
+                    <div className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl">
+                        <div className="flex items-start justify-between gap-4">
+                            <div>
+                                <p className="text-sm font-extrabold text-slate-900">
+                                    {pendingUpload.fileName}
+                                </p>
+                                <p className="mt-1 text-xs font-medium text-slate-400">
+                                    Tài liệu đã tải lên. Chọn định dạng muốn tạo.
+                                </p>
+                            </div>
+                            <button type="button" onClick={() => setPendingUpload(null)} className="text-slate-400">
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+                        <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                            {ACTIVITY_TYPES.map((type) => (
+                                <ActivityCard
+                                    key={type.id}
+                                    type={type}
+                                    onSelect={(typeId) => {
+                                        navigateToCustomizer(pendingUpload, typeId);
+                                        setPendingUpload(null);
+                                    }}
+                                />
                             ))}
                         </div>
                     </div>

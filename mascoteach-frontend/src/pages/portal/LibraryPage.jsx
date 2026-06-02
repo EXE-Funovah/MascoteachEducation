@@ -247,14 +247,14 @@ export default function LibraryPage() {
                 <header className="flex items-center justify-between">
                     <div>
                         <h1 className="text-2xl font-bold text-slate-800">Thư viện</h1>
-                        <p className="mt-1 text-sm text-slate-400">Quản lý tất cả tài liệu và tài nguyên của bạn</p>
+                        <p className="mt-1 text-sm text-slate-400">Quản lý tài liệu và bộ câu hỏi của bạn</p>
                     </div>
                     <button
                         onClick={() => setShowCreateModal(true)}
                         className="flex items-center gap-2 rounded-xl bg-sky-500 px-5 py-2.5 text-[13px] font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-sky-600 hover:shadow-md"
                     >
                         <Plus className="h-4 w-4" />
-                        Thêm tài nguyên
+                        Thêm tài liệu
                     </button>
                 </header>
 
@@ -285,7 +285,7 @@ export default function LibraryPage() {
                         {!loadingDocs && !docError && documents.length === 0 && (
                             <EmptyState
                                 icon={FileText}
-                                title="Chưa có tài nguyên nào"
+                                title="Chưa có tài liệu nào"
                                 description="Bắt đầu bằng cách tải lên tài liệu mới"
                                 action={<button onClick={() => setShowCreateModal(true)} className="rounded-xl bg-sky-500 px-5 py-2.5 text-[13px] font-semibold text-white hover:bg-sky-600">Tải lên tài liệu</button>}
                             />

@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import {
     Home,
     Library,
@@ -20,6 +20,12 @@ const navItems = [
 
 export default function Sidebar() {
     const { user, logout } = useAuth();
+    const location = useLocation();
+    const basePath = location.pathname.startsWith('/dev/teacher') ? '/dev/teacher' : '/teacher';
+    const scopedNavItems = navItems.map((item) => ({
+        ...item,
+        to: item.to.replace('/teacher', basePath),
+    }));
 
     // Display name from API or fallback
     const displayName = user?.fullName || user?.name || 'Giáo viên';
@@ -40,7 +46,7 @@ export default function Sidebar() {
 
             {/* ── Navigation Links ── */}
             <nav className="flex-1 px-3 pt-6 pb-4 space-y-1">
-                {navItems.map((item) => (
+                {scopedNavItems.map((item) => (
                     <NavLink
                         key={item.to}
                         to={item.to}
