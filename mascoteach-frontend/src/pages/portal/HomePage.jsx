@@ -467,8 +467,6 @@ export default function HomePage() {
     return (
         <>
             <div className="teacher-home">
-                <div className="teacher-top-action">Nhập mã lớp</div>
-
                 <header className="teacher-hero">
                     <p className="text-[15px] font-semibold text-slate-600">
                         {greeting}, {displayName}. Bắt đầu nhé.

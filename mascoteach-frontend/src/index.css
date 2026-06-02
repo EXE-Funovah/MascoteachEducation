@@ -847,15 +847,6 @@ img {
   color: #1e293b;
 }
 
-.teacher-top-action {
-  position: absolute;
-  right: 4px;
-  top: 0;
-  font-size: 13px;
-  font-weight: 800;
-  color: #1e293b;
-}
-
 .teacher-hero {
   position: relative;
   display: flex;
@@ -1381,10 +1372,6 @@ img {
 }
 
 @media (max-width: 860px) {
-  .teacher-top-action {
-    display: none;
-  }
-
   .teacher-tab-strip {
     grid-template-columns: 1fr;
     width: min(360px, 100%);
