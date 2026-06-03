@@ -1,11 +1,11 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import {
+    ArrowUpRight,
     History,
     Home,
     Library,
     LogOut,
     Pin,
-    Sparkles,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -16,7 +16,7 @@ const mainItems = [
 ];
 
 export default function Sidebar() {
-    const { user, logout } = useAuth();
+    const { logout } = useAuth();
     const location = useLocation();
     const basePath = location.pathname.startsWith('/dev/teacher') ? '/dev/teacher' : '/teacher';
     const scopedNavItems = mainItems.map((item) => ({
@@ -30,7 +30,7 @@ export default function Sidebar() {
             role="navigation"
             aria-label="Điều hướng chính"
         >
-            <div className="flex min-h-0 w-full flex-col rounded-[26px] border border-white/80 bg-white px-5 py-5 shadow-[0_24px_70px_rgba(27,58,107,0.12)]">
+            <div className="relative min-h-0 w-full rounded-[26px] border border-white/80 bg-white px-5 py-5 shadow-[0_24px_70px_rgba(27,58,107,0.12)]">
                 <div className="mb-7 flex items-start justify-between gap-4">
                     <NavLink to={basePath} aria-label="Mascoteach" className="block">
                         <img src="/images/Logo.png" alt="Mascoteach" className="h-12 max-w-[154px] object-contain" />
@@ -51,27 +51,31 @@ export default function Sidebar() {
                     ))}
                 </nav>
 
-                <div className="mt-auto space-y-3 pt-5">
-                    <button
-                        type="button"
-                        className="flex min-h-12 w-full items-center gap-4 rounded-2xl px-4 text-left text-[15px] font-extrabold text-slate-800 transition-all duration-200 hover:bg-amber-100/80 hover:text-amber-800"
-                    >
-                        <Sparkles className="h-5 w-5 text-amber-600" strokeWidth={2.15} />
-                        Nâng cấp
-                    </button>
+                <button
+                    type="button"
+                    className="group absolute bottom-[88px] left-5 right-5 flex min-h-[62px] items-center justify-between gap-2 overflow-hidden rounded-[20px] border border-brand-light/70 bg-[#edf7fd] px-3 text-left shadow-[0_16px_36px_rgba(43,122,181,0.16),inset_0_1px_0_rgba(255,255,255,0.96)] transition-all duration-300 before:absolute before:inset-y-[-10px] before:left-[-48%] before:w-[34%] before:-skew-x-12 before:bg-gradient-to-r before:from-transparent before:via-white before:to-transparent before:opacity-0 before:blur-[1px] before:transition-all before:duration-700 hover:-translate-y-0.5 hover:border-brand-mid/70 hover:bg-[#e5f3fb] hover:shadow-[0_22px_48px_rgba(43,122,181,0.24),inset_0_1px_0_rgba(255,255,255,1)] hover:before:left-[124%] hover:before:opacity-90 active:translate-y-0"
+                    aria-label="Nâng cấp PRO"
+                >
+                    <span className="relative z-10 flex items-center gap-2">
+                        <span className="whitespace-nowrap text-[14px] font-extrabold leading-none tracking-[-0.01em] text-slate-500 transition-colors duration-300 group-hover:text-slate-700">
+                            Nâng cấp
+                        </span>
+                        <span className="flex h-7 items-center rounded-[9px] bg-black px-2.5 text-[13px] font-black leading-none text-white shadow-[0_7px_15px_rgba(0,0,0,0.18)]">
+                            PRO
+                        </span>
+                    </span>
+                    <span className="relative z-10 grid h-9 w-9 flex-none place-items-center rounded-full bg-white text-black shadow-[0_10px_24px_rgba(15,23,42,0.11)] transition-all duration-300 group-hover:scale-105">
+                        <ArrowUpRight className="h-5 w-5" strokeWidth={3} />
+                    </span>
+                </button>
 
-                    <button
-                        onClick={logout}
-                        className="flex min-h-12 w-full items-center gap-4 rounded-2xl px-4 text-left text-[15px] font-extrabold text-slate-800 transition-all duration-200 hover:bg-rose-50 hover:text-rose-600 active:scale-[0.99]"
-                    >
-                        <LogOut className="h-5 w-5 text-brand-blue" strokeWidth={2.15} />
-                        Đăng xuất
-                    </button>
-
-                    {user?.email && (
-                        <p className="truncate px-4 pt-1 text-[12px] font-bold text-slate-400">{user.email}</p>
-                    )}
-                </div>
+                <button
+                    onClick={logout}
+                    className="absolute bottom-5 left-5 right-5 flex min-h-12 items-center gap-4 rounded-2xl px-4 text-left text-[15px] font-extrabold text-slate-800 transition-all duration-200 hover:bg-rose-50 hover:text-rose-600 active:scale-[0.99]"
+                >
+                    <LogOut className="h-5 w-5 text-brand-blue" strokeWidth={2.15} />
+                    Đăng xuất
+                </button>
             </div>
         </aside>
     );
@@ -94,12 +98,7 @@ function SidebarNavLink({ item }) {
             {({ isActive }) => (
                 <>
                     <span className="flex min-w-0 items-center gap-4">
-                        <item.icon
-                            className={`h-5 w-5 flex-none transition-transform duration-200 group-hover:scale-105 ${
-                                isActive ? 'text-brand-blue' : 'text-brand-blue'
-                            }`}
-                            strokeWidth={2.15}
-                        />
+                        <item.icon className="h-5 w-5 flex-none text-brand-blue transition-transform duration-200 group-hover:scale-105" strokeWidth={2.15} />
                         <span className="truncate">{item.label}</span>
                     </span>
                     {item.dot && <span className="h-2 w-2 flex-none rounded-full bg-rose-500" />}
