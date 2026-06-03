@@ -21,6 +21,20 @@ export async function register(data) {
     return result;
 }
 
+export async function forgotPassword(data) {
+    return api.post('/api/Auth/forgot-password', {
+        email: data.email,
+    }, { skipAuth: true });
+}
+
+export async function resetPassword(data) {
+    return api.post('/api/Auth/reset-password', {
+        token: data.token,
+        newPassword: data.newPassword,
+        confirmPassword: data.confirmPassword,
+    }, { skipAuth: true });
+}
+
 /**
  * Login and store the auth token
  * @param {{ email: string, password: string }} credentials

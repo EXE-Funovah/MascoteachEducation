@@ -101,6 +101,7 @@ export async function apiRequest(endpoint, options = {}) {
                 '/login',
                 '/signup',
                 '/forgot-password',
+                '/reset-password',
             ];
             const isPublicPage = publicPaths.includes(window.location.pathname)
                 || window.location.pathname.startsWith('/play');

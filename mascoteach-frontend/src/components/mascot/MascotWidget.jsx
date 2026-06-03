@@ -351,6 +351,7 @@ export default function MascotWidget() {
         '/login',
         '/signup',
         '/forgot-password',
+        '/reset-password',
     ];
     if (!isLoggedIn || PUBLIC_PATHS.includes(pathname)) return null;
 

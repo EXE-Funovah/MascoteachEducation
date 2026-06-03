@@ -1,57 +1,88 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { ArrowLeft, ArrowRight, Mail } from 'lucide-react';
 import AuthLayout from '@/components/auth/AuthLayout';
 import AuthInput from '@/components/auth/AuthInput';
+import { forgotPassword } from '@/services/authService';
 
 export default function ForgotPasswordPage() {
     const [email, setEmail] = useState('');
     const [sent, setSent] = useState(false);
+    const [submitting, setSubmitting] = useState(false);
+    const [error, setError] = useState('');
 
-    function handleSubmit(e) {
-        e.preventDefault();
-        // TODO: tích hợp API gửi email reset mật khẩu
-        console.log('Gửi yêu cầu đặt lại mật khẩu →', email);
-        setSent(true);
+    async function handleSubmit(event) {
+        event.preventDefault();
+        setError('');
+
+        if (!email.trim()) {
+            setError('Vui long nhap email.');
+            return;
+        }
+
+        setSubmitting(true);
+        try {
+            await forgotPassword({ email: email.trim() });
+            setSent(true);
+        } catch (err) {
+            setError(err.message || 'Khong the gui lien ket dat lai mat khau. Vui long thu lai.');
+        } finally {
+            setSubmitting(false);
+        }
     }
 
     return (
         <AuthLayout>
-            <header className="text-center mb-8">
-                <div className="mx-auto mb-5 w-14 h-14 rounded-2xl bg-gradient-to-br from-brand-blue/15 to-brand-light/30 flex items-center justify-center">
-                    <svg className="w-7 h-7 text-brand-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
-                    </svg>
-                </div>
-
-                <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 leading-tight">
-                    Đặt lại mật khẩu
-                </h1>
-                <p className="mt-2 text-sm text-slate-500 max-w-xs mx-auto">
-                    Nhập email của bạn, chúng tôi sẽ gửi liên kết để đặt lại mật khẩu.
-                </p>
+            <header className="auth-form-header">
+                <h1>Dat lai mat khau</h1>
+                <p>Nhap email cua ban, Mascoteach se gui lien ket dat lai mat khau neu tai khoan ton tai.</p>
             </header>
 
             {!sent ? (
-                <form onSubmit={handleSubmit} className="space-y-5">
-                    <AuthInput
-                        id="forgot-email"
-                        label="Địa chỉ Email"
-                        type="email"
-                        placeholder="email@example.com"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                    />
+                <>
+                    {error && (
+                        <div className="auth-alert auth-alert--error" role="alert">
+                            {error}
+                        </div>
+                    )}
 
-                    <motion.button
-                        type="submit"
-                        className="auth-btn auth-btn--primary"
-                        whileHover={{ scale: 1.015, y: -1 }}
-                        whileTap={{ scale: 0.98 }}
-                    >
-                        Gửi liên kết đặt lại
-                    </motion.button>
-                </form>
+                    <form onSubmit={handleSubmit} className="auth-form">
+                        <AuthInput
+                            id="forgot-email"
+                            label="Email"
+                            type="email"
+                            placeholder="email@example.com"
+                            value={email}
+                            onChange={(event) => {
+                                setEmail(event.target.value);
+                                setError('');
+                            }}
+                            disabled={submitting}
+                            required
+                        />
+
+                        <motion.button
+                            type="submit"
+                            className="auth-btn auth-btn--primary disabled:opacity-60 disabled:cursor-not-allowed"
+                            whileHover={!submitting ? { y: -1 } : {}}
+                            whileTap={!submitting ? { scale: 0.985 } : {}}
+                            disabled={submitting}
+                        >
+                            {submitting ? (
+                                <span className="auth-loading">
+                                    <span />
+                                    Dang gui
+                                </span>
+                            ) : (
+                                <>
+                                    Gui lien ket dat lai
+                                    <ArrowRight size={17} strokeWidth={2.2} />
+                                </>
+                            )}
+                        </motion.button>
+                    </form>
+                </>
             ) : (
                 <motion.div
                     className="text-center py-6"
@@ -59,28 +90,24 @@ export default function ForgotPasswordPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.4 }}
                 >
-                    <div className="mx-auto mb-4 w-16 h-16 rounded-full bg-emerald-50 flex items-center justify-center">
-                        <svg className="w-8 h-8 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 19v-8.93a2 2 0 01.89-1.664l7-4.666a2 2 0 012.22 0l7 4.666A2 2 0 0121 10.07V19M3 19a2 2 0 002 2h14a2 2 0 002-2M3 19l6.75-4.5M21 19l-6.75-4.5M3 10l6.75 4.5M21 10l-6.75 4.5m0 0l-1.14.76a2 2 0 01-2.22 0l-1.14-.76" />
-                        </svg>
+                    <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50 text-emerald-500">
+                        <Mail size={30} />
                     </div>
-                    <h2 className="text-lg font-bold text-slate-900">Kiểm tra email của bạn</h2>
-                    <p className="mt-2 text-sm text-slate-500 max-w-xs mx-auto">
-                        Chúng tôi đã gửi liên kết đặt lại mật khẩu đến <span className="font-medium text-slate-700">{email}</span>.
+                    <h2 className="text-lg font-bold text-slate-900">Kiem tra email cua ban</h2>
+                    <p className="mx-auto mt-2 max-w-xs text-sm text-slate-500">
+                        Neu tai khoan ton tai, lien ket dat lai mat khau da duoc gui den{' '}
+                        <span className="font-medium text-slate-700">{email}</span>.
                     </p>
                 </motion.div>
             )}
 
-            {/* Quay về đăng nhập */}
             <div className="mt-8 text-center">
                 <Link
                     to="/signin"
-                    className="inline-flex items-center gap-2 text-sm font-semibold text-brand-blue hover:text-brand-navy transition-colors"
+                    className="inline-flex items-center gap-2 text-sm font-semibold text-brand-blue transition-colors hover:text-brand-navy"
                 >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                    </svg>
-                    Quay về Đăng nhập
+                    <ArrowLeft size={16} />
+                    Quay ve dang nhap
                 </Link>
             </div>
         </AuthLayout>
