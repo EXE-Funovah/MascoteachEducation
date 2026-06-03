@@ -7,7 +7,9 @@
  * the backend route that actually exists.
  */
 
-const AI_BASE_URL = import.meta.env.VITE_AI_BASE_URL || 'https://ai.mascoteach.com';
+import { resolveAiBaseUrl } from './baseUrls';
+
+const AI_BASE_URL = resolveAiBaseUrl();
 
 class MascotLiveAudioService {
     constructor() {

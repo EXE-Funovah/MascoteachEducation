@@ -1,6 +1,7 @@
 import * as signalR from '@microsoft/signalr';
+import { resolveApiBaseUrl } from './baseUrls';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://localhost:7108';
+const API_BASE_URL = resolveApiBaseUrl();
 
 const HUB_CANDIDATES = [
     import.meta.env.VITE_SIGNALR_HUB_URL,

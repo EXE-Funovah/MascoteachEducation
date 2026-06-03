@@ -6,7 +6,9 @@
  *   GET  /api/v1/ai/health               — Health check
  */
 
-const AI_BASE_URL = import.meta.env.VITE_AI_BASE_URL || 'https://ai.mascoteach.com:8443';
+import { resolveAiBaseUrl } from './baseUrls';
+
+const AI_BASE_URL = resolveAiBaseUrl();
 
 /**
  * Health check — verify AI Module is running
