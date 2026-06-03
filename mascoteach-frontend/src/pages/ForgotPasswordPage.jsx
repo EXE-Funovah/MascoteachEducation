@@ -17,7 +17,7 @@ export default function ForgotPasswordPage() {
         setError('');
 
         if (!email.trim()) {
-            setError('Vui long nhap email.');
+            setError('Vui lòng nhập email.');
             return;
         }
 
@@ -26,7 +26,7 @@ export default function ForgotPasswordPage() {
             await forgotPassword({ email: email.trim() });
             setSent(true);
         } catch (err) {
-            setError(err.message || 'Khong the gui lien ket dat lai mat khau. Vui long thu lai.');
+            setError(err.message || 'Không thể gửi liên kết đặt lại mật khẩu. Vui lòng thử lại.');
         } finally {
             setSubmitting(false);
         }
@@ -35,8 +35,8 @@ export default function ForgotPasswordPage() {
     return (
         <AuthLayout>
             <header className="auth-form-header">
-                <h1>Dat lai mat khau</h1>
-                <p>Nhap email cua ban, Mascoteach se gui lien ket dat lai mat khau neu tai khoan ton tai.</p>
+                <h1>Đặt lại mật khẩu</h1>
+                <p>Nhập email của bạn, Mascoteach sẽ gửi liên kết đặt lại mật khẩu nếu tài khoản tồn tại.</p>
             </header>
 
             {!sent ? (
@@ -72,11 +72,11 @@ export default function ForgotPasswordPage() {
                             {submitting ? (
                                 <span className="auth-loading">
                                     <span />
-                                    Dang gui
+                                    Đang gửi
                                 </span>
                             ) : (
                                 <>
-                                    Gui lien ket dat lai
+                                    Gửi liên kết đặt lại
                                     <ArrowRight size={17} strokeWidth={2.2} />
                                 </>
                             )}
@@ -93,9 +93,9 @@ export default function ForgotPasswordPage() {
                     <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50 text-emerald-500">
                         <Mail size={30} />
                     </div>
-                    <h2 className="text-lg font-bold text-slate-900">Kiem tra email cua ban</h2>
+                    <h2 className="text-lg font-bold text-slate-900">Kiểm tra email của bạn</h2>
                     <p className="mx-auto mt-2 max-w-xs text-sm text-slate-500">
-                        Neu tai khoan ton tai, lien ket dat lai mat khau da duoc gui den{' '}
+                        Nếu tài khoản tồn tại, liên kết đặt lại mật khẩu đã được gửi đến{' '}
                         <span className="font-medium text-slate-700">{email}</span>.
                     </p>
                 </motion.div>
@@ -107,7 +107,7 @@ export default function ForgotPasswordPage() {
                     className="inline-flex items-center gap-2 text-sm font-semibold text-brand-blue transition-colors hover:text-brand-navy"
                 >
                     <ArrowLeft size={16} />
-                    Quay ve dang nhap
+                    Quay về đăng nhập
                 </Link>
             </div>
         </AuthLayout>

@@ -31,22 +31,22 @@ export default function ResetPasswordPage() {
         setError('');
 
         if (!token) {
-            setError('Lien ket dat lai mat khau khong hop le hoac thieu token.');
+            setError('Liên kết đặt lại mật khẩu không hợp lệ hoặc thiếu token.');
             return;
         }
 
         if (!form.newPassword || !form.confirmPassword) {
-            setError('Vui long nhap day du mat khau moi.');
+            setError('Vui lòng nhập đầy đủ mật khẩu mới.');
             return;
         }
 
         if (form.newPassword.length < 6) {
-            setError('Mat khau moi phai co it nhat 6 ky tu.');
+            setError('Mật khẩu mới phải có ít nhất 6 ký tự.');
             return;
         }
 
         if (form.newPassword !== form.confirmPassword) {
-            setError('Mat khau xac nhan khong khop.');
+            setError('Mật khẩu xác nhận không khớp.');
             return;
         }
 
@@ -61,11 +61,11 @@ export default function ResetPasswordPage() {
             window.setTimeout(() => {
                 navigate('/signin', {
                     replace: true,
-                    state: { message: 'Dat lai mat khau thanh cong. Vui long dang nhap lai.' },
+                    state: { message: 'Đặt lại mật khẩu thành công. Vui lòng đăng nhập lại.' },
                 });
             }, 1400);
         } catch (err) {
-            setError(err.message || 'Khong the dat lai mat khau. Vui long thu lai.');
+            setError(err.message || 'Không thể đặt lại mật khẩu. Vui lòng thử lại.');
         } finally {
             setSubmitting(false);
         }
@@ -74,15 +74,15 @@ export default function ResetPasswordPage() {
     return (
         <AuthLayout>
             <header className="auth-form-header">
-                <h1>Dat lai mat khau</h1>
+                <h1>Đặt lại mật khẩu</h1>
                 <p>
-                    Nhap mat khau moi cho tai khoan Mascoteach cua ban.
+                    Nhập mật khẩu mới cho tài khoản Mascoteach của bạn.
                 </p>
             </header>
 
             {!token && (
                 <div className="auth-alert auth-alert--error" role="alert">
-                    Lien ket dat lai mat khau khong hop le. Vui long yeu cau mot lien ket moi.
+                    Liên kết đặt lại mật khẩu không hợp lệ. Vui lòng yêu cầu một liên kết mới.
                 </div>
             )}
 
@@ -96,7 +96,7 @@ export default function ResetPasswordPage() {
                 <div className="auth-alert auth-alert--success" role="status">
                     <span className="inline-flex items-center gap-2">
                         <CheckCircle2 size={17} />
-                        Mat khau da duoc cap nhat.
+                        Mật khẩu đã được cập nhật.
                     </span>
                 </div>
             )}
@@ -104,9 +104,9 @@ export default function ResetPasswordPage() {
             <form onSubmit={handleSubmit} className="auth-form">
                 <AuthInput
                     id="reset-new-password"
-                    label="Mat khau moi"
+                    label="Mật khẩu mới"
                     type="password"
-                    placeholder="........"
+                    placeholder="••••••••"
                     value={form.newPassword}
                     onChange={update('newPassword')}
                     disabled={!token || submitting || success}
@@ -115,9 +115,9 @@ export default function ResetPasswordPage() {
 
                 <AuthInput
                     id="reset-confirm-password"
-                    label="Xac nhan mat khau moi"
+                    label="Xác nhận mật khẩu mới"
                     type="password"
-                    placeholder="........"
+                    placeholder="••••••••"
                     value={form.confirmPassword}
                     onChange={update('confirmPassword')}
                     disabled={!token || submitting || success}
@@ -132,16 +132,16 @@ export default function ResetPasswordPage() {
                     disabled={!token || submitting || success}
                 >
                     {submitting ? (
-                        <span className="auth-loading">
-                            <span />
-                            Dang cap nhat
-                        </span>
-                    ) : (
-                        <>
-                            Cap nhat mat khau
+                            <span className="auth-loading">
+                                <span />
+                                Đang cập nhật
+                            </span>
+                        ) : (
+                            <>
+                                Cập nhật mật khẩu
                             <ArrowRight size={17} strokeWidth={2.2} />
-                        </>
-                    )}
+                            </>
+                        )}
                 </motion.button>
             </form>
 
@@ -151,7 +151,7 @@ export default function ResetPasswordPage() {
                     className="inline-flex items-center gap-2 text-sm font-semibold text-brand-blue transition-colors hover:text-brand-navy"
                 >
                     <ArrowLeft size={16} />
-                    Quay ve dang nhap
+                    Quay về đăng nhập
                 </Link>
             </div>
         </AuthLayout>
