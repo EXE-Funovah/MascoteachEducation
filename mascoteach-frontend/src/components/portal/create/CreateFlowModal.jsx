@@ -121,7 +121,7 @@ export default function CreateFlowModal({ onClose }) {
                     </button>
                 </div>
 
-                {/* ── Content ── */}
+                {/* -- Content -- */}
                 <div className="px-8 py-6 overflow-y-auto max-h-[60vh]">
                     <div className="space-y-6">
                         {/* Error message */}
