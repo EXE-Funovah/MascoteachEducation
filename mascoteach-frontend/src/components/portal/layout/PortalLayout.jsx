@@ -1,15 +1,17 @@
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar';
 
 export default function PortalLayout() {
+    const location = useLocation();
+    const isWidePortalPage = location.pathname.includes('/library') || location.pathname.includes('/sessions');
+
     return (
-        <div className="min-h-screen bg-white">
+        <div className="min-h-screen bg-[#fbfdff]">
             <Sidebar />
 
-            {/* Main content area — offset by sidebar width */}
-            <div className="ml-[248px] min-h-screen flex flex-col">
+            <div className="flex min-h-screen flex-col lg:ml-[288px]">
                 <main className="flex-1">
-                    <div className="max-w-[1200px] mx-auto px-8 py-8">
+                    <div className={isWidePortalPage ? 'max-w-none px-0 py-0' : 'mx-auto max-w-[1200px] px-8 py-8'}>
                         <Outlet />
                     </div>
                 </main>

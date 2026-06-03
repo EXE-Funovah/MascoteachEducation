@@ -58,13 +58,16 @@ export default function App() {
         </Route>
 
         {import.meta.env.DEV && (
-          <Route path="/dev/teacher" element={<PortalLayout />}>
-            <Route index element={<HomePage />} />
-            <Route path="library" element={<LibraryPage />} />
-            <Route path="sessions" element={<SessionsPage />} />
-            <Route path="quiz-settings" element={<QuizSettingsPage />} />
-            <Route path="quiz-preview" element={<QuizPreviewPage />} />
-          </Route>
+          <>
+            <Route path="/dev/teacher" element={<PortalLayout />}>
+              <Route index element={<HomePage />} />
+              <Route path="library" element={<LibraryPage />} />
+              <Route path="sessions" element={<SessionsPage />} />
+              <Route path="quiz-settings" element={<QuizSettingsPage />} />
+              <Route path="quiz-preview" element={<QuizPreviewPage />} />
+            </Route>
+            <Route path="/dev/teacher/select-game-template" element={<GameTemplateSelectionPage />} />
+          </>
         )}
 
         <Route

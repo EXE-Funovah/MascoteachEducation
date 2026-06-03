@@ -1,19 +1,63 @@
-import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Calendar, Eye, Gamepad2, Loader2, AlertCircle, Inbox } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { motion } from 'framer-motion';
+import { useLocation, useNavigate } from 'react-router-dom';
+import {
+    AlertCircle,
+    CalendarDays,
+    ChevronDown,
+    Eye,
+    Gamepad2,
+    Library,
+    Loader2,
+    PencilLine,
+    Search,
+    SlidersHorizontal,
+} from 'lucide-react';
 import { getMySessions } from '@/services/liveSessionService';
 
-const statusBadgeColors = {
-    Active: 'bg-emerald-50 text-emerald-600',
-    Ended: 'bg-slate-50 text-slate-500',
-    Pending: 'bg-amber-50 text-amber-600',
+const TABS = [
+    { id: 'all', label: 'Tất cả' },
+    { id: 'running', label: 'Đang diễn ra' },
+    { id: 'scheduled', label: 'Đã lên lịch' },
+    { id: 'completed', label: 'Đã hoàn thành' },
+    { id: 'paused', label: 'Tạm dừng' },
+];
+
+const STATUS_META = {
+    Active: { label: 'Đang diễn ra', tab: 'running', className: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+    Running: { label: 'Đang diễn ra', tab: 'running', className: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+    Scheduled: { label: 'Đã lên lịch', tab: 'scheduled', className: 'bg-brand-light/25 text-brand-navy border-brand-light' },
+    Ended: { label: 'Đã hoàn thành', tab: 'completed', className: 'bg-slate-50 text-slate-600 border-slate-200' },
+    Completed: { label: 'Đã hoàn thành', tab: 'completed', className: 'bg-slate-50 text-slate-600 border-slate-200' },
+    Pending: { label: 'Tạm dừng', tab: 'paused', className: 'bg-amber-50 text-amber-700 border-amber-200' },
+    Paused: { label: 'Tạm dừng', tab: 'paused', className: 'bg-amber-50 text-amber-700 border-amber-200' },
 };
+
+function getSessionTitle(session) {
+    return session.title || session.quizTitle || `Buổi học #${session.id}`;
+}
+
+function getStatusMeta(status) {
+    return STATUS_META[status] || { label: status || 'Chưa rõ', tab: 'all', className: 'bg-slate-50 text-slate-600 border-slate-200' };
+}
+
+function formatDate(value) {
+    if (!value) return 'Chưa có ngày';
+    return new Date(value).toLocaleDateString('vi-VN', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+function normalize(value) {
+    return String(value || '').toLowerCase().trim();
+}
 
 export default function SessionsPage() {
     const navigate = useNavigate();
+    const location = useLocation();
     const [sessions, setSessions] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [activeTab, setActiveTab] = useState('all');
+    const [searchQuery, setSearchQuery] = useState('');
 
     useEffect(() => {
         fetchSessions();
@@ -26,139 +70,258 @@ export default function SessionsPage() {
             const data = await getMySessions();
             setSessions(Array.isArray(data) ? data : []);
         } catch (err) {
-            setError(err.message || 'Không thể tải lịch sử phiên');
+            setError(err.message || 'Không thể tải lịch sử buổi học');
         } finally {
             setLoading(false);
         }
     }
 
+    function goToLibrary(state = {}) {
+        const basePath = location.pathname.startsWith('/dev/teacher') ? '/dev/teacher' : '/teacher';
+        navigate(`${basePath}/library`, { state });
+    }
+
     function handleOpenSession(session) {
         if (!session?.quizId) return;
 
-        navigate('/teacher/library', {
-            state: {
-                activeTab: 'quizzes',
-                targetQuizId: session.quizId,
-                sourceSession: {
-                    id: session.id,
-                    title: session.title || session.quizTitle || `Phiên #${session.id}`,
-                },
+        goToLibrary({
+            activeTab: 'quizzes',
+            targetQuizId: session.quizId,
+            sourceSession: {
+                id: session.id,
+                title: getSessionTitle(session),
             },
         });
     }
 
-    return (
-        <div className="space-y-8">
-            <header>
-                <h1 className="text-2xl font-bold text-slate-800">
-                    Lịch sử Phiên
-                </h1>
-                <p className="text-sm text-slate-400 mt-1">
-                    Xem lại các phiên chơi đã diễn ra
-                </p>
-            </header>
+    const tabCounts = useMemo(() => {
+        return sessions.reduce(
+            (counts, session) => {
+                const tab = getStatusMeta(session.status).tab;
+                counts.all += 1;
+                if (counts[tab] !== undefined) counts[tab] += 1;
+                return counts;
+            },
+            { all: 0, running: 0, scheduled: 0, completed: 0, paused: 0 }
+        );
+    }, [sessions]);
 
-            {loading ? (
-                <div className="flex items-center justify-center py-20">
-                    <Loader2 className="w-6 h-6 text-sky-500 animate-spin" />
-                    <span className="ml-3 text-sm text-slate-400">Đang tải lịch sử...</span>
-                </div>
-            ) : error ? (
-                <div className="flex flex-col items-center justify-center py-20 text-center">
-                    <AlertCircle className="w-10 h-10 text-slate-300 mb-3" />
-                    <p className="text-sm text-slate-500 mb-4">{error}</p>
-                    <button
-                        onClick={fetchSessions}
-                        className="px-4 py-2 rounded-lg text-sm font-medium text-sky-600 bg-sky-50 hover:bg-sky-100 transition-colors"
-                    >
-                        Thử lại
-                    </button>
-                </div>
-            ) : sessions.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-20 text-center">
-                    <div className="w-16 h-16 rounded-2xl bg-slate-50 flex items-center justify-center mb-4">
-                        <Inbox className="w-7 h-7 text-slate-300" />
-                    </div>
-                    <h3 className="text-[14px] font-medium text-slate-500 mb-1">
-                        Chưa có phiên chơi nào
-                    </h3>
-                    <p className="text-[13px] text-slate-400">
-                        Tạo quiz và bắt đầu phiên chơi mới
+    const filteredSessions = useMemo(() => {
+        const query = normalize(searchQuery);
+        return sessions.filter((session) => {
+            const statusTab = getStatusMeta(session.status).tab;
+            const matchesTab = activeTab === 'all' || statusTab === activeTab;
+            const title = normalize(`${getSessionTitle(session)} ${session.pin || ''}`);
+            const matchesSearch = !query || title.includes(query);
+            return matchesTab && matchesSearch;
+        });
+    }, [activeTab, searchQuery, sessions]);
+
+    return (
+        <div className="min-h-screen bg-[#fbfdff] px-5 py-6 text-slate-900 sm:px-8">
+            <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+                <div>
+                    <h1 className="text-[28px] font-extrabold leading-tight text-slate-950">Báo cáo buổi học</h1>
+                    <p className="mt-2 text-[15px] font-semibold text-slate-500">
+                        Xem lại kết quả các buổi học, game và hoạt động đã mở trên lớp.
                     </p>
                 </div>
-            ) : (
-                <section>
-                    <div className="hidden md:grid grid-cols-12 gap-4 px-5 py-3 text-[11px] font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-100">
-                        <div className="col-span-4">Tên phiên</div>
-                        <div className="col-span-2">Trạng thái</div>
-                        <div className="col-span-2">Ngày tạo</div>
-                        <div className="col-span-2">PIN</div>
-                        <div className="col-span-2 text-right">Hành động</div>
-                    </div>
 
-                    <div className="space-y-1 mt-1">
-                        {sessions.map((session) => (
-                            <article
-                                key={session.id}
-                                onClick={() => handleOpenSession(session)}
-                                className="grid grid-cols-1 md:grid-cols-12 gap-3 md:gap-4 items-center px-5 py-4 rounded-xl border border-transparent hover:border-slate-100 hover:bg-slate-50/30 transition-all duration-200 group cursor-pointer"
+                <div className="relative w-full xl:w-[360px]">
+                    <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500" />
+                    <input
+                        value={searchQuery}
+                        onChange={(event) => setSearchQuery(event.target.value)}
+                        placeholder="Tìm theo tên báo cáo"
+                        className="h-12 w-full rounded-full border border-slate-200 bg-white pl-12 pr-4 text-[15px] font-semibold text-slate-800 outline-none transition-all duration-200 placeholder:text-slate-400 hover:border-brand-light focus:border-brand-mid focus:ring-4 focus:ring-brand-light/30"
+                    />
+                </div>
+            </div>
+
+            <div className="mt-6 flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+                <div className="flex flex-wrap items-center gap-2">
+                    {TABS.map((tab) => {
+                        const isActive = activeTab === tab.id;
+                        return (
+                            <button
+                                key={tab.id}
+                                onClick={() => setActiveTab(tab.id)}
+                                className={`h-11 rounded-full px-4 text-[14px] font-extrabold transition-all duration-200 ${
+                                    isActive
+                                        ? 'bg-white text-brand-navy shadow-[0_10px_28px_rgba(15,23,42,0.09)] ring-1 ring-slate-200'
+                                        : 'text-slate-500 hover:bg-white/70 hover:text-slate-900'
+                                }`}
                             >
-                                <div className="md:col-span-4 flex items-center gap-3">
-                                    <div className="w-8 h-8 rounded-lg bg-sky-50 flex items-center justify-center flex-shrink-0">
-                                        <Gamepad2 className="w-4 h-4 text-sky-500" />
-                                    </div>
-                                    <h3 className="text-[13px] font-medium text-slate-700 truncate group-hover:text-slate-800 transition-colors">
-                                        {session.title || session.quizTitle || `Phiên #${session.id}`}
-                                    </h3>
-                                </div>
+                                {tab.label} ({tabCounts[tab.id]})
+                            </button>
+                        );
+                    })}
+                </div>
 
-                                <div className="md:col-span-2">
-                                    <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-semibold ${statusBadgeColors[session.status] || 'bg-slate-50 text-slate-500'}`}>
-                                        {session.status || 'N/A'}
-                                    </span>
-                                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                    <FilterButton label="Loại nội dung" icon={SlidersHorizontal} />
+                    <FilterButton label="Tất cả báo cáo" />
+                    <FilterButton label="Tất cả lớp" />
+                    <FilterButton label="Lọc theo ngày" icon={CalendarDays} />
+                </div>
+            </div>
 
-                                <div className="md:col-span-2 flex items-center gap-1.5">
-                                    <Calendar className="w-3.5 h-3.5 text-slate-400 md:hidden" />
-                                    <span className="text-[12px] text-slate-500">
-                                        {session.createdAt
-                                            ? new Date(session.createdAt).toLocaleDateString('vi-VN', {
-                                                day: 'numeric',
-                                                month: 'short',
-                                                year: 'numeric',
-                                            })
-                                            : '—'}
-                                    </span>
-                                </div>
+            <motion.section
+                initial={{ opacity: 0, y: 14 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
+                className="mt-8"
+            >
+                {loading ? (
+                    <LoadingState />
+                ) : error ? (
+                    <ErrorState message={error} onRetry={fetchSessions} />
+                ) : filteredSessions.length === 0 ? (
+                    <EmptyReports onOpenLibrary={() => goToLibrary()} hasSearch={Boolean(searchQuery) || activeTab !== 'all'} />
+                ) : (
+                    <ReportsTable sessions={filteredSessions} onOpenSession={handleOpenSession} />
+                )}
+            </motion.section>
+        </div>
+    );
+}
 
-                                <div className="md:col-span-2 flex items-center gap-1.5">
-                                    {session.pin ? (
-                                        <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-sky-50 text-sky-600 text-[12px] font-bold tracking-wider">
-                                            {session.pin}
-                                        </span>
-                                    ) : (
-                                        <span className="text-[12px] text-slate-400">—</span>
-                                    )}
-                                </div>
+function FilterButton({ label, icon: Icon }) {
+    return (
+        <button className="inline-flex h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-[13px] font-extrabold text-slate-800 shadow-sm transition-all duration-200 hover:border-brand-mid hover:bg-brand-light/20 hover:text-brand-navy active:scale-[0.99]">
+            {Icon && <Icon className="h-4 w-4 text-slate-600" />}
+            {label}
+            <ChevronDown className="h-4 w-4 text-slate-500" />
+        </button>
+    );
+}
 
-                                <div className="md:col-span-2 flex justify-end">
-                                    <button
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleOpenSession(session);
-                                        }}
-                                        disabled={!session.quizId}
-                                        className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-slate-200/80 bg-white text-[12px] font-medium text-slate-500 hover:border-sky-300 hover:text-sky-600 hover:bg-sky-50/50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                                    >
-                                        <Eye className="w-3.5 h-3.5" />
-                                        {session.quizId ? 'Xem quiz' : 'Không khả dụng'}
-                                    </button>
+function EmptyReports({ onOpenLibrary, hasSearch }) {
+    return (
+        <div className="flex min-h-[560px] flex-col items-center justify-start pt-20 text-center">
+            <div className="mb-5 grid h-14 w-14 place-items-center rounded-2xl bg-brand-light/30 text-brand-blue shadow-[0_18px_40px_rgba(43,122,181,0.12)]">
+                <PencilLine className="h-8 w-8" />
+            </div>
+            <h2 className="text-[20px] font-extrabold text-slate-800">
+                {hasSearch ? 'Chưa tìm thấy báo cáo phù hợp' : 'Bắt đầu một buổi học để xem báo cáo'}
+            </h2>
+            <div className="mt-7 w-full max-w-[900px]">
+                <div className="relative">
+                    <Search className="pointer-events-none absolute left-5 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500" />
+                    <input
+                        readOnly
+                        placeholder="Tìm trong bài giảng và bộ câu hỏi đã tạo..."
+                        className="h-[52px] w-full rounded-full border border-slate-200 bg-white py-3.5 pl-14 pr-5 text-[15px] font-semibold text-slate-500 outline-none shadow-sm"
+                    />
+                </div>
+            </div>
+            <span className="my-6 text-[14px] font-bold text-slate-500">hoặc</span>
+            <button
+                onClick={onOpenLibrary}
+                className="inline-flex h-11 items-center gap-2 rounded-lg border border-slate-200 bg-white px-5 text-[14px] font-extrabold text-slate-900 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-brand-mid hover:bg-brand-light/20 hover:text-brand-navy active:translate-y-0"
+            >
+                <Library className="h-4 w-4" />
+                Mở thư viện của tôi
+            </button>
+        </div>
+    );
+}
+
+function LoadingState() {
+    return (
+        <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-[0_18px_46px_rgba(15,23,42,0.05)]">
+            <div className="mb-6 flex items-center justify-center py-8 text-[15px] font-bold text-slate-500">
+                <Loader2 className="mr-3 h-6 w-6 animate-spin text-brand-blue" />
+                Đang tải báo cáo buổi học...
+            </div>
+            <div className="space-y-3">
+                {[0, 1, 2, 3].map((item) => (
+                    <div key={item} className="h-16 animate-pulse rounded-lg bg-slate-100" />
+                ))}
+            </div>
+        </div>
+    );
+}
+
+function ErrorState({ message, onRetry }) {
+    return (
+        <div className="flex min-h-[420px] flex-col items-center justify-center rounded-xl border border-slate-200 bg-white px-6 text-center shadow-[0_18px_46px_rgba(15,23,42,0.05)]">
+            <AlertCircle className="mb-3 h-11 w-11 text-rose-400" />
+            <p className="text-[16px] font-extrabold text-slate-800">{message}</p>
+            <button
+                onClick={onRetry}
+                className="mt-5 rounded-lg bg-brand-light/30 px-5 py-2.5 text-[14px] font-extrabold text-brand-blue transition-colors duration-200 hover:bg-brand-light/50"
+            >
+                Thử lại
+            </button>
+        </div>
+    );
+}
+
+function ReportsTable({ sessions, onOpenSession }) {
+    return (
+        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_18px_46px_rgba(15,23,42,0.05)]">
+            <div className="hidden grid-cols-[minmax(0,1fr)_160px_150px_130px_auto] items-center gap-5 px-6 py-4 text-[13px] font-extrabold uppercase tracking-[0.08em] text-slate-500 lg:grid">
+                <span>Tên báo cáo</span>
+                <span>Trạng thái</span>
+                <span>Ngày tạo</span>
+                <span>Mã lớp</span>
+                <span className="text-right">Thao tác</span>
+            </div>
+
+            <div>
+                {sessions.map((session, index) => {
+                    const status = getStatusMeta(session.status);
+                    return (
+                        <motion.article
+                            key={session.id}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.22, delay: Math.min(index * 0.035, 0.18) }}
+                            onClick={() => onOpenSession(session)}
+                            className="grid cursor-pointer grid-cols-1 gap-4 border-t border-slate-200 px-6 py-4 transition-all duration-200 hover:bg-brand-light/10 lg:grid-cols-[minmax(0,1fr)_160px_150px_130px_auto] lg:items-center lg:gap-5"
+                        >
+                            <div className="flex min-w-0 items-center gap-4">
+                                <div className="grid h-12 w-12 flex-none place-items-center rounded-lg border border-slate-200 bg-slate-50 text-brand-blue">
+                                    <Gamepad2 className="h-6 w-6" />
                                 </div>
-                            </article>
-                        ))}
-                    </div>
-                </section>
-            )}
+                                <div className="min-w-0">
+                                    <h3 className="truncate text-[16px] font-extrabold text-slate-900">{getSessionTitle(session)}</h3>
+                                    <p className="mt-1 truncate text-[13px] font-semibold text-slate-500">
+                                        {session.quizTitle || 'Hoạt động trên lớp'} · {session.participantCount || 0} học sinh
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div>
+                                <span className={`inline-flex rounded-lg border px-3 py-1.5 text-[12px] font-extrabold ${status.className}`}>
+                                    {status.label}
+                                </span>
+                            </div>
+
+                            <span className="text-[14px] font-semibold text-slate-500">{formatDate(session.createdAt)}</span>
+
+                            <span className="text-[14px] font-extrabold tracking-wide text-brand-navy">
+                                {session.pin || 'Chưa có'}
+                            </span>
+
+                            <div className="flex justify-start lg:justify-end">
+                                <button
+                                    onClick={(event) => {
+                                        event.stopPropagation();
+                                        onOpenSession(session);
+                                    }}
+                                    disabled={!session.quizId}
+                                    className="inline-flex h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-[14px] font-bold text-slate-800 transition-all duration-200 hover:border-brand-mid hover:bg-brand-light/20 hover:text-brand-blue disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                    <Eye className="h-4 w-4" />
+                                    {session.quizId ? 'Xem lại' : 'Chưa có quiz'}
+                                </button>
+                            </div>
+                        </motion.article>
+                    );
+                })}
+            </div>
         </div>
     );
 }
