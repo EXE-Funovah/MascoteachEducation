@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Mascoteach — Document Service
  * CRUD operations for user documents (uploaded files).
  */
@@ -46,7 +46,7 @@ export async function createDocument(data) {
  * @returns {Promise<object>}
  */
 export async function updateDocument(id, fileUrl) {
-    return api.put(`/api/Document/${id}`, fileUrl);
+    return api.put(`/api/Document/${id}`, { s3Key: fileUrl });
 }
 
 /**
@@ -68,20 +68,23 @@ export async function toggleDeleteDocument(id) {
 }
 
 /**
- * Step 1: Request a presigned S3 upload URL from the backend
+ * Step 1: Request a presigned S3 upload URL from the backend.
+ * Always uploads as application/zip regardless of original file type.
  * @param {string} fileName - Original file name (e.g. "lecture.pdf")
- * @param {string} contentType - MIME type (e.g. "application/pdf")
  * @returns {Promise<{ uploadUrl: string, s3Key: string, expiresAt: string }>}
  */
-export async function generateUploadUrl(fileName, contentType) {
-    return api.post('/api/Document/generate-upload-url', { fileName, contentType });
+export async function generateUploadUrl(fileName) {
+    return api.post('/api/Document/generate-upload-url', {
+        fileName,
+        contentType: 'application/zip',
+    });
 }
 
 /**
  * Step 2: Upload a file directly to S3 using a presigned PUT URL.
  * IMPORTANT: No Authorization header is sent — S3 rejects requests with extra auth headers.
  * @param {string} uploadUrl - Presigned S3 URL from generateUploadUrl
- * @param {File} file - The raw File object to upload
+ * @param {File} file - The raw File object to upload (should be a zip File)
  * @returns {Promise<void>}
  */
 export async function uploadFileToS3(uploadUrl, file) {
