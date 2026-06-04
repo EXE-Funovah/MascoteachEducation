@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { X, Upload, Sparkles, CheckCircle2, ArrowRight, Loader2, File } from 'lucide-react';
-import { createDocument, uploadDocumentFile } from '@/services/documentService';
+import { generateUploadUrl, uploadFileToS3, createDocument } from '@/services/documentService';
 
 /**
  * CreateFlowModal — Upload document then navigate to Quiz Settings
@@ -46,14 +46,20 @@ export default function CreateFlowModal({ onClose }) {
         setIsProcessing(true);
         setUploadError(null);
         try {
-            // 1. Zip the original file in-browser, then upload the ZIP to S3.
-            const { s3Key } = await uploadDocumentFile(uploadedFile);
+            // 1. Get presigned S3 upload URL + permanent S3 key from backend
+            const { uploadUrl, s3Key } = await generateUploadUrl(
+                uploadedFile.name,
+                uploadedFile.type,
+            );
 
-            // 2. Save document metadata to backend using the permanent S3 key
+            // 2. Upload file directly to S3
+            await uploadFileToS3(uploadUrl, uploadedFile);
+
+            // 3. Save document metadata to backend using the permanent S3 key
             //    Response includes a fresh presignedUrl for immediate use by the AI service
             const doc = await createDocument({ s3Key });
 
-            // 3. Close modal & navigate to settings page
+            // 4. Close modal & navigate to settings page
             //    Pass the fresh presignedUrl as fileUrl so the AI service can read the file
             onClose();
             navigate('/teacher/quiz-settings', {
