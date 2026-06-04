@@ -280,7 +280,7 @@ export default function HomePage() {
         try {
             const { uploadUrl, s3Key } = await generateUploadUrl(file.name, file.type);
             await uploadFileWithProgress(uploadUrl, file, setUploadProgress);
-            const doc = await createDocument({ s3Key });
+            const doc = await createDocument({ s3Key, fileName: file.name });
 
             const upload = {
                 fileName: file.name,

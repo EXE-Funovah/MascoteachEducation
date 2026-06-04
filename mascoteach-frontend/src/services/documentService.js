@@ -32,11 +32,11 @@ export async function getDocumentById(id) {
 
 /**
  * Create a new document
- * @param {{ s3Key: string }} data
- * @returns {Promise<{ id: number, s3Key: string, presignedUrl: string }>}
+ * @param {{ s3Key: string, fileName?: string }} data
+ * @returns {Promise<{ id: number, s3Key: string, fileName?: string, presignedUrl: string }>}
  */
 export async function createDocument(data) {
-    return api.post('/api/Document', { s3Key: data.s3Key });
+    return api.post('/api/Document', { s3Key: data.s3Key, fileName: data.fileName });
 }
 
 /**

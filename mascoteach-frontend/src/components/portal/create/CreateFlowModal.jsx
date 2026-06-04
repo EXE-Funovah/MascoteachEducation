@@ -57,7 +57,7 @@ export default function CreateFlowModal({ onClose }) {
 
             // 3. Save document metadata to backend using the permanent S3 key
             //    Response includes a fresh presignedUrl for immediate use by the AI service
-            const doc = await createDocument({ s3Key });
+            const doc = await createDocument({ s3Key, fileName: uploadedFile.name });
 
             // 4. Close modal & navigate to settings page
             //    Pass the fresh presignedUrl as fileUrl so the AI service can read the file
