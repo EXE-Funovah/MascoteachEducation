@@ -34,8 +34,30 @@ export default function GoogleSignInButton({
     text = 'signin_with',
 }) {
     const buttonRef = useRef(null);
+    const [buttonWidth, setButtonWidth] = useState(400);
     const [scriptError, setScriptError] = useState('');
     const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+
+    useEffect(() => {
+        const node = buttonRef.current;
+        if (!node) return undefined;
+
+        function syncWidth() {
+            const nextWidth = Math.round(node.getBoundingClientRect().width || 400);
+            setButtonWidth(Math.min(400, Math.max(200, nextWidth)));
+        }
+
+        syncWidth();
+
+        if (typeof ResizeObserver === 'undefined') {
+            window.addEventListener('resize', syncWidth);
+            return () => window.removeEventListener('resize', syncWidth);
+        }
+
+        const observer = new ResizeObserver(syncWidth);
+        observer.observe(node);
+        return () => observer.disconnect();
+    }, []);
 
     useEffect(() => {
         let cancelled = false;
@@ -66,7 +88,7 @@ export default function GoogleSignInButton({
                     text,
                     locale: 'vi',
                     logo_alignment: 'left',
-                    width: buttonRef.current.offsetWidth || 360,
+                    width: buttonWidth,
                 });
             } catch {
                 if (!cancelled) {
@@ -80,7 +102,7 @@ export default function GoogleSignInButton({
         return () => {
             cancelled = true;
         };
-    }, [clientId, disabled, onCredential, text]);
+    }, [buttonWidth, clientId, disabled, onCredential, text]);
 
     if (!clientId) {
         return (
