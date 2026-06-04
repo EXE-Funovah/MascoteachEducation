@@ -42,7 +42,7 @@ export function resolveAiBaseUrl() {
     const hostname = getRuntimeHostname();
 
     if (isDevLikeHostname(hostname) && !isLocalHostname(hostname)) {
-        return 'https://dev-ai.mascoteach.com';
+        return 'https://ai-dev.mascoteach.com';
     }
 
     return 'https://ai.mascoteach.com';
