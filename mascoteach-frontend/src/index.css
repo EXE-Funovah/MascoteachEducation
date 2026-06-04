@@ -545,14 +545,22 @@ img {
 
 .auth-google-button {
   display: flex;
+  align-items: center;
   justify-content: center;
   width: 100%;
-  min-height: 44px;
+  min-height: 54px;
+  margin-top: 10px;
+  overflow: hidden;
+  border-radius: 12px;
 }
 
 .auth-google-button > div,
 .auth-google-button iframe {
   width: 100% !important;
+}
+
+.auth-google-button iframe {
+  min-height: 44px !important;
 }
 
 .auth-google-button[aria-busy="true"] {

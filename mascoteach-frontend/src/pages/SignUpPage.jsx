@@ -200,6 +200,7 @@ export default function SignUpPage() {
             <GoogleSignInButton
                 onCredential={handleGoogleCredential}
                 disabled={googleSubmitting}
+                text="signup_with"
             />
 
             <p className="auth-legal">

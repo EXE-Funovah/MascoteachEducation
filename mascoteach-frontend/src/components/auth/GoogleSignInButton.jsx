@@ -31,7 +31,7 @@ function loadGoogleIdentityScript() {
 export default function GoogleSignInButton({
     onCredential,
     disabled = false,
-    text = 'continue_with',
+    text = 'signin_with',
 }) {
     const buttonRef = useRef(null);
     const [scriptError, setScriptError] = useState('');
@@ -49,6 +49,7 @@ export default function GoogleSignInButton({
 
                 window.google.accounts.id.initialize({
                     client_id: clientId,
+                    context: 'signin',
                     callback: (response) => {
                         if (response?.credential) {
                             onCredential(response.credential);
@@ -63,6 +64,7 @@ export default function GoogleSignInButton({
                     size: 'large',
                     shape: 'rectangular',
                     text,
+                    locale: 'vi',
                     logo_alignment: 'left',
                     width: buttonRef.current.offsetWidth || 360,
                 });
