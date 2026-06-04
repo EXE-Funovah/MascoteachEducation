@@ -346,7 +346,7 @@ export default function LibraryPage() {
                             <MenuItem icon={Bookmark} label="Lưu" />
                             <MenuItem
                                 icon={Copy}
-                                label={type === 'quiz' ? 'Nhân bản và sửa' : 'Tạo bộ câu hỏi từ tài liệu'}
+                                label={type === 'quiz' ? 'Nhân bản và sửa' : 'Tạo từ tài liệu'}
                                 onClick={() => {
                                     setOpenMenu(null);
                                     onCreateQuiz?.();
@@ -425,12 +425,7 @@ export default function LibraryPage() {
                 transition={{ duration: 0.22, delay: Math.min(index * 0.035, 0.18) }}
                 className="group grid grid-cols-[minmax(0,1fr)] items-center gap-5 border-t border-slate-200/80 bg-white px-6 py-4 transition-all duration-200 hover:bg-brand-light/10 lg:grid-cols-[minmax(0,1fr)_180px_280px]"
             >
-                <button
-                    type="button"
-                    onClick={() => handleCreateQuizFromDocument(doc)}
-                    className="flex min-w-0 items-center gap-4 rounded-lg text-left outline-none transition-colors focus-visible:ring-4 focus-visible:ring-brand-light/40"
-                    aria-label={`Tạo bộ câu hỏi từ ${title}`}
-                >
+                <div className="flex min-w-0 items-center gap-4">
                     <div className="grid h-12 w-12 flex-none place-items-center rounded-lg border border-slate-200 bg-slate-50 text-brand-blue">
                         <FileText className="h-6 w-6" />
                     </div>
@@ -440,17 +435,9 @@ export default function LibraryPage() {
                             Tài liệu · Sẵn sàng tạo câu hỏi · {fileName || 'Mascoteach'}
                         </p>
                     </div>
-                </button>
+                </div>
                 <span className="hidden text-center text-[14px] font-semibold text-slate-500 lg:block">{formatDate(getItemDate(doc))}</span>
                 <div className="flex w-full items-center justify-end gap-2">
-                    <button
-                        type="button"
-                        onClick={() => handleCreateQuizFromDocument(doc)}
-                        className="inline-flex h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-[14px] font-bold text-slate-800 transition-all duration-200 hover:border-brand-mid hover:bg-brand-light/20 hover:text-brand-blue"
-                    >
-                        <Copy className="h-4 w-4" />
-                        Tạo hoạt động
-                    </button>
                     <ShareMenu id={`doc-share-${doc.id}`} />
                     <button
                         type="button"
