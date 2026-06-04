@@ -20,6 +20,7 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { createDocument, generateUploadUrl, getMyDocuments } from '@/services/documentService';
 import { getMySessions } from '@/services/liveSessionService';
+import { zipFileForUpload } from '@/utils/zipFile';
 
 const TABS = [
     { id: 'create', label: 'Tạo mới', hint: 'từ tài liệu', Icon: PencilLine },
@@ -278,9 +279,10 @@ export default function HomePage() {
 
         setIsUploading(true);
         try {
-            const { uploadUrl, s3Key } = await generateUploadUrl(file.name, file.type);
-            await uploadFileWithProgress(uploadUrl, file, setUploadProgress);
-            const doc = await createDocument({ s3Key });
+            const zippedFile = await zipFileForUpload(file);
+            const { uploadUrl, s3Key } = await generateUploadUrl(file.name);
+            await uploadFileWithProgress(uploadUrl, zippedFile, setUploadProgress);
+            const doc = await createDocument({ s3Key, fileName: file.name });
 
             const upload = {
                 fileName: file.name,

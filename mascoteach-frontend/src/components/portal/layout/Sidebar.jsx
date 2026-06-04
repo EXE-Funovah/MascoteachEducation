@@ -11,7 +11,7 @@ import { useAuth } from '@/contexts/AuthContext';
 
 const mainItems = [
     { to: '/teacher', icon: Home, label: 'Trang chủ', end: true },
-    { to: '/teacher/library', icon: Library, label: 'Thư viện của tôi', dot: true },
+    { to: '/teacher/library', icon: Library, label: 'Thư viện của tôi' },
     { to: '/teacher/sessions', icon: History, label: 'Lịch sử buổi học' },
 ];
 

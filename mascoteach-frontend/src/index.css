@@ -547,16 +547,15 @@ img {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 100%;
+  width: min(100%, 400px);
   min-height: 54px;
-  margin-top: 10px;
-  overflow: hidden;
+  margin: 10px auto 0;
+  overflow: visible;
   border-radius: 12px;
 }
 
-.auth-google-button > div,
-.auth-google-button iframe {
-  width: 100% !important;
+.auth-google-button > div {
+  width: 100%;
 }
 
 .auth-google-button iframe {

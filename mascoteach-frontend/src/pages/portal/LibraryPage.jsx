@@ -183,6 +183,19 @@ export default function LibraryPage() {
         });
     }
 
+    function handleCreateQuizFromDocument(doc) {
+        const basePath = location.pathname.startsWith('/dev/teacher') ? '/dev/teacher' : '/teacher';
+        navigate(`${basePath}/quiz-settings`, {
+            state: {
+                fileName: doc.title || getDocumentFileName(doc) || `Tài liệu #${doc.id}`,
+                fileSize: doc.fileSize || null,
+                documentId: doc.id,
+                fileUrl: doc.presignedUrl || null,
+                activityType: 'quiz',
+            },
+        });
+    }
+
     async function toggleExpandQuiz(quizId) {
         if (expandedQuizId === quizId) {
             setExpandedQuizId(null);
@@ -307,7 +320,7 @@ export default function LibraryPage() {
         );
     }
 
-    function ActionMenu({ id, onDelete, type }) {
+    function ActionMenu({ id, onDelete, onCreateQuiz, type }) {
         const isOpen = openMenu === id;
         return (
             <div className="relative">
@@ -331,7 +344,14 @@ export default function LibraryPage() {
                             className="absolute right-0 top-12 z-30 w-56 rounded-xl border border-slate-200 bg-white p-2 shadow-[0_18px_50px_rgba(15,23,42,0.14)]"
                         >
                             <MenuItem icon={Bookmark} label="Lưu" />
-                            <MenuItem icon={Copy} label={type === 'quiz' ? 'Nhân bản và sửa' : 'Tạo bộ câu hỏi từ tài liệu'} />
+                            <MenuItem
+                                icon={Copy}
+                                label={type === 'quiz' ? 'Nhân bản và sửa' : 'Tạo bộ câu hỏi từ tài liệu'}
+                                onClick={() => {
+                                    setOpenMenu(null);
+                                    onCreateQuiz?.();
+                                }}
+                            />
                             <MenuItem icon={Archive} label="Lưu trữ" />
                             <button
                                 onClick={() => {
@@ -382,9 +402,13 @@ export default function LibraryPage() {
         );
     }
 
-    function MenuItem({ icon: Icon, label }) {
+    function MenuItem({ icon: Icon, label, onClick }) {
         return (
-            <button className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-[15px] font-bold text-slate-800 transition-colors duration-150 hover:bg-slate-50">
+            <button
+                type="button"
+                onClick={onClick}
+                className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-[15px] font-bold text-slate-800 transition-colors duration-150 hover:bg-slate-50"
+            >
                 <Icon className="h-4 w-4 text-slate-700" />
                 {label}
             </button>
@@ -399,10 +423,14 @@ export default function LibraryPage() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.22, delay: Math.min(index * 0.035, 0.18) }}
-                className="group grid grid-cols-[minmax(0,1fr)] items-center gap-5 border-t border-slate-200/80 bg-white px-6 py-4 transition-all duration-200 hover:bg-brand-light/10 lg:grid-cols-[minmax(0,1fr)_180px_260px]"
+                className="group grid grid-cols-[minmax(0,1fr)] items-center gap-5 border-t border-slate-200/80 bg-white px-6 py-4 transition-all duration-200 hover:bg-brand-light/10 lg:grid-cols-[minmax(0,1fr)_180px_280px]"
             >
-                <div className="flex min-w-0 items-center gap-4">
-                    <input type="checkbox" className="h-5 w-5 rounded border-slate-300 text-brand-blue focus:ring-brand-blue" aria-label={`Chọn ${title}`} />
+                <button
+                    type="button"
+                    onClick={() => handleCreateQuizFromDocument(doc)}
+                    className="flex min-w-0 items-center gap-4 rounded-lg text-left outline-none transition-colors focus-visible:ring-4 focus-visible:ring-brand-light/40"
+                    aria-label={`Tạo bộ câu hỏi từ ${title}`}
+                >
                     <div className="grid h-12 w-12 flex-none place-items-center rounded-lg border border-slate-200 bg-slate-50 text-brand-blue">
                         <FileText className="h-6 w-6" />
                     </div>
@@ -412,15 +440,32 @@ export default function LibraryPage() {
                             Tài liệu · Sẵn sàng tạo câu hỏi · {fileName || 'Mascoteach'}
                         </p>
                     </div>
-                </div>
+                </button>
                 <span className="hidden text-center text-[14px] font-semibold text-slate-500 lg:block">{formatDate(getItemDate(doc))}</span>
                 <div className="flex w-full items-center justify-end gap-2">
-                    <button className="inline-flex h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-[14px] font-bold text-slate-800 transition-all duration-200 hover:border-brand-mid hover:bg-brand-light/20 hover:text-brand-blue">
-                        <Edit3 className="h-4 w-4" />
-                        Sửa
+                    <button
+                        type="button"
+                        onClick={() => handleCreateQuizFromDocument(doc)}
+                        className="inline-flex h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-[14px] font-bold text-slate-800 transition-all duration-200 hover:border-brand-mid hover:bg-brand-light/20 hover:text-brand-blue"
+                    >
+                        <Copy className="h-4 w-4" />
+                        Tạo hoạt động
                     </button>
                     <ShareMenu id={`doc-share-${doc.id}`} />
-                    <ActionMenu id={`doc-${doc.id}`} type="document" onDelete={() => handleDeleteDoc(doc.id)} />
+                    <button
+                        type="button"
+                        onClick={() => handleDeleteDoc(doc.id)}
+                        className="grid h-10 w-10 place-items-center rounded-lg border border-slate-200 bg-white text-slate-600 transition-all duration-200 hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600"
+                        aria-label={`Xóa ${title}`}
+                    >
+                        <Trash2 className="h-5 w-5" />
+                    </button>
+                    <ActionMenu
+                        id={`doc-${doc.id}`}
+                        type="document"
+                        onCreateQuiz={() => handleCreateQuizFromDocument(doc)}
+                        onDelete={() => handleDeleteDoc(doc.id)}
+                    />
                 </div>
             </motion.article>
         );
@@ -440,7 +485,6 @@ export default function LibraryPage() {
             >
                 <div className="group grid grid-cols-[minmax(0,1fr)] items-center gap-5 px-6 py-4 lg:grid-cols-[minmax(0,1fr)_180px_260px]">
                     <button onClick={() => toggleExpandQuiz(quiz.id)} className="flex min-w-0 items-center gap-4 text-left">
-                        <input type="checkbox" className="h-5 w-5 rounded border-slate-300 text-brand-blue focus:ring-brand-blue" aria-label={`Chọn ${title}`} onClick={(event) => event.stopPropagation()} />
                         <div className={`grid h-12 w-12 flex-none place-items-center rounded-lg border transition-colors duration-200 ${isExpanded ? 'border-brand-mid bg-brand-light/30 text-brand-navy' : 'border-slate-200 bg-slate-50 text-brand-blue'}`}>
                             <BookOpen className="h-6 w-6" />
                         </div>

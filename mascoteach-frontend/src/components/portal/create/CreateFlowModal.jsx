@@ -1,12 +1,13 @@
-import { useState, useCallback } from 'react';
+﻿import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { X, Upload, Sparkles, CheckCircle2, ArrowRight, Loader2, File } from 'lucide-react';
 import { generateUploadUrl, uploadFileToS3, createDocument } from '@/services/documentService';
+import { zipFileForUpload } from '@/utils/zipFile';
 
 /**
  * CreateFlowModal — Upload document then navigate to Quiz Settings
  *
- * Flow: Upload file → S3 + create document → navigate to /teacher/quiz-settings
+ * Flow: Zip file → Upload to S3 + create document → navigate to /teacher/quiz-settings
  */
 export default function CreateFlowModal({ onClose }) {
     const navigate = useNavigate();
@@ -46,20 +47,20 @@ export default function CreateFlowModal({ onClose }) {
         setIsProcessing(true);
         setUploadError(null);
         try {
-            // 1. Get presigned S3 upload URL + permanent S3 key from backend
-            const { uploadUrl, s3Key } = await generateUploadUrl(
-                uploadedFile.name,
-                uploadedFile.type,
-            );
+            // 1. Zip the original file before uploading
+            const zippedFile = await zipFileForUpload(uploadedFile);
 
-            // 2. Upload file directly to S3
-            await uploadFileToS3(uploadUrl, uploadedFile);
+            // 2. Get presigned S3 upload URL + permanent S3 key from backend
+            const { uploadUrl, s3Key } = await generateUploadUrl(uploadedFile.name);
 
-            // 3. Save document metadata to backend using the permanent S3 key
+            // 3. Upload zipped file directly to S3
+            await uploadFileToS3(uploadUrl, zippedFile);
+
+            // 4. Save document metadata to backend using the permanent S3 key
             //    Response includes a fresh presignedUrl for immediate use by the AI service
-            const doc = await createDocument({ s3Key });
+            const doc = await createDocument({ s3Key, fileName: uploadedFile.name });
 
-            // 4. Close modal & navigate to settings page
+            // 5. Close modal & navigate to settings page
             //    Pass the fresh presignedUrl as fileUrl so the AI service can read the file
             onClose();
             navigate('/teacher/quiz-settings', {
@@ -71,7 +72,7 @@ export default function CreateFlowModal({ onClose }) {
                 },
             });
         } catch (err) {
-            setUploadError(err.message || 'Tải lên thất bại. Vui lòng thử lại.');
+            setUploadError(err.message || 'Tai len that bai. Vui long thu lai.');
         } finally {
             setIsProcessing(false);
         }
@@ -94,7 +95,7 @@ export default function CreateFlowModal({ onClose }) {
                 aria-modal="true"
                 aria-label="Tạo quiz mới"
             >
-                {/* ── Header ── */}
+                {/* -- Header -- */}
                 <div className="flex items-center justify-between px-8 py-5 border-b border-slate-100/60">
                     <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-lg bg-sky-50 flex items-center justify-center">
@@ -120,7 +121,7 @@ export default function CreateFlowModal({ onClose }) {
                     </button>
                 </div>
 
-                {/* ── Content ── */}
+                {/* -- Content -- */}
                 <div className="px-8 py-6 overflow-y-auto max-h-[60vh]">
                     <div className="space-y-6">
                         {/* Error message */}

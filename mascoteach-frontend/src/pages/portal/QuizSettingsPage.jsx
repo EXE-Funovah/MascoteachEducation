@@ -16,6 +16,7 @@ import {
     X,
 } from 'lucide-react';
 import { createDocument, generateUploadUrl } from '@/services/documentService';
+import { zipFileForUpload } from '@/utils/zipFile';
 
 const STRUCTURE_OPTIONS = [
     'Phát triển chuyên môn',
@@ -282,9 +283,10 @@ export default function QuizSettingsPage() {
 
         setIsReplacingFile(true);
         try {
-            const { uploadUrl, s3Key } = await generateUploadUrl(file.name, file.type);
-            await uploadFileWithProgress(uploadUrl, file, setReplaceProgress);
-            const doc = await createDocument({ s3Key });
+            const zippedFile = await zipFileForUpload(file);
+            const { uploadUrl, s3Key } = await generateUploadUrl(file.name);
+            await uploadFileWithProgress(uploadUrl, zippedFile, setReplaceProgress);
+            const doc = await createDocument({ s3Key, fileName: file.name });
 
             setCurrentFile({
                 fileName: file.name,
