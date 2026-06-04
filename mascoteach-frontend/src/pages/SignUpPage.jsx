@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowRight } from 'lucide-react';
 import AuthLayout from '@/components/auth/AuthLayout';
 import AuthInput from '@/components/auth/AuthInput';
-import GoogleLogo from '@/components/auth/GoogleLogo';
+import GoogleSignInButton from '@/components/auth/GoogleSignInButton';
 import { useAuth } from '@/contexts/AuthContext';
 
 const roles = [
@@ -22,10 +22,18 @@ export default function SignUpPage() {
     });
     const [selectedRole, setSelectedRole] = useState('Teacher');
     const [submitting, setSubmitting] = useState(false);
+    const [googleSubmitting, setGoogleSubmitting] = useState(false);
     const [localError, setLocalError] = useState('');
 
-    const { register, error, clearError } = useAuth();
+    const { register, googleLogin, error, clearError } = useAuth();
     const navigate = useNavigate();
+
+    function getRoleRedirect(profile) {
+        const role = (profile?.role || profile?.roleName || '').toLowerCase();
+        if (role === 'student') return '/student';
+        if (role === 'parent') return '/parent';
+        return '/teacher';
+    }
 
     function update(field) {
         return (e) => {
@@ -72,6 +80,20 @@ export default function SignUpPage() {
             setSubmitting(false);
         }
     }
+
+    const handleGoogleCredential = useCallback(async (credential) => {
+        clearError();
+        setLocalError('');
+        setGoogleSubmitting(true);
+        try {
+            const profile = await googleLogin(credential, true);
+            navigate(getRoleRedirect(profile), { replace: true });
+        } catch (err) {
+            setLocalError(err.message || 'Đăng nhập Google thất bại. Vui lòng thử lại.');
+        } finally {
+            setGoogleSubmitting(false);
+        }
+    }, [clearError, googleLogin, navigate]);
 
     const displayError = localError || error;
 
@@ -175,16 +197,10 @@ export default function SignUpPage() {
                 <span>Phương thức khác</span>
             </div>
 
-            <motion.button
-                type="button"
-                className="auth-provider"
-                whileHover={{ y: -1 }}
-                whileTap={{ scale: 0.985 }}
-            >
-                <GoogleLogo />
-                <span>Tiếp tục với Google</span>
-                <ArrowRight size={17} strokeWidth={2.2} />
-            </motion.button>
+            <GoogleSignInButton
+                onCredential={handleGoogleCredential}
+                disabled={googleSubmitting}
+            />
 
             <p className="auth-legal">
                 Bằng việc đăng ký, bạn đồng ý với điều khoản dịch vụ và chính sách bảo mật của Mascoteach.

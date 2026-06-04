@@ -8,21 +8,26 @@ import { resolveApiBaseUrl } from './baseUrls';
 
 const API_BASE_URL = resolveApiBaseUrl();
 
+const AUTH_TOKEN_KEY = 'mascoteach_token';
+const AUTH_USER_KEY = 'mascoteach_user';
+
 /**
  * Get stored auth token
  */
-function getToken() {
-    return localStorage.getItem('mascoteach_token');
+export function getToken() {
+    return localStorage.getItem(AUTH_TOKEN_KEY) || sessionStorage.getItem(AUTH_TOKEN_KEY);
 }
 
 /**
  * Set auth token
  */
-export function setToken(token) {
+export function setToken(token, persist = true) {
+    localStorage.removeItem(AUTH_TOKEN_KEY);
+    sessionStorage.removeItem(AUTH_TOKEN_KEY);
+
     if (token) {
-        localStorage.setItem('mascoteach_token', token);
-    } else {
-        localStorage.removeItem('mascoteach_token');
+        const storage = persist ? localStorage : sessionStorage;
+        storage.setItem(AUTH_TOKEN_KEY, token);
     }
 }
 
@@ -30,8 +35,10 @@ export function setToken(token) {
  * Clear all auth data
  */
 export function clearAuth() {
-    localStorage.removeItem('mascoteach_token');
-    localStorage.removeItem('mascoteach_user');
+    localStorage.removeItem(AUTH_TOKEN_KEY);
+    sessionStorage.removeItem(AUTH_TOKEN_KEY);
+    localStorage.removeItem(AUTH_USER_KEY);
+    sessionStorage.removeItem(AUTH_USER_KEY);
 }
 
 /**

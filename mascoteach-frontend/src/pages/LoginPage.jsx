@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowRight } from 'lucide-react';
 import AuthLayout from '@/components/auth/AuthLayout';
 import AuthInput from '@/components/auth/AuthInput';
-import GoogleLogo from '@/components/auth/GoogleLogo';
+import GoogleSignInButton from '@/components/auth/GoogleSignInButton';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function LoginPage() {
@@ -12,8 +12,10 @@ export default function LoginPage() {
     const [password, setPassword] = useState('');
     const [remember, setRemember] = useState(false);
     const [submitting, setSubmitting] = useState(false);
+    const [googleSubmitting, setGoogleSubmitting] = useState(false);
+    const [googleError, setGoogleError] = useState('');
 
-    const { login, error, clearError } = useAuth();
+    const { login, googleLogin, error, clearError } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
 
@@ -30,12 +32,13 @@ export default function LoginPage() {
     async function handleSubmit(e) {
         e.preventDefault();
         clearError();
+        setGoogleError('');
 
         if (!email || !password) return;
 
         setSubmitting(true);
         try {
-            const profile = await login(email, password);
+            const profile = await login(email, password, remember);
             navigate(from || getRoleRedirect(profile), { replace: true });
         } catch {
             // AuthContext owns the visible error message.
@@ -43,6 +46,20 @@ export default function LoginPage() {
             setSubmitting(false);
         }
     }
+
+    const handleGoogleCredential = useCallback(async (credential) => {
+        clearError();
+        setGoogleError('');
+        setGoogleSubmitting(true);
+        try {
+            const profile = await googleLogin(credential, remember);
+            navigate(from || getRoleRedirect(profile), { replace: true });
+        } catch (err) {
+            setGoogleError(err.message || 'Đăng nhập Google thất bại. Vui lòng thử lại.');
+        } finally {
+            setGoogleSubmitting(false);
+        }
+    }, [clearError, from, googleLogin, navigate, remember]);
 
     return (
         <AuthLayout>
@@ -66,6 +83,12 @@ export default function LoginPage() {
                 </div>
             )}
 
+            {googleError && (
+                <div className="auth-alert auth-alert--error" role="alert">
+                    {googleError}
+                </div>
+            )}
+
             <form onSubmit={handleSubmit} className="auth-form">
                 <AuthInput
                     id="login-email"
@@ -81,6 +104,7 @@ export default function LoginPage() {
                     id="login-password"
                     label="Mật khẩu"
                     type="password"
+                    showPasswordToggle
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
@@ -127,16 +151,10 @@ export default function LoginPage() {
                 <span>Phương thức khác</span>
             </div>
 
-            <motion.button
-                type="button"
-                className="auth-provider"
-                whileHover={{ y: -1 }}
-                whileTap={{ scale: 0.985 }}
-            >
-                <GoogleLogo />
-                <span>Tiếp tục với Google</span>
-                <ArrowRight size={17} strokeWidth={2.2} />
-            </motion.button>
+            <GoogleSignInButton
+                onCredential={handleGoogleCredential}
+                disabled={googleSubmitting}
+            />
         </AuthLayout>
     );
 }

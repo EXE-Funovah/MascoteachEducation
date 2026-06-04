@@ -3,7 +3,7 @@
  * Handles login, register, and token management.
  */
 
-import api, { setToken, clearAuth } from './api';
+import api, { getToken, setToken, clearAuth } from './api';
 
 /**
  * Register a new user
@@ -35,9 +35,16 @@ export async function resetPassword(data) {
     }, { skipAuth: true });
 }
 
+function storeAuthToken(result, persist = true) {
+    const token = result?.token || result?.accessToken || result;
+    if (typeof token === 'string' && token.length > 0) {
+        setToken(token, persist);
+    }
+}
+
 /**
  * Login and store the auth token
- * @param {{ email: string, password: string }} credentials
+ * @param {{ email: string, password: string, remember?: boolean }} credentials
  * @returns {Promise<{ token: string }>}
  */
 export async function login(credentials) {
@@ -47,10 +54,7 @@ export async function login(credentials) {
     }, { skipAuth: true });
 
     // Store token — backend may return it in different formats
-    const token = result?.token || result?.accessToken || result;
-    if (typeof token === 'string' && token.length > 0) {
-        setToken(token);
-    }
+    storeAuthToken(result, credentials.remember !== false);
 
     return result;
 }
@@ -58,6 +62,16 @@ export async function login(credentials) {
 /**
  * Logout — clear all stored auth data
  */
+export async function googleLogin(data) {
+    const result = await api.post('/api/Auth/google-login', {
+        credential: data.credential,
+    }, { skipAuth: true });
+
+    storeAuthToken(result, data.remember !== false);
+
+    return result;
+}
+
 export function logout() {
     clearAuth();
     window.location.href = '/signin';
@@ -68,5 +82,5 @@ export function logout() {
  * @returns {boolean}
  */
 export function isAuthenticated() {
-    return !!localStorage.getItem('mascoteach_token');
+    return !!getToken();
 }

@@ -474,6 +474,40 @@ img {
   box-shadow: 0 0 0 4px rgba(93, 156, 236, 0.15);
 }
 
+.auth-password-field {
+  position: relative;
+}
+
+.auth-input--password {
+  padding-right: 48px;
+}
+
+.auth-password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  color: #64748B;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+  transform: translateY(-50%);
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.auth-password-toggle:hover,
+.auth-password-toggle:focus-visible {
+  color: #0B63B6;
+  background: rgba(93, 156, 236, 0.12);
+  outline: none;
+}
+
 .auth-btn {
   display: inline-flex;
   align-items: center;
@@ -500,6 +534,30 @@ img {
 .auth-btn--primary:hover {
   filter: brightness(1.05);
   box-shadow: 0 18px 38px rgba(11, 99, 182, 0.3);
+}
+
+.auth-provider:disabled,
+.auth-provider--disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
+  filter: grayscale(0.2);
+}
+
+.auth-google-button {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  min-height: 44px;
+}
+
+.auth-google-button > div,
+.auth-google-button iframe {
+  width: 100% !important;
+}
+
+.auth-google-button[aria-busy="true"] {
+  pointer-events: none;
+  opacity: 0.62;
 }
 
 .auth-loading {

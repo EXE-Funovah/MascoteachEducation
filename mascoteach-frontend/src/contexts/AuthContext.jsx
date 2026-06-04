@@ -1,5 +1,11 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { login as apiLogin, register as apiRegister, logout as apiLogout, isAuthenticated } from '@/services/authService';
+import {
+    googleLogin as apiGoogleLogin,
+    login as apiLogin,
+    register as apiRegister,
+    logout as apiLogout,
+    isAuthenticated,
+} from '@/services/authService';
 import { getMyProfile } from '@/services/userService';
 
 /**
@@ -30,11 +36,11 @@ export function AuthProvider({ children }) {
         loadUser();
     }, []);
 
-    const login = useCallback(async (email, password) => {
+    const login = useCallback(async (email, password, remember = true) => {
         setError(null);
         setLoading(true);
         try {
-            await apiLogin({ email, password });
+            await apiLogin({ email, password, remember });
             // After successful login, fetch the user profile
             const profile = await getMyProfile();
             setUser(profile);
@@ -63,6 +69,23 @@ export function AuthProvider({ children }) {
         }
     }, []);
 
+    const googleLogin = useCallback(async (credential, remember = true) => {
+        setError(null);
+        setLoading(true);
+        try {
+            await apiGoogleLogin({ credential, remember });
+            const profile = await getMyProfile();
+            setUser(profile);
+            return profile;
+        } catch (err) {
+            const message = err.message || 'Đăng nhập Google thất bại. Vui lòng thử lại.';
+            setError(message);
+            throw err;
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
     const logout = useCallback(() => {
         setUser(null);
         setError(null);
@@ -79,6 +102,7 @@ export function AuthProvider({ children }) {
         error,
         isLoggedIn: !!user,
         login,
+        googleLogin,
         register,
         logout,
         clearError,

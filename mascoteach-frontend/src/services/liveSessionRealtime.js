@@ -1,5 +1,6 @@
 import * as signalR from '@microsoft/signalr';
 import { resolveApiBaseUrl } from './baseUrls';
+import { getToken } from './api';
 
 const API_BASE_URL = resolveApiBaseUrl();
 
@@ -81,7 +82,7 @@ export function createLiveSessionConnection({ gamePin, sessionId, role, studentN
             return null;
         }
 
-        const token = localStorage.getItem('mascoteach_token');
+        const token = getToken();
         const connection = new signalR.HubConnectionBuilder()
             .withUrl(HUB_CANDIDATES[urlIndex], {
                 accessTokenFactory: token ? () => token : undefined,
