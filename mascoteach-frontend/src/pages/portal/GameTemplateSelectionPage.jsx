@@ -24,8 +24,8 @@ const BUILTIN_TEMPLATES = [
     {
         id: '__treasure_hunt__',
         name: 'Treasure Hunt',
-        logoUrl: '/images/Game1.png',
-        bgImage: '/images/treasure-map.jpg',
+        logoUrl: '/images/treasure-hunt/chest.svg',
+        bgImage: '/images/treasure-hunt/island-map.svg',
         description:
             'Tạo phòng live cho Treasure Hunt, chia sẻ PIN cho học sinh và cho cả lớp vào chờ như Kahoot.',
         difficulty: 'Dễ vào',

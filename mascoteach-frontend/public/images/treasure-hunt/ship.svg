@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="360" height="260" viewBox="0 0 360 260" role="img" aria-label="Explorer ship">
+  <path d="M36 170c32 40 79 60 139 60h54c45 0 78-26 96-78H63c-22 0-35 6-27 18Z" fill="#7c3f1d" stroke="#3d2510" stroke-width="8"/>
+  <path d="M94 152h214" stroke="#d9a75c" stroke-width="10"/>
+  <path d="M178 28v144" stroke="#3d2510" stroke-width="9" stroke-linecap="round"/>
+  <path d="M186 36c59 11 92 45 102 101-38 4-76-5-102-26V36Z" fill="#f5dfad" stroke="#7c4a25" stroke-width="6"/>
+  <path d="M169 45c-46 18-75 52-88 101 35-1 70-14 88-36V45Z" fill="#fff3cf" stroke="#7c4a25" stroke-width="6"/>
+  <path d="M242 52l20 15-20 15V52Z" fill="#c0392b"/>
+  <g fill="#0d3c58" opacity=".24">
+    <path d="M24 230c38-18 76 18 114 0s76 18 114 0 76 18 114 0v40H24Z"/>
+  </g>
+</svg>

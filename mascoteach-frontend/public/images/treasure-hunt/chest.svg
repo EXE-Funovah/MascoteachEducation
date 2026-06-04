@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="240" viewBox="0 0 320 240" role="img" aria-label="Treasure chest">
+  <defs>
+    <linearGradient id="wood" x1="0" x2="1">
+      <stop offset="0" stop-color="#7c3f1d"/>
+      <stop offset=".55" stop-color="#b96b2b"/>
+      <stop offset="1" stop-color="#6a3519"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#fff095"/>
+      <stop offset="1" stop-color="#c48a1c"/>
+    </linearGradient>
+  </defs>
+  <path d="M48 104c0-49 40-88 89-88h46c49 0 89 39 89 88v20H48v-20Z" fill="url(#wood)" stroke="#3d2510" stroke-width="8"/>
+  <rect x="38" y="98" width="244" height="132" rx="18" fill="url(#wood)" stroke="#3d2510" stroke-width="8"/>
+  <path d="M45 142h270" stroke="url(#gold)" stroke-width="16"/>
+  <path d="M94 22v210M226 22v210" stroke="url(#gold)" stroke-width="16"/>
+  <rect x="134" y="120" width="52" height="62" rx="8" fill="url(#gold)" stroke="#6d461a" stroke-width="6"/>
+  <circle cx="160" cy="145" r="8" fill="#5f3b19"/>
+  <g opacity=".9">
+    <circle cx="278" cy="70" r="10" fill="#fff095"/>
+    <circle cx="300" cy="104" r="6" fill="#fff095"/>
+    <circle cx="245" cy="38" r="5" fill="#fff095"/>
+  </g>
+</svg>

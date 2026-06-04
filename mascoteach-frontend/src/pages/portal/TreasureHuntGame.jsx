@@ -15,9 +15,74 @@ import './TreasureHuntGame.css';
  */
 
 const MASCOT_HEAD = '/images/icon_logo.png';
-const TREASURE_MAP = '/images/treasure-map.jpg';
+const MAP_BACKGROUND = '/images/treasure-hunt/island-map.svg';
+const COMPASS_ASSET = '/images/treasure-hunt/compass.svg';
+const CHEST_ASSET = '/images/treasure-hunt/chest.svg';
+const SHIP_ASSET = '/images/treasure-hunt/ship.svg';
 const WOODEN_PLANK = '/images/wooden-plank.png';
 const MAX_QUESTIONS = 20;
+const DEV_DEMO_QUESTIONS = [
+    {
+        id: 'demo-1',
+        questionText: 'Mascoteach dùng dữ liệu nào để tạo bộ câu hỏi?',
+        options: [
+            { optionText: 'Tài liệu giáo viên tải lên', isCorrect: true },
+            { optionText: 'Tin nhắn ngẫu nhiên', isCorrect: false },
+            { optionText: 'Điểm danh lớp học', isCorrect: false },
+            { optionText: 'Ảnh đại diện học sinh', isCorrect: false },
+        ],
+    },
+    {
+        id: 'demo-2',
+        questionText: 'Trong Treasure Hunt, học sinh cần làm gì để đi tới trạm tiếp theo?',
+        options: [
+            { optionText: 'Trả lời đúng câu hỏi', isCorrect: true },
+            { optionText: 'Đóng trình duyệt', isCorrect: false },
+            { optionText: 'Đổi tên quiz', isCorrect: false },
+            { optionText: 'Xóa tài liệu', isCorrect: false },
+        ],
+    },
+    {
+        id: 'demo-3',
+        questionText: 'Trạm có biểu tượng * trên bản đồ đại diện cho gì?',
+        options: [
+            { optionText: 'Trạm bonus', isCorrect: true },
+            { optionText: 'Trạm đã khóa', isCorrect: false },
+            { optionText: 'Trang cài đặt', isCorrect: false },
+            { optionText: 'Kết thúc game', isCorrect: false },
+        ],
+    },
+    {
+        id: 'demo-4',
+        questionText: 'Giáo viên dùng chế độ Host để làm gì?',
+        options: [
+            { optionText: 'Điều khiển game cho cả lớp', isCorrect: true },
+            { optionText: 'Sửa favicon', isCorrect: false },
+            { optionText: 'Tạo tài khoản admin', isCorrect: false },
+            { optionText: 'Đổi mật khẩu học sinh', isCorrect: false },
+        ],
+    },
+    {
+        id: 'demo-5',
+        questionText: 'Vì sao map động tốt hơn map PNG cố định?',
+        options: [
+            { optionText: 'Tự thích nghi theo số câu hỏi', isCorrect: true },
+            { optionText: 'Luôn chỉ có một trạm', isCorrect: false },
+            { optionText: 'Không cần câu hỏi', isCorrect: false },
+            { optionText: 'Không hiển thị tiến độ', isCorrect: false },
+        ],
+    },
+    {
+        id: 'demo-6',
+        questionText: 'Mục tiêu cuối cùng của Treasure Hunt là gì?',
+        options: [
+            { optionText: 'Tìm kho báu sau khi hoàn thành các trạm', isCorrect: true },
+            { optionText: 'Thoát khỏi lớp học', isCorrect: false },
+            { optionText: 'Ẩn tất cả câu hỏi', isCorrect: false },
+            { optionText: 'Xóa phiên chơi', isCorrect: false },
+        ],
+    },
+];
 
 /* ─────────────────────────────────────────────
    Generate node positions along a winding path
@@ -26,13 +91,13 @@ function generateNodePositions(count) {
     if (count <= 1) return [{ x: 50, y: 85 }];
 
     const waypoints = [
-        { x: 30, y: 90 }, { x: 42, y: 85 }, { x: 55, y: 85 },
-        { x: 68, y: 82 }, { x: 75, y: 69 }, { x: 72, y: 58 },
-        { x: 65, y: 54 }, { x: 59, y: 56 }, { x: 52, y: 61 },
-        { x: 44, y: 65 }, { x: 36, y: 67 }, { x: 27, y: 64 },
-        { x: 23, y: 55 }, { x: 23, y: 42 }, { x: 28, y: 32 },
-        { x: 36, y: 26 }, { x: 45, y: 26 }, { x: 55, y: 28 },
-        { x: 65, y: 32 }, { x: 77, y: 33 },
+        { x: 19, y: 75 }, { x: 28, y: 68 }, { x: 36, y: 73 },
+        { x: 45, y: 63 }, { x: 38, y: 53 }, { x: 29, y: 47 },
+        { x: 35, y: 35 }, { x: 49, y: 31 }, { x: 61, y: 37 },
+        { x: 71, y: 30 }, { x: 80, y: 40 }, { x: 75, y: 54 },
+        { x: 64, y: 58 }, { x: 55, y: 66 }, { x: 64, y: 76 },
+        { x: 77, y: 72 }, { x: 84, y: 60 }, { x: 88, y: 45 },
+        { x: 82, y: 27 }, { x: 68, y: 20 },
     ];
 
     const positions = [];
@@ -50,6 +115,20 @@ function generateNodePositions(count) {
     return positions;
 }
 
+function buildPathPoints(positions, endIndex = positions.length - 1) {
+    return positions
+        .slice(0, Math.max(0, endIndex) + 1)
+        .map((pos) => `${pos.x},${pos.y}`)
+        .join(' ');
+}
+
+function getNodeKind(index, total) {
+    if (index === total - 1) return 'treasure';
+    if (index > 0 && index % 5 === 0) return 'boss';
+    if (index > 0 && index % 3 === 0) return 'bonus';
+    return 'question';
+}
+
 /* ── Option label colors ── */
 const OPTION_COLORS = [
     { bg: '#2563eb', hover: '#1d4ed8', label: 'A' },
@@ -65,7 +144,7 @@ export default function TreasureHuntGame() {
     const navigate = useNavigate();
 
     const quizId = location.state?.quizId;
-    const quizTitle = location.state?.quizTitle || 'Treasure Hunt';
+    const quizTitle = location.state?.quizTitle || (import.meta.env.DEV ? 'Treasure Hunt Demo' : 'Treasure Hunt');
     const passedQuestions = location.state?.questions;
     const hostMode = location.state?.hostMode || false;
     const sessionId = location.state?.sessionId;
@@ -94,6 +173,12 @@ export default function TreasureHuntGame() {
 
     /* ── Fetch questions ── */
     useEffect(() => {
+        if (!quizId && !passedQuestions && import.meta.env.DEV) {
+            setQuestions(normalizeQuestions(DEV_DEMO_QUESTIONS));
+            setLoading(false);
+            return;
+        }
+
         if (!quizId && !passedQuestions) {
             setError('Không tìm thấy quiz. Vui lòng quay lại.');
             setLoading(false);
@@ -166,6 +251,7 @@ export default function TreasureHuntGame() {
     }
 
     const nodePositions = generateNodePositions(questions.length);
+    const completedPathIndex = Math.min(currentNode, nodePositions.length - 1);
 
     /* ── Handle clicking a node ── */
     const handleNodeClick = useCallback((index) => {
@@ -392,30 +478,22 @@ export default function TreasureHuntGame() {
 
             {/* ── Map Area ── */}
             <div className="th-map-wrapper" ref={mapRef}>
-                <img
-                    src={TREASURE_MAP}
-                    alt="Treasure Map"
-                    className="th-map-image"
-                    draggable={false}
-                />
+                <div className="th-map-scene" aria-hidden="true">
+                    <img src={MAP_BACKGROUND} alt="" className="th-map-image" draggable={false} />
+                    <div className="th-sea-glow th-sea-glow--one" />
+                    <div className="th-sea-glow th-sea-glow--two" />
+                    <img src={SHIP_ASSET} alt="" className="th-map-ship" draggable={false} />
+                    <img src={COMPASS_ASSET} alt="" className="th-map-compass" draggable={false} />
+                    <img src={CHEST_ASSET} alt="" className="th-map-chest" draggable={false} />
+                    <div className="th-cloud th-cloud--one" />
+                    <div className="th-cloud th-cloud--two" />
+                    <div className="th-map-vignette" />
+                </div>
 
                 {/* Path lines between nodes */}
                 <svg className="th-path-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
-                    {nodePositions.map((pos, i) => {
-                        if (i === 0) return null;
-                        const prev = nodePositions[i - 1];
-                        const isTraversed = answeredNodes.includes(i - 1);
-                        return (
-                            <line
-                                key={`line-${i}`}
-                                x1={prev.x}
-                                y1={prev.y}
-                                x2={pos.x}
-                                y2={pos.y}
-                                className={`th-path-line ${isTraversed ? 'th-path-line--done' : ''}`}
-                            />
-                        );
-                    })}
+                    <polyline points={buildPathPoints(nodePositions)} className="th-path-line" />
+                    <polyline points={buildPathPoints(nodePositions, completedPathIndex)} className="th-path-line th-path-line--done" />
                 </svg>
 
                 {/* Nodes */}
@@ -424,6 +502,7 @@ export default function TreasureHuntGame() {
                     const isCurrent = i === currentNode && !completed;
                     const isLocked = i > currentNode;
                     const isFinal = i === questions.length - 1;
+                    const nodeKind = getNodeKind(i, questions.length);
 
                     return (
                         <motion.div
@@ -433,6 +512,7 @@ export default function TreasureHuntGame() {
                                 ${isCurrent ? 'th-node--current' : ''}
                                 ${isLocked ? 'th-node--locked' : ''}
                                 ${isFinal ? 'th-node--treasure' : ''}
+                                th-node--${nodeKind}
                             `}
                             style={{ left: `${pos.x}%`, top: `${pos.y}%` }}
                             onClick={() => handleNodeClick(i)}
@@ -442,15 +522,25 @@ export default function TreasureHuntGame() {
                             {isCompleted ? (
                                 <span className="th-node-icon">✅</span>
                             ) : isFinal ? (
-                                <span className="th-node-icon">💎🗝️</span>
+                                <img src={CHEST_ASSET} alt="Treasure" className="th-node-treasure-img" />
                             ) : isCurrent ? (
                                 <img src={MASCOT_HEAD} alt="Player" className="th-node-mascot" />
+                            ) : nodeKind === 'boss' ? (
+                                <span className="th-node-icon">!</span>
+                            ) : nodeKind === 'bonus' ? (
+                                <span className="th-node-icon">*</span>
                             ) : (
                                 <span className="th-node-number">{i + 1}</span>
                             )}
                         </motion.div>
                     );
                 })}
+                <aside className="th-map-legend">
+                    <span><i className="th-legend-dot th-legend-dot--current" /> Hiện tại</span>
+                    <span><i className="th-legend-dot th-legend-dot--bonus" /> Bonus</span>
+                    <span><i className="th-legend-dot th-legend-dot--boss" /> Thử thách</span>
+                    <span><i className="th-legend-dot th-legend-dot--treasure" /> Kho báu</span>
+                </aside>
             </div>
 
             {/* ── Question Modal ── */}
