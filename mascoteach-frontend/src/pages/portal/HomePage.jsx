@@ -18,7 +18,7 @@ import {
     X,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { createDocument, generateUploadUrl, getMyDocuments } from '@/services/documentService';
+import { createDocument, getMyDocuments, uploadDocumentFile } from '@/services/documentService';
 import { getMySessions } from '@/services/liveSessionService';
 
 const TABS = [
@@ -63,32 +63,6 @@ function extractFileName(doc) {
     const raw = doc.s3Key || doc.fileUrl || '';
     const last = raw.split('/').pop() || '';
     return last.replace(/^[0-9a-f-]{12,}-?/i, '') || `Tài liệu #${doc.id}`;
-}
-
-function uploadFileWithProgress(uploadUrl, file, onProgress) {
-    return new Promise((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        xhr.open('PUT', uploadUrl);
-        xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
-
-        xhr.upload.onprogress = (event) => {
-            if (!event.lengthComputable) return;
-            const percent = Math.round((event.loaded / event.total) * 100);
-            onProgress(Math.max(1, Math.min(99, percent)));
-        };
-
-        xhr.onload = () => {
-            if (xhr.status >= 200 && xhr.status < 300) {
-                onProgress(100);
-                resolve();
-                return;
-            }
-            reject(new Error(`S3 upload failed: ${xhr.status} ${xhr.statusText}`));
-        };
-
-        xhr.onerror = () => reject(new Error('Upload failed. Please try again.'));
-        xhr.send(file);
-    });
 }
 
 function UploadIllustration() {
@@ -278,8 +252,7 @@ export default function HomePage() {
 
         setIsUploading(true);
         try {
-            const { uploadUrl, s3Key } = await generateUploadUrl(file.name, file.type);
-            await uploadFileWithProgress(uploadUrl, file, setUploadProgress);
+            const { s3Key } = await uploadDocumentFile(file, setUploadProgress);
             const doc = await createDocument({ s3Key });
 
             const upload = {
