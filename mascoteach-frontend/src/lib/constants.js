@@ -181,51 +181,6 @@ export const TARGET_PERSONA = {
   ],
 };
 
-export const TESTIMONIALS = [
-  {
-    id: 1,
-    quote:
-      'Mascoteach đã thay đổi hoàn toàn cách tôi dạy. Học sinh hào hứng hơn, và tôi tiết kiệm 2 giờ soạn bài mỗi ngày.',
-    name: 'Cô Mai Lan Anh',
-    role: 'Giáo viên Toán · THCS Hoa Sen',
-  },
-  {
-    id: 2,
-    quote:
-      'Con tôi mỗi ngày đi học đều hỏi "Hôm nay Masco có trò gì mới không?" — điều mà trước đây tôi không bao giờ tưởng tượng được.',
-    name: 'Anh Minh Khoa',
-    role: 'Phụ huynh, lớp 5A · Tiểu học Bình Minh',
-  },
-  {
-    id: 3,
-    quote:
-      'Phần cứng plug-and-play thật sự dễ dùng. Tôi tự lắp cho 30 bàn trong 1 buổi sáng mà không cần IT.',
-    name: 'Thầy Quốc Bảo',
-    role: 'Giáo viên Vật Lý · THPT Thiên Long',
-  },
-  {
-    id: 4,
-    quote:
-      'Bảng theo dõi giúp tôi nhận ra những học sinh im lặng nhưng cần hỗ trợ — điều mà trước đây tôi bỏ lỡ.',
-    name: 'Cô Hồng Nhung',
-    role: 'Giáo viên Ngữ Văn · THCS Phú Lợi',
-  },
-  {
-    id: 5,
-    quote:
-      'ROI rõ ràng: điểm trung bình lớp tăng 15% sau 1 học kỳ, và tỉ lệ học sinh tham gia tăng gấp đôi.',
-    name: 'Ông Gia Huy',
-    role: 'Hiệu trưởng · Tiểu học Ngôi Sao',
-  },
-  {
-    id: 6,
-    quote:
-      'Chúng tôi triển khai cho 12 trường và thấy sự đồng bộ tuyệt vời giữa phần mềm và phần cứng.',
-    name: 'Bà Thanh Vân',
-    role: 'Giám đốc Công nghệ · EduTech Việt Nam',
-  },
-];
-
 export const CTA = {
   headline: 'Biến bài học thành trải nghiệm tương tác cùng Mascoteach',
   subheadline:

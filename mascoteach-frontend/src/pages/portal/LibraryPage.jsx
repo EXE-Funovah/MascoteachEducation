@@ -56,6 +56,18 @@ function normalizeText(value) {
     return String(value || '').toLowerCase().trim();
 }
 
+function getDocumentFileName(doc) {
+    return doc.fileName || doc.fileUrl?.split('/').pop() || doc.s3Key?.split('/').pop();
+}
+
+function getItemDate(item) {
+    return item.createdAt || item.uploadedAt || item.Created_At || item.Uploaded_At;
+}
+
+function sortByNewest(items) {
+    return [...items].sort((a, b) => new Date(getItemDate(b) || 0) - new Date(getItemDate(a) || 0));
+}
+
 export default function LibraryPage() {
     const location = useLocation();
     const navigate = useNavigate();
@@ -76,6 +88,7 @@ export default function LibraryPage() {
     const [docPage, setDocPage] = useState(1);
     const [quizPage, setQuizPage] = useState(1);
     const [searchQuery, setSearchQuery] = useState('');
+    const [activeCollection, setActiveCollection] = useState('created');
     const [activityFilter, setActivityFilter] = useState('all');
     const [openMenu, setOpenMenu] = useState(null);
     const [openShareMenu, setOpenShareMenu] = useState(null);
@@ -191,32 +204,52 @@ export default function LibraryPage() {
 
     function getDocumentName(docId) {
         const doc = documents.find((item) => item.id === docId);
-        return doc?.title || doc?.fileName || doc?.fileUrl?.split('/').pop() || `Tài liệu #${docId}`;
+        return doc?.title || getDocumentFileName(doc) || `Tài liệu #${docId}`;
     }
+
+    const collectionDocuments = useMemo(() => {
+        if (activeCollection === 'previous') return [];
+        return sortByNewest(documents);
+    }, [activeCollection, documents]);
+
+    const collectionQuizzes = useMemo(() => {
+        if (activeCollection === 'previous') return [];
+        return sortByNewest(quizzes);
+    }, [activeCollection, quizzes]);
 
     const filteredDocuments = useMemo(() => {
         const query = normalizeText(searchQuery);
         if (activityFilter === 'quizzes') return [];
-        return documents.filter((doc) => {
-            const title = normalizeText(doc.title || doc.fileName || doc.fileUrl);
+        return collectionDocuments.filter((doc) => {
+            const title = normalizeText(doc.title || getDocumentFileName(doc) || doc.fileUrl || doc.s3Key);
             return !query || title.includes(query);
         });
-    }, [activityFilter, documents, searchQuery]);
+    }, [activityFilter, collectionDocuments, searchQuery]);
 
     const filteredQuizzes = useMemo(() => {
         const query = normalizeText(searchQuery);
         if (activityFilter === 'documents') return [];
-        return quizzes.filter((quiz) => {
+        return collectionQuizzes.filter((quiz) => {
             const title = normalizeText(quiz.title || getDocumentName(quiz.documentId));
             return !query || title.includes(query);
         });
-    }, [activityFilter, quizzes, searchQuery, documents]);
+    }, [activityFilter, collectionQuizzes, searchQuery, documents]);
 
     const docTotalPages = Math.ceil(filteredDocuments.length / ITEMS_PER_PAGE);
     const quizTotalPages = Math.ceil(filteredQuizzes.length / ITEMS_PER_PAGE);
     const paginatedDocs = filteredDocuments.slice((docPage - 1) * ITEMS_PER_PAGE, docPage * ITEMS_PER_PAGE);
     const paginatedQuizzes = filteredQuizzes.slice((quizPage - 1) * ITEMS_PER_PAGE, quizPage * ITEMS_PER_PAGE);
     const activeFilterLabel = ACTIVITY_FILTERS.find((item) => item.id === activityFilter)?.label || 'Tất cả loại';
+    const collectionCounts = {
+        created: documents.length + quizzes.length,
+        previous: 0,
+        all: documents.length + quizzes.length,
+    };
+    const collectionTitle = activeCollection === 'previous'
+        ? 'Đã dùng gần đây'
+        : activeCollection === 'all'
+            ? 'Tất cả hoạt động'
+            : 'Bài giảng đã tạo';
 
     function EmptyState({ icon: Icon, title, description, action }) {
         return (
@@ -359,13 +392,14 @@ export default function LibraryPage() {
     }
 
     function DocumentRow({ doc, index }) {
-        const title = doc.title || doc.fileName || doc.fileUrl?.split('/').pop() || `Tài liệu #${doc.id}`;
+        const fileName = getDocumentFileName(doc);
+        const title = doc.title || fileName || `Tài liệu #${doc.id}`;
         return (
             <motion.article
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.22, delay: Math.min(index * 0.035, 0.18) }}
-                className="group grid grid-cols-[minmax(0,1fr)_160px_auto] items-center gap-5 border-t border-slate-200/80 bg-white px-6 py-4 transition-all duration-200 hover:bg-brand-light/10"
+                className="group grid grid-cols-[minmax(0,1fr)] items-center gap-5 border-t border-slate-200/80 bg-white px-6 py-4 transition-all duration-200 hover:bg-brand-light/10 lg:grid-cols-[minmax(0,1fr)_180px_260px]"
             >
                 <div className="flex min-w-0 items-center gap-4">
                     <input type="checkbox" className="h-5 w-5 rounded border-slate-300 text-brand-blue focus:ring-brand-blue" aria-label={`Chọn ${title}`} />
@@ -375,12 +409,12 @@ export default function LibraryPage() {
                     <div className="min-w-0">
                         <h3 className="truncate text-[16px] font-extrabold text-slate-900">{title}</h3>
                         <p className="mt-1 truncate text-[13px] font-semibold text-slate-500">
-                            Tài liệu · Sẵn sàng tạo câu hỏi · {doc.fileUrl?.split('/').pop() || 'Mascoteach'}
+                            Tài liệu · Sẵn sàng tạo câu hỏi · {fileName || 'Mascoteach'}
                         </p>
                     </div>
                 </div>
-                <span className="hidden text-[14px] font-semibold text-slate-500 lg:block">{formatDate(doc.createdAt)}</span>
-                <div className="flex items-center justify-end gap-2">
+                <span className="hidden text-center text-[14px] font-semibold text-slate-500 lg:block">{formatDate(getItemDate(doc))}</span>
+                <div className="flex w-full items-center justify-end gap-2">
                     <button className="inline-flex h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-[14px] font-bold text-slate-800 transition-all duration-200 hover:border-brand-mid hover:bg-brand-light/20 hover:text-brand-blue">
                         <Edit3 className="h-4 w-4" />
                         Sửa
@@ -404,7 +438,7 @@ export default function LibraryPage() {
                 transition={{ duration: 0.22, delay: Math.min(index * 0.035, 0.18) }}
                 className="overflow-visible border-t border-slate-200/80 bg-white transition-all duration-200 hover:bg-brand-light/10"
             >
-                <div className="group grid grid-cols-[minmax(0,1fr)_160px_auto] items-center gap-5 px-6 py-4">
+                <div className="group grid grid-cols-[minmax(0,1fr)] items-center gap-5 px-6 py-4 lg:grid-cols-[minmax(0,1fr)_180px_260px]">
                     <button onClick={() => toggleExpandQuiz(quiz.id)} className="flex min-w-0 items-center gap-4 text-left">
                         <input type="checkbox" className="h-5 w-5 rounded border-slate-300 text-brand-blue focus:ring-brand-blue" aria-label={`Chọn ${title}`} onClick={(event) => event.stopPropagation()} />
                         <div className={`grid h-12 w-12 flex-none place-items-center rounded-lg border transition-colors duration-200 ${isExpanded ? 'border-brand-mid bg-brand-light/30 text-brand-navy' : 'border-slate-200 bg-slate-50 text-brand-blue'}`}>
@@ -422,8 +456,8 @@ export default function LibraryPage() {
                             </p>
                         </div>
                     </button>
-                    <span className="hidden text-[14px] font-semibold text-slate-500 lg:block">{formatDate(quiz.createdAt)}</span>
-                    <div className="flex items-center justify-end gap-2">
+                    <span className="hidden text-center text-[14px] font-semibold text-slate-500 lg:block">{formatDate(getItemDate(quiz))}</span>
+                    <div className="flex w-full items-center justify-end gap-2">
                         <button
                             onClick={() => handlePlayQuiz(quiz)}
                             className="inline-flex h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-[14px] font-bold text-slate-900 transition-all duration-200 hover:border-brand-mid hover:bg-brand-light/20 hover:text-brand-blue"
@@ -525,10 +559,16 @@ export default function LibraryPage() {
                     <nav className="mt-6 space-y-1">
                         {COLLECTIONS.map((item) => {
                             const Icon = item.icon;
-                            const isActive = item.id === 'created';
+                            const isActive = item.id === activeCollection;
                             return (
                                 <button
                                     key={item.id}
+                                    onClick={() => {
+                                        setActiveCollection(item.id);
+                                        setDocPage(1);
+                                        setQuizPage(1);
+                                        setFilterOpen(false);
+                                    }}
                                     className={`flex w-full items-center justify-between rounded-lg px-3 py-3 text-left text-[15px] font-bold transition-all duration-200 ${
                                         isActive
                                             ? 'bg-brand-light/25 text-brand-navy'
@@ -539,7 +579,7 @@ export default function LibraryPage() {
                                         <Icon className="h-5 w-5" />
                                         {item.label}
                                     </span>
-                                    {item.id === 'created' && <span className="text-[13px] text-slate-500">{documents.length + quizzes.length}</span>}
+                                    <span className="text-[13px] text-slate-500">{collectionCounts[item.id]}</span>
                                 </button>
                             );
                         })}
@@ -584,7 +624,7 @@ export default function LibraryPage() {
                     <section className="mx-auto w-full max-w-[1180px] px-4 py-8 sm:px-8">
                         <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
                             <div>
-                                <h2 className="text-[28px] font-extrabold leading-tight text-slate-950 sm:text-[32px]">Bài giảng đã tạo</h2>
+                                <h2 className="text-[28px] font-extrabold leading-tight text-slate-950 sm:text-[32px]">{collectionTitle}</h2>
                             </div>
                             <div className="flex flex-wrap items-center gap-3">
                                 <div className="relative">
@@ -686,10 +726,10 @@ export default function LibraryPage() {
                         )}
 
                         <div className="mt-6 overflow-visible rounded-xl border border-slate-200 bg-white shadow-[0_18px_46px_rgba(15,23,42,0.05)]">
-                            <div className="grid grid-cols-[minmax(0,1fr)_160px_auto] items-center gap-5 px-6 py-4 text-[13px] font-extrabold uppercase tracking-[0.08em] text-slate-500">
+                            <div className="grid grid-cols-[minmax(0,1fr)] items-center gap-5 px-6 py-4 text-[13px] font-extrabold uppercase tracking-[0.08em] text-slate-500 lg:grid-cols-[minmax(0,1fr)_180px_260px]">
                                 <span>Chi tiết nội dung</span>
-                                <span className="hidden lg:block">Ngày tạo</span>
-                                <span className="text-right">Thao tác</span>
+                                <span className="hidden text-center lg:block">Ngày tạo</span>
+                                <span className="hidden text-center lg:block">Thao tác</span>
                             </div>
 
                             {isDocuments && loadingDocs && <LoadingRows label="Đang tải tài liệu..." />}

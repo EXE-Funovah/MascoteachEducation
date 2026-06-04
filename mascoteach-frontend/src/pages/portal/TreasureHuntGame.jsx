@@ -14,7 +14,7 @@ import './TreasureHuntGame.css';
  *   2. SOLO MODE (legacy): Player answers questions themselves (original behavior).
  */
 
-const MASCOT_HEAD = '/images/mascot-head.png';
+const MASCOT_HEAD = '/images/icon_logo.png';
 const TREASURE_MAP = '/images/treasure-map.jpg';
 const WOODEN_PLANK = '/images/wooden-plank.png';
 const MAX_QUESTIONS = 20;
