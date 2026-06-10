@@ -72,7 +72,7 @@ export default function SignUpPage() {
                 role: selectedRole,
             });
             navigate('/signin', {
-                state: { message: 'Đăng ký thành công. Vui lòng đăng nhập.' },
+                state: { message: 'Đăng ký thành công. Vui lòng kiểm tra email để xác thực tài khoản trước khi đăng nhập.' },
             });
         } catch {
             // AuthContext owns the visible error message.

@@ -35,6 +35,12 @@ export async function resetPassword(data) {
     }, { skipAuth: true });
 }
 
+export async function verifyEmail(data) {
+    return api.post('/api/Auth/verify-email', {
+        token: data.token,
+    }, { skipAuth: true });
+}
+
 function storeAuthToken(result, persist = true) {
     const token = result?.token || result?.accessToken || result;
     if (typeof token === 'string' && token.length > 0) {
