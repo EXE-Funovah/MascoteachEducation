@@ -3,6 +3,7 @@
  * Calls the deployed AI Module at ai.mascoteach.com
  * Endpoints:
  *   POST /api/v1/ai/generate-for-backend — Generate MCQ from S3 file URL
+ *   POST /api/v1/ai/generate-flashcards-for-backend — Generate flashcards from S3 file URL
  *   GET  /api/v1/ai/health               — Health check
  */
 
@@ -67,6 +68,65 @@ export async function generateMCQFromUrl(fileUrl, options = {}, signal) {
     }
 
     const res = await fetch(`${AI_BASE_URL}/api/v1/ai/generate-for-backend`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+        signal,
+    });
+
+    if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.message || `AI Module trả về lỗi ${res.status}`);
+    }
+
+    return res.json();
+}
+
+/**
+ * Generate flashcards from a file URL (already uploaded to S3).
+ *
+ * Backend storage convention:
+ * - questionType: "Flashcard"
+ * - questionText: front
+ * - first correct option: back
+ *
+ * @param {string} fileUrl
+ * @param {object} options
+ * @param {number} [options.documentId]
+ * @param {string} [options.quizTitle]
+ * @param {number} [options.numberOfCards=5]
+ * @param {number} [options.numberOfQuestions]
+ * @param {object} [options.difficultyDistribution]
+ * @param {string} [options.language='vi']
+ */
+export async function generateFlashcardsFromUrl(fileUrl, options = {}, signal) {
+    const {
+        documentId,
+        quizTitle,
+        numberOfCards,
+        numberOfQuestions = 5,
+        difficultyDistribution,
+        language,
+    } = options;
+
+    const body = {
+        fileUrl,
+        numberOfCards: numberOfCards ?? numberOfQuestions,
+    };
+    if (documentId !== undefined && documentId !== null) {
+        body.documentId = documentId;
+    }
+    if (quizTitle) {
+        body.quizTitle = quizTitle;
+    }
+    if (difficultyDistribution) {
+        body.difficultyDistribution = difficultyDistribution;
+    }
+    if (language) {
+        body.language = language;
+    }
+
+    const res = await fetch(`${AI_BASE_URL}/api/v1/ai/generate-flashcards-for-backend`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),

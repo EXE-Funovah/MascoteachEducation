@@ -32,6 +32,7 @@ import CreateFlowModal from '@/components/portal/create/CreateFlowModal';
 import { getMyDocuments, deleteDocument } from '@/services/documentService';
 import { getQuizzesByDocuments, deleteQuiz } from '@/services/quizService';
 import { getQuestionsByQuiz } from '@/services/questionService';
+import { getMySessions } from '@/services/liveSessionService';
 
 const ITEMS_PER_PAGE = 10;
 
@@ -61,7 +62,7 @@ function getDocumentFileName(doc) {
 }
 
 function getItemDate(item) {
-    return item.createdAt || item.uploadedAt || item.Created_At || item.Uploaded_At;
+    return item.recentAt || item.createdAt || item.uploadedAt || item.Created_At || item.Uploaded_At;
 }
 
 function sortByNewest(items) {
@@ -79,6 +80,7 @@ export default function LibraryPage() {
     const [quizzes, setQuizzes] = useState([]);
     const [loadingQuizzes, setLoadingQuizzes] = useState(false);
     const [quizError, setQuizError] = useState(null);
+    const [recentSessions, setRecentSessions] = useState([]);
     const [expandedQuizId, setExpandedQuizId] = useState(null);
     const [expandedQuestions, setExpandedQuestions] = useState([]);
     const [loadingQuestions, setLoadingQuestions] = useState(false);
@@ -96,6 +98,7 @@ export default function LibraryPage() {
 
     useEffect(() => {
         fetchDocuments();
+        fetchRecentSessions();
     }, []);
 
     useEffect(() => {
@@ -145,6 +148,15 @@ export default function LibraryPage() {
             setQuizError(err.message || 'Không thể tải bộ câu hỏi');
         } finally {
             setLoadingQuizzes(false);
+        }
+    }
+
+    async function fetchRecentSessions() {
+        try {
+            const data = await getMySessions();
+            setRecentSessions(Array.isArray(data) ? data : []);
+        } catch {
+            setRecentSessions([]);
         }
     }
 
@@ -226,9 +238,32 @@ export default function LibraryPage() {
     }, [activeCollection, documents]);
 
     const collectionQuizzes = useMemo(() => {
-        if (activeCollection === 'previous') return [];
+        if (activeCollection === 'previous') {
+            const recentByQuizId = new Map();
+
+            recentSessions.forEach((session) => {
+                if (!session.quizId) return;
+                const current = recentByQuizId.get(session.quizId);
+                const sessionDate = getItemDate(session);
+                if (!current || new Date(sessionDate || 0) > new Date(current.createdAt || 0)) {
+                    recentByQuizId.set(session.quizId, {
+                        createdAt: sessionDate,
+                        session,
+                    });
+                }
+            });
+
+            return quizzes
+                .filter((quiz) => recentByQuizId.has(quiz.id))
+                .map((quiz) => ({
+                    ...quiz,
+                    recentSession: recentByQuizId.get(quiz.id)?.session,
+                    recentAt: recentByQuizId.get(quiz.id)?.createdAt,
+                }))
+                .sort((a, b) => new Date(b.recentAt || 0) - new Date(a.recentAt || 0));
+        }
         return sortByNewest(quizzes);
-    }, [activeCollection, quizzes]);
+    }, [activeCollection, quizzes, recentSessions]);
 
     const filteredDocuments = useMemo(() => {
         const query = normalizeText(searchQuery);
@@ -255,7 +290,7 @@ export default function LibraryPage() {
     const activeFilterLabel = ACTIVITY_FILTERS.find((item) => item.id === activityFilter)?.label || 'Tất cả loại';
     const collectionCounts = {
         created: documents.length + quizzes.length,
-        previous: 0,
+        previous: new Set(recentSessions.map((session) => session.quizId).filter(Boolean)).size,
         all: documents.length + quizzes.length,
     };
     const collectionTitle = activeCollection === 'previous'
@@ -343,7 +378,7 @@ export default function LibraryPage() {
                             transition={{ duration: 0.16 }}
                             className="absolute right-0 top-12 z-30 w-56 rounded-xl border border-slate-200 bg-white p-2 shadow-[0_18px_50px_rgba(15,23,42,0.14)]"
                         >
-                            <MenuItem icon={Bookmark} label="Lưu" />
+                            <MenuItem icon={Bookmark} label="Lưu" disabled title="TODO Backend: add bookmark/save API." />
                             <MenuItem
                                 icon={Copy}
                                 label={type === 'quiz' ? 'Nhân bản và sửa' : 'Tạo từ tài liệu'}
@@ -352,7 +387,7 @@ export default function LibraryPage() {
                                     onCreateQuiz?.();
                                 }}
                             />
-                            <MenuItem icon={Archive} label="Lưu trữ" />
+                            <MenuItem icon={Archive} label="Lưu trữ" disabled title="TODO Backend: add archive API." />
                             <button
                                 onClick={() => {
                                     setOpenMenu(null);
@@ -374,12 +409,15 @@ export default function LibraryPage() {
         const isOpen = openShareMenu === id;
         return (
             <div className="relative">
+                {/* TODO Backend: add share endpoints before enabling this menu. */}
                 <button
+                    disabled
+                    title="TODO Backend: cần API chia sẻ trước khi bật chức năng này."
                     onClick={() => {
                         setOpenMenu(null);
                         setOpenShareMenu(isOpen ? null : id);
                     }}
-                    className="grid h-10 w-10 place-items-center rounded-lg border border-slate-200 bg-white text-slate-600 transition-all duration-200 hover:border-brand-mid hover:bg-brand-light/20 hover:text-brand-blue active:scale-95"
+                    className="grid h-10 w-10 cursor-not-allowed place-items-center rounded-lg border border-slate-200 bg-slate-50 text-slate-300"
                     aria-label="Mở menu chia sẻ"
                 >
                     <Share2 className="h-5 w-5" />
@@ -402,14 +440,21 @@ export default function LibraryPage() {
         );
     }
 
-    function MenuItem({ icon: Icon, label, onClick }) {
+    function MenuItem({ icon: Icon, label, onClick, disabled = false, title }) {
         return (
             <button
                 type="button"
+                disabled={disabled}
+                title={title}
                 onClick={onClick}
-                className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-[15px] font-bold text-slate-800 transition-colors duration-150 hover:bg-slate-50"
+                className={[
+                    'flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-[15px] font-bold transition-colors duration-150',
+                    disabled
+                        ? 'cursor-not-allowed text-slate-300'
+                        : 'text-slate-800 hover:bg-slate-50',
+                ].join(' ')}
             >
-                <Icon className="h-4 w-4 text-slate-700" />
+                <Icon className={`h-4 w-4 ${disabled ? 'text-slate-300' : 'text-slate-700'}`} />
                 {label}
             </button>
         );
@@ -483,7 +528,7 @@ export default function LibraryPage() {
                                 </span>
                             </div>
                             <p className="mt-1 truncate text-[13px] font-semibold text-slate-500">
-                                {quiz.questionCount ?? expandedQuestions.length ?? 0} câu hỏi · {getDocumentName(quiz.documentId)}
+                                {quiz.questionCount ?? expandedQuestions.length ?? 0} câu hỏi · {quiz.recentSession ? 'Đã dùng gần đây' : getDocumentName(quiz.documentId)}
                             </p>
                         </div>
                     </button>

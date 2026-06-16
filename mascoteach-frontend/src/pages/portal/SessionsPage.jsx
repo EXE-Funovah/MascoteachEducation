@@ -23,7 +23,15 @@ const TABS = [
     { id: 'paused', label: 'Tạm dừng' },
 ];
 
+const DATE_FILTERS = [
+    { id: 'all', label: 'Tất cả ngày' },
+    { id: 'today', label: 'Hôm nay' },
+    { id: '7d', label: '7 ngày qua' },
+    { id: '30d', label: '30 ngày qua' },
+];
+
 const STATUS_META = {
+    Waiting: { label: 'Đã lên lịch', tab: 'scheduled', className: 'bg-brand-light/25 text-brand-navy border-brand-light' },
     Active: { label: 'Đang diễn ra', tab: 'running', className: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
     Running: { label: 'Đang diễn ra', tab: 'running', className: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
     Scheduled: { label: 'Đã lên lịch', tab: 'scheduled', className: 'bg-brand-light/25 text-brand-navy border-brand-light' },
@@ -50,6 +58,26 @@ function normalize(value) {
     return String(value || '').toLowerCase().trim();
 }
 
+function matchesDateFilter(value, filterId) {
+    if (filterId === 'all') return true;
+    if (!value) return false;
+
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return false;
+
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    if (filterId === 'today') {
+        return date >= startOfToday;
+    }
+
+    const days = filterId === '7d' ? 7 : 30;
+    const start = new Date(startOfToday);
+    start.setDate(start.getDate() - (days - 1));
+    return date >= start;
+}
+
 export default function SessionsPage() {
     const navigate = useNavigate();
     const location = useLocation();
@@ -58,6 +86,7 @@ export default function SessionsPage() {
     const [error, setError] = useState(null);
     const [activeTab, setActiveTab] = useState('all');
     const [searchQuery, setSearchQuery] = useState('');
+    const [dateFilter, setDateFilter] = useState('all');
 
     useEffect(() => {
         fetchSessions();
@@ -111,11 +140,12 @@ export default function SessionsPage() {
         return sessions.filter((session) => {
             const statusTab = getStatusMeta(session.status).tab;
             const matchesTab = activeTab === 'all' || statusTab === activeTab;
-            const title = normalize(`${getSessionTitle(session)} ${session.pin || ''}`);
+            const title = normalize(`${getSessionTitle(session)} ${session.pin || session.gamePin || ''}`);
             const matchesSearch = !query || title.includes(query);
-            return matchesTab && matchesSearch;
+            const matchesDate = matchesDateFilter(session.createdAt, dateFilter);
+            return matchesTab && matchesSearch && matchesDate;
         });
-    }, [activeTab, searchQuery, sessions]);
+    }, [activeTab, dateFilter, searchQuery, sessions]);
 
     return (
         <div className="min-h-screen bg-[#fbfdff] px-5 py-6 text-slate-900 sm:px-8">
@@ -159,10 +189,11 @@ export default function SessionsPage() {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
-                    <FilterButton label="Loại nội dung" icon={SlidersHorizontal} />
-                    <FilterButton label="Tất cả báo cáo" />
-                    <FilterButton label="Tất cả lớp" />
-                    <FilterButton label="Lọc theo ngày" icon={CalendarDays} />
+                    {/* TODO Backend: enable these filters when session APIs support content type, report grouping, and class filtering. */}
+                    <FilterButton label="Loại nội dung" icon={SlidersHorizontal} disabled title="TODO Backend: add content-type filter for sessions." />
+                    <FilterButton label="Tất cả báo cáo" disabled title="TODO Backend: add report grouping/filter API." />
+                    <FilterButton label="Tất cả lớp" disabled title="TODO Backend: add class filter API." />
+                    <DateFilterControl value={dateFilter} onChange={setDateFilter} />
                 </div>
             </div>
 
@@ -186,13 +217,43 @@ export default function SessionsPage() {
     );
 }
 
-function FilterButton({ label, icon: Icon }) {
+function FilterButton({ label, icon: Icon, disabled = false, title }) {
     return (
-        <button className="inline-flex h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-[13px] font-extrabold text-slate-800 shadow-sm transition-all duration-200 hover:border-brand-mid hover:bg-brand-light/20 hover:text-brand-navy active:scale-[0.99]">
+        <button
+            disabled={disabled}
+            title={title}
+            className={[
+                'inline-flex h-10 items-center gap-2 rounded-lg border px-4 text-[13px] font-extrabold shadow-sm transition-all duration-200',
+                disabled
+                    ? 'cursor-not-allowed border-slate-200 bg-slate-50 text-slate-300'
+                    : 'border-slate-200 bg-white text-slate-800 hover:border-brand-mid hover:bg-brand-light/20 hover:text-brand-navy active:scale-[0.99]',
+            ].join(' ')}
+        >
             {Icon && <Icon className="h-4 w-4 text-slate-600" />}
             {label}
             <ChevronDown className="h-4 w-4 text-slate-500" />
         </button>
+    );
+}
+
+function DateFilterControl({ value, onChange }) {
+    return (
+        <label className="relative inline-flex h-10 items-center rounded-lg border border-slate-200 bg-white text-[13px] font-extrabold text-slate-800 shadow-sm transition-all duration-200 hover:border-brand-mid hover:bg-brand-light/20">
+            <CalendarDays className="ml-4 h-4 w-4 text-slate-600" />
+            <select
+                value={value}
+                onChange={(event) => onChange(event.target.value)}
+                className="h-full appearance-none rounded-lg bg-transparent pl-2 pr-9 font-extrabold outline-none"
+                aria-label="Lọc theo ngày"
+            >
+                {DATE_FILTERS.map((filter) => (
+                    <option key={filter.id} value={filter.id}>
+                        {filter.label}
+                    </option>
+                ))}
+            </select>
+            <ChevronDown className="pointer-events-none absolute right-3 h-4 w-4 text-slate-500" />
+        </label>
     );
 }
 
@@ -302,7 +363,7 @@ function ReportsTable({ sessions, onOpenSession }) {
                             <span className="text-[14px] font-semibold text-slate-500">{formatDate(session.createdAt)}</span>
 
                             <span className="text-[14px] font-extrabold tracking-wide text-brand-navy">
-                                {session.pin || 'Chưa có'}
+                                {session.pin || session.gamePin || 'Chưa có'}
                             </span>
 
                             <div className="flex justify-start lg:justify-end">

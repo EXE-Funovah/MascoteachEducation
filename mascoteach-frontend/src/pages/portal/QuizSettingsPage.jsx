@@ -41,7 +41,7 @@ const ACTIVITY_TYPES = [
     },
     {
         id: 'flashcards',
-        label: 'Flashcards',
+        label: 'Thẻ ôn tập',
         description: 'Thẻ ghi nhớ để ôn tập',
         Icon: Layers,
         color: 'bg-[#4F92DD]',
@@ -58,7 +58,7 @@ const QUESTION_COUNTS = [
 
 const LANGUAGES = [
     { value: 'vi', label: 'Tiếng Việt' },
-    { value: 'en', label: 'English' },
+    { value: 'en', label: 'Tiếng Anh' },
 ];
 
 function buildDifficultyDistribution(difficulties) {
@@ -197,14 +197,14 @@ export default function QuizSettingsPage() {
     const creationCopy = useMemo(() => {
         if (activityType === 'flashcards') {
             return {
-                typeLabel: 'Flashcards',
-                intro: 'Tạo bộ flashcard',
-                customize: 'Tùy chỉnh bộ flashcard',
-                action: 'Tạo bộ flashcard',
-                generating: 'Đang tạo flashcard...',
-                footer: 'AI có thể mắc lỗi. Hãy xem lại và tùy chỉnh flashcard trước khi dùng trong lớp.',
-                titleLabel: 'Tên bộ flashcard',
-                titleFallback: 'Bộ flashcard',
+                typeLabel: 'Thẻ ôn tập',
+                intro: 'Tạo bộ thẻ ôn tập',
+                customize: 'Tùy chỉnh bộ thẻ ôn tập',
+                action: 'Tạo bộ thẻ ôn tập',
+                generating: 'Đang tạo thẻ ôn tập...',
+                footer: 'AI có thể mắc lỗi. Hãy xem lại và tùy chỉnh thẻ ôn tập trước khi dùng trong lớp.',
+                titleLabel: 'Tên bộ thẻ ôn tập',
+                titleFallback: 'Bộ thẻ ôn tập',
             };
         }
 
@@ -230,11 +230,11 @@ export default function QuizSettingsPage() {
         setSettings((prev) => ({
             ...prev,
             title: activityType === 'flashcards' && prev.title === 'Bài kiểm tra'
-                ? 'Bộ flashcard'
-                : activityType === 'quiz' && prev.title === 'Bộ flashcard'
+                ? 'Bộ thẻ ôn tập'
+                : activityType === 'quiz' && prev.title === 'Bộ thẻ ôn tập'
                     ? 'Bài kiểm tra'
                     : prev.title,
-            questionType: 'MCQ',
+            questionType: activityType === 'flashcards' ? 'Flashcard' : 'MCQ',
         }));
     }, [activityType]);
 
@@ -309,7 +309,8 @@ export default function QuizSettingsPage() {
 
         const finalSettings = {
             ...settings,
-            questionType: 'MCQ',
+            questionType: activityType === 'flashcards' ? 'Flashcard' : 'MCQ',
+            activityType,
             difficultyDistribution: buildDifficultyDistribution(settings.difficulties),
         };
 

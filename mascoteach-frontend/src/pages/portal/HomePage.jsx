@@ -39,7 +39,7 @@ const ACTIVITY_TYPES = [
     },
     {
         id: 'flashcards',
-        label: 'Flashcards',
+        label: 'Thẻ ôn tập',
         description: 'Tạo thẻ ghi nhớ cho thuật ngữ, khái niệm và ôn tập.',
         Icon: Layers,
         color: 'bg-[#6F7DEB]',
@@ -409,7 +409,7 @@ export default function HomePage() {
                         Biến tài liệu thành hoạt động tương tác
                     </h2>
                     <p className="mt-2 max-w-md text-sm leading-6 text-slate-500">
-                        Tải lên PDF, DOCX hoặc PPTX. Mascoteach sẽ chuẩn bị nội dung để tạo trắc nghiệm, và sẵn sàng mở rộng sang flashcards.
+                        Tải lên PDF, DOCX hoặc PPTX. Mascoteach sẽ chuẩn bị nội dung để tạo trắc nghiệm hoặc thẻ ôn tập.
                     </p>
                     <div className="mt-5 flex flex-wrap gap-3">
                         <input

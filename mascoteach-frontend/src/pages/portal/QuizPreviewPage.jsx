@@ -17,7 +17,7 @@ import {
     Trash2,
     X,
 } from 'lucide-react';
-import { generateMCQFromUrl } from '@/services/aiService';
+import { generateFlashcardsFromUrl, generateMCQFromUrl } from '@/services/aiService';
 import { createQuiz, updateQuiz } from '@/services/quizService';
 import { createQuestion } from '@/services/questionService';
 
@@ -94,6 +94,33 @@ const DEMO_QUESTIONS = [
     },
 ];
 
+const DEMO_FLASHCARDS = [
+    {
+        id: 1,
+        question: 'Yếu tố nào giúp học sinh tập trung trở lại trong một tiết học tương tác?',
+        back: 'Một câu hỏi ngắn, rõ nhiệm vụ và có phản hồi tức thì.',
+        type: 'FLASHCARD',
+        options: [{ text: 'Một câu hỏi ngắn, rõ nhiệm vụ và có phản hồi tức thì.', isCorrect: true }],
+        _raw: null,
+    },
+    {
+        id: 2,
+        question: 'Mục tiêu chính của hoạt động ôn tập nhanh là gì?',
+        back: 'Giúp giáo viên kiểm tra lại điểm kiến thức trọng tâm trước khi chuyển bài.',
+        type: 'FLASHCARD',
+        options: [{ text: 'Giúp giáo viên kiểm tra lại điểm kiến thức trọng tâm trước khi chuyển bài.', isCorrect: true }],
+        _raw: null,
+    },
+    {
+        id: 3,
+        question: 'Vì sao giáo viên nên xem lại nội dung AI tạo trước khi xuất bản?',
+        back: 'Để chỉnh ngôn ngữ, độ khó và đáp án cho phù hợp với lớp học.',
+        type: 'FLASHCARD',
+        options: [{ text: 'Để chỉnh ngôn ngữ, độ khó và đáp án cho phù hợp với lớp học.', isCorrect: true }],
+        _raw: null,
+    },
+];
+
 function formatTotalDuration(seconds) {
     const safeSeconds = Math.max(0, Math.round(seconds));
     const minutes = Math.floor(safeSeconds / 60);
@@ -132,6 +159,18 @@ function mapAiQuestion(q, idx) {
     };
 }
 
+function mapAiFlashcard(q, idx) {
+    const back = q.options?.find((option) => option.isCorrect)?.optionText || q.options?.[0]?.optionText || '';
+    return {
+        id: idx + 1,
+        question: q.questionText,
+        back,
+        type: 'FLASHCARD',
+        options: [{ text: back, isCorrect: true }],
+        _raw: q,
+    };
+}
+
 function emptyQuestion() {
     return {
         id: Date.now(),
@@ -149,6 +188,17 @@ function emptyQuestion() {
     };
 }
 
+function emptyFlashcard() {
+    return {
+        id: Date.now(),
+        question: '',
+        back: '',
+        type: 'FLASHCARD',
+        options: [{ text: '', isCorrect: true }],
+        _raw: null,
+    };
+}
+
 export default function QuizPreviewPage() {
     const location = useLocation();
     const navigate = useNavigate();
@@ -160,12 +210,15 @@ export default function QuizPreviewPage() {
             questionCount: 5,
             difficultyDistribution: { 1: 60, 2: 40, 3: 0 },
             language: 'vi',
+            activityType: 'quiz',
         }
         : null);
     const fileName = location.state?.fileName || (isDevPreview ? 'Mascoteach_demo_document.pdf' : null);
     const fileSize = location.state?.fileSize || null;
     const documentId = location.state?.documentId || (isDevPreview ? 'dev-preview-document' : null);
     const fileUrl = location.state?.fileUrl || null;
+    const activityType = location.state?.activityType || settingsData?.activityType || 'quiz';
+    const isFlashcards = activityType === 'flashcards' || settingsData?.questionType === 'Flashcard';
 
     const [questions, setQuestions] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -180,15 +233,44 @@ export default function QuizPreviewPage() {
     const [questionTimeDraft, setQuestionTimeDraft] = useState('');
 
     const stats = useMemo(() => {
-        const totalTime = questions.reduce((sum, question) => sum + question.time, 0);
-        const totalPoints = questions.reduce((sum, question) => sum + question.points, 0);
+        if (isFlashcards) return { totalTime: 0, totalPoints: 0 };
+        const totalTime = questions.reduce((sum, question) => sum + (question.time || 0), 0);
+        const totalPoints = questions.reduce((sum, question) => sum + (question.points || 0), 0);
         return { totalTime, totalPoints };
-    }, [questions]);
+    }, [isFlashcards, questions]);
+
+    const contentCopy = useMemo(() => {
+        if (isFlashcards) {
+            return {
+                fallbackTitle: 'Bộ thẻ ôn tập',
+                itemSingular: 'thẻ ôn tập',
+                itemCount: 'thẻ ôn tập',
+                add: 'Thêm thẻ',
+                addBottom: 'Thêm thẻ',
+                loading: 'AI đang tạo thẻ ôn tập...',
+                loadingHint: 'Quá trình này có thể mất 15-30 giây',
+                aiActions: ['Thêm thẻ tương tự', 'Rút gọn mặt sau', 'Dịch thẻ', 'Tùy chọn khác'],
+                publish: 'Xuất bản',
+            };
+        }
+
+        return {
+            fallbackTitle: 'Bài kiểm tra',
+            itemSingular: 'câu hỏi',
+            itemCount: 'câu hỏi',
+            add: 'Tạo câu hỏi',
+            addBottom: 'Thêm câu hỏi',
+            loading: 'AI đang phân tích tài liệu...',
+            loadingHint: 'Quá trình này có thể mất 15-30 giây',
+            aiActions: ['Thêm câu hỏi tương tự', 'Thêm giải thích đáp án', 'Dịch bài kiểm tra', 'Tùy chọn khác'],
+            publish: 'Xuất bản',
+        };
+    }, [isFlashcards]);
 
     useEffect(() => {
         if (!fileUrl && isDevPreview) {
             const timer = setTimeout(() => {
-                setQuestions(DEMO_QUESTIONS);
+                setQuestions(isFlashcards ? DEMO_FLASHCARDS : DEMO_QUESTIONS);
                 setLoading(false);
             }, 420);
             return () => clearTimeout(timer);
@@ -208,14 +290,16 @@ export default function QuizPreviewPage() {
                 setError(null);
 
                 const questionCount = settingsData?.questionCount || 5;
-                const quizTitle = settingsData?.title || 'Bài kiểm tra';
+                const quizTitle = settingsData?.title || (isFlashcards ? 'Bộ thẻ ôn tập' : 'Bài kiểm tra');
                 const difficultyDistribution = settingsData?.difficultyDistribution;
                 const language = settingsData?.language || 'vi';
 
-                const result = await generateMCQFromUrl(fileUrl, {
+                const generator = isFlashcards ? generateFlashcardsFromUrl : generateMCQFromUrl;
+                const result = await generator(fileUrl, {
                     documentId,
                     quizTitle,
                     numberOfQuestions: questionCount === 0 ? 5 : questionCount,
+                    numberOfCards: questionCount === 0 ? 5 : questionCount,
                     difficultyDistribution,
                     language,
                 }, controller.signal);
@@ -223,14 +307,14 @@ export default function QuizPreviewPage() {
                 if (controller.signal.aborted) return;
 
                 if (!result.success || !result.data?.questions?.length) {
-                    throw new Error(result.message || 'AI không trả về câu hỏi nào.');
+                    throw new Error(result.message || (isFlashcards ? 'AI không trả về thẻ ôn tập nào.' : 'AI không trả về câu hỏi nào.'));
                 }
 
-                setQuestions(result.data.questions.map(mapAiQuestion));
+                setQuestions(result.data.questions.map(isFlashcards ? mapAiFlashcard : mapAiQuestion));
             } catch (err) {
                 if (controller.signal.aborted) return;
                 console.error('[QuizPreview] AI error:', err);
-                setError(err.message || 'Không thể tạo câu hỏi từ AI. Vui lòng thử lại.');
+                setError(err.message || (isFlashcards ? 'Không thể tạo thẻ ôn tập từ AI. Vui lòng thử lại.' : 'Không thể tạo câu hỏi từ AI. Vui lòng thử lại.'));
             } finally {
                 if (!controller.signal.aborted) setLoading(false);
             }
@@ -247,7 +331,7 @@ export default function QuizPreviewPage() {
 
     function handleBack() {
         navigate(routeFor('/teacher/quiz-settings'), {
-            state: { fileName, fileSize, documentId, fileUrl, settings: settingsData },
+            state: { fileName, fileSize, documentId, fileUrl, activityType, settings: settingsData },
         });
     }
 
@@ -257,22 +341,28 @@ export default function QuizPreviewPage() {
         setPublishing(true);
         setPublishError(null);
 
-        const quizTitle = settingsData?.title || 'Bài kiểm tra';
+        const quizTitle = settingsData?.title || (isFlashcards ? 'Bộ thẻ ôn tập' : 'Bài kiểm tra');
 
         try {
             const quizResult = await createQuiz({ documentId, title: quizTitle });
             const quizId = quizResult?.id ?? quizResult?.quizId;
-            if (!quizId) throw new Error('Không thể tạo quiz - backend không trả về ID.');
+            if (!quizId) {
+                throw new Error(isFlashcards
+                    ? 'Không thể tạo bộ thẻ ôn tập - backend không trả về ID.'
+                    : 'Không thể tạo bộ câu hỏi - backend không trả về ID.');
+            }
 
             for (const question of questions) {
                 await createQuestion({
                     quizId,
                     questionText: question.question,
-                    questionType: 'MultipleChoice',
-                    options: question.options.map((option) => ({
-                        optionText: option.text,
-                        isCorrect: option.isCorrect,
-                    })),
+                    questionType: isFlashcards ? 'Flashcard' : 'MultipleChoice',
+                    options: isFlashcards
+                        ? [{ optionText: question.back || question.options?.[0]?.text || '', isCorrect: true }]
+                        : question.options.map((option) => ({
+                            optionText: option.text,
+                            isCorrect: option.isCorrect,
+                        })),
                 });
             }
 
@@ -282,12 +372,14 @@ export default function QuizPreviewPage() {
                 state: {
                     activeTab: 'quizzes',
                     targetQuizId: quizId,
-                    successMessage: 'Quiz của bạn đã sẵn sàng, bạn có thể xem ở Thư viện của tôi.',
+                    successMessage: isFlashcards
+                        ? 'Bộ thẻ ôn tập của bạn đã sẵn sàng, bạn có thể xem ở Thư viện của tôi.'
+                        : 'Bài kiểm tra của bạn đã sẵn sàng, bạn có thể xem ở Thư viện của tôi.',
                 },
             });
         } catch (err) {
             console.error('[QuizPreview] Publish error:', err);
-            setPublishError(err.message || 'Không thể xuất bản quiz. Vui lòng thử lại.');
+            setPublishError(err.message || (isFlashcards ? 'Không thể xuất bản bộ thẻ ôn tập. Vui lòng thử lại.' : 'Không thể xuất bản bài kiểm tra. Vui lòng thử lại.'));
             setPublishing(false);
         }
     }
@@ -307,6 +399,7 @@ export default function QuizPreviewPage() {
             const copy = {
                 ...prev[idx],
                 id: Date.now(),
+                back: prev[idx].back,
                 options: prev[idx].options.map((option) => ({ ...option })),
             };
             const next = [...prev];
@@ -319,6 +412,7 @@ export default function QuizPreviewPage() {
         setEditingQuestionId(question.id);
         setEditDraft({
             question: question.question,
+            back: question.back || question.options?.[0]?.text || '',
             time: question.time,
             points: question.points,
             options: question.options.map((option) => ({ ...option })),
@@ -338,9 +432,12 @@ export default function QuizPreviewPage() {
                     ? {
                         ...question,
                         question: editDraft.question,
+                        back: editDraft.back,
                         time: editDraft.time,
                         points: editDraft.points,
-                        options: editDraft.options,
+                        options: question.type === 'FLASHCARD'
+                            ? [{ text: editDraft.back || '', isCorrect: true }]
+                            : editDraft.options,
                     }
                     : question,
             ),
@@ -351,6 +448,10 @@ export default function QuizPreviewPage() {
 
     function updateDraftQuestion(text) {
         setEditDraft((prev) => ({ ...prev, question: text }));
+    }
+
+    function updateDraftBack(text) {
+        setEditDraft((prev) => ({ ...prev, back: text }));
     }
 
     function updateDraftOptionText(optionIndex, text) {
@@ -383,7 +484,7 @@ export default function QuizPreviewPage() {
     }
 
     function handleAddQuestion() {
-        const newQuestion = emptyQuestion();
+        const newQuestion = isFlashcards ? emptyFlashcard() : emptyQuestion();
         setQuestions((prev) => [...prev, newQuestion]);
         startEditing(newQuestion);
     }
@@ -442,6 +543,121 @@ export default function QuizPreviewPage() {
             next.splice(result.destination.index, 0, movedQuestion);
             return next;
         });
+    }
+
+    function renderFlashcardCard(card, index, draggableProvided, dragSnapshot) {
+        const isEditing = editingQuestionId === card.id;
+        const displayed = isEditing ? editDraft : card;
+
+        return (
+            <article
+                ref={draggableProvided.innerRef}
+                {...draggableProvided.draggableProps}
+                className={[
+                    'group relative rounded-[8px] border bg-white px-6 py-5 transition-[border-color,box-shadow,background-color,opacity] duration-200',
+                    dragSnapshot.isDragging
+                        ? 'z-10 border-dashed border-[#8DBDF0] bg-white/80 opacity-70 shadow-none'
+                        : 'border-slate-200 hover:border-slate-300',
+                ].join(' ')}
+                style={draggableProvided.draggableProps.style}
+            >
+                <button
+                    type="button"
+                    {...draggableProvided.dragHandleProps}
+                    className="absolute left-1/2 top-0 grid h-7 w-7 -translate-x-1/2 -translate-y-1/2 cursor-grab place-items-center rounded-[8px] border border-slate-200 bg-white text-slate-400 shadow-sm transition hover:border-[#BFDDFB] hover:bg-[#F8FBFF] hover:text-[#4F92DD] active:cursor-grabbing"
+                    title="Kéo để đổi vị trí thẻ ôn tập"
+                    aria-label="Kéo để sắp xếp"
+                >
+                    <Grip className="h-4 w-4" />
+                </button>
+
+                <div className="mb-4 flex items-start justify-between gap-4">
+                    <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold text-slate-400">
+                        <span className="font-extrabold text-slate-950">{String(index + 1).padStart(2, '0')}</span>
+                        <span>THẺ ÔN TẬP</span>
+                    </div>
+
+                    <div className="flex items-center gap-2 text-slate-500">
+                        {isEditing ? (
+                            <>
+                                <button
+                                    type="button"
+                                    onClick={() => saveEditing(card.id)}
+                                    className="inline-flex h-8 items-center gap-1.5 rounded-[8px] bg-emerald-50 px-3 text-xs font-bold text-emerald-600 transition hover:bg-emerald-100"
+                                >
+                                    <Check className="h-3.5 w-3.5" />
+                                    Lưu
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={cancelEditing}
+                                    className="inline-flex h-8 items-center gap-1.5 rounded-[8px] border border-slate-200 bg-white px-3 text-xs font-bold text-slate-500 transition hover:bg-slate-50"
+                                >
+                                    <X className="h-3.5 w-3.5" />
+                                    Hủy
+                                </button>
+                            </>
+                        ) : (
+                            <>
+                                <button type="button" onClick={() => handleDuplicate(card.id)} className="grid h-8 w-8 place-items-center rounded-[8px] transition hover:bg-slate-100" title="Nhân đôi">
+                                    <Copy className="h-4 w-4" />
+                                </button>
+                                <button type="button" onClick={() => handleDeleteQuestion(card.id)} className="grid h-8 w-8 place-items-center rounded-[8px] transition hover:bg-rose-50 hover:text-rose-500" title="Xóa">
+                                    <Trash2 className="h-4 w-4" />
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => startEditing(card)}
+                                    className="inline-flex h-8 items-center gap-1.5 rounded-[8px] px-2 text-xs font-bold text-slate-600 transition hover:bg-[#EAF4FF] hover:text-[#4F92DD]"
+                                >
+                                    <Pencil className="h-4 w-4" />
+                                    Sửa
+                                </button>
+                            </>
+                        )}
+                    </div>
+                </div>
+
+                <div className="grid gap-5 md:grid-cols-[1fr_1px_1fr] md:items-start">
+                    <div className="min-w-0">
+                        <p className="mb-2 text-[11px] font-extrabold text-slate-500">Mặt trước</p>
+                        {isEditing ? (
+                            <textarea
+                                value={displayed.question}
+                                onChange={(event) => updateDraftQuestion(event.target.value)}
+                                rows={3}
+                                className="w-full resize-none rounded-[10px] border border-[#BFDDFB] bg-[#F8FBFF] p-3 text-[14px] font-bold leading-6 text-slate-900 outline-none transition focus:border-[#6DA6E8] focus:ring-4 focus:ring-[#EAF4FF]"
+                                placeholder="Nhập mặt trước..."
+                                autoFocus
+                            />
+                        ) : (
+                            <p className="text-[15px] font-extrabold leading-7 text-slate-950">
+                                {card.question || <span className="italic text-slate-400">Chưa có mặt trước</span>}
+                            </p>
+                        )}
+                    </div>
+
+                    <div className="hidden h-full min-h-[72px] w-px bg-slate-200 md:block" />
+
+                    <div className="min-w-0">
+                        <p className="mb-2 text-[11px] font-extrabold text-slate-500">Mặt sau</p>
+                        {isEditing ? (
+                            <textarea
+                                value={displayed.back}
+                                onChange={(event) => updateDraftBack(event.target.value)}
+                                rows={3}
+                                className="w-full resize-none rounded-[10px] border border-[#BFDDFB] bg-[#F8FBFF] p-3 text-[14px] font-bold leading-6 text-slate-900 outline-none transition focus:border-[#6DA6E8] focus:ring-4 focus:ring-[#EAF4FF]"
+                                placeholder="Nhập mặt sau..."
+                            />
+                        ) : (
+                            <p className="text-[15px] font-extrabold leading-7 text-slate-950">
+                                {card.back || card.options?.[0]?.text || <span className="italic text-slate-400">Chưa có mặt sau</span>}
+                            </p>
+                        )}
+                    </div>
+                </div>
+            </article>
+        );
     }
 
     function renderQuestionCard(question, index, draggableProvided, dragSnapshot) {
@@ -660,7 +876,7 @@ export default function QuizPreviewPage() {
                             type="button"
                             className="min-w-0 truncate rounded-[8px] border border-slate-200 bg-white px-4 py-2 text-left text-sm font-bold text-slate-800"
                         >
-                            {settingsData?.title || 'Bài kiểm tra'}
+                            {settingsData?.title || contentCopy.fallbackTitle}
                         </button>
                     </div>
 
@@ -673,7 +889,7 @@ export default function QuizPreviewPage() {
                             title={isDevPreview ? 'Dev preview không xuất bản dữ liệu thật' : undefined}
                         >
                             {publishing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                            Xuất bản
+                            {contentCopy.publish}
                         </button>
                     </div>
                 </div>
@@ -694,8 +910,8 @@ export default function QuizPreviewPage() {
                                 <div className="mx-auto grid h-16 w-16 place-items-center rounded-[18px] bg-[#EAF4FF]">
                                     <Loader2 className="h-8 w-8 animate-spin text-[#6DA6E8]" />
                                 </div>
-                                <p className="mt-4 text-sm font-bold text-slate-700">AI đang phân tích tài liệu...</p>
-                                <p className="mt-1 text-xs font-medium text-slate-400">Quá trình này có thể mất 15-30 giây</p>
+                                <p className="mt-4 text-sm font-bold text-slate-700">{contentCopy.loading}</p>
+                                <p className="mt-1 text-xs font-medium text-slate-400">{contentCopy.loadingHint}</p>
                             </div>
                         </motion.div>
                     ) : error ? (
@@ -718,44 +934,50 @@ export default function QuizPreviewPage() {
                         <>
                             <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
                                 <div className="flex flex-wrap items-center gap-5 text-base font-extrabold text-slate-700">
-                                    <span>{questions.length} câu hỏi</span>
-                                    <span className="text-slate-300">•</span>
-                                    <span>{stats.totalPoints} điểm</span>
-                                    <span className="text-slate-300">•</span>
-                                    {editingTotalTime ? (
-                                        <span className="inline-flex items-center gap-2">
-                                            <input
-                                                value={totalMinutesDraft}
-                                                onChange={(event) => setTotalMinutesDraft(event.target.value)}
-                                                onBlur={applyTotalTimeEdit}
-                                                onKeyDown={(event) => {
-                                                    if (event.key === 'Enter') applyTotalTimeEdit();
-                                                    if (event.key === 'Escape') setEditingTotalTime(false);
-                                                }}
-                                                className="h-8 w-16 rounded-md border border-[#6DA6E8] bg-[#F8FBFF] px-2 text-sm font-extrabold text-slate-700 outline-none ring-2 ring-[#EAF4FF]"
-                                                autoFocus
-                                            />
-                                            <span>phút</span>
-                                        </span>
-                                    ) : (
-                                        <button
-                                            type="button"
-                                            onClick={startTotalTimeEdit}
-                                            className="rounded-md px-1.5 py-1 transition hover:bg-[#EAF4FF] hover:text-[#4F92DD]"
-                                            title="Chỉnh tổng thời gian"
-                                        >
-                                            {formatTotalDuration(stats.totalTime)}
-                                        </button>
+                                    <span>{questions.length} {contentCopy.itemCount}</span>
+                                    {!isFlashcards && (
+                                        <>
+                                            <span className="text-slate-300">•</span>
+                                            <span>{stats.totalPoints} điểm</span>
+                                            <span className="text-slate-300">•</span>
+                                            {editingTotalTime ? (
+                                                <span className="inline-flex items-center gap-2">
+                                                    <input
+                                                        value={totalMinutesDraft}
+                                                        onChange={(event) => setTotalMinutesDraft(event.target.value)}
+                                                        onBlur={applyTotalTimeEdit}
+                                                        onKeyDown={(event) => {
+                                                            if (event.key === 'Enter') applyTotalTimeEdit();
+                                                            if (event.key === 'Escape') setEditingTotalTime(false);
+                                                        }}
+                                                        className="h-8 w-16 rounded-md border border-[#6DA6E8] bg-[#F8FBFF] px-2 text-sm font-extrabold text-slate-700 outline-none ring-2 ring-[#EAF4FF]"
+                                                        autoFocus
+                                                    />
+                                                    <span>phút</span>
+                                                </span>
+                                            ) : (
+                                                <button
+                                                    type="button"
+                                                    onClick={startTotalTimeEdit}
+                                                    className="rounded-md px-1.5 py-1 transition hover:bg-[#EAF4FF] hover:text-[#4F92DD]"
+                                                    title="Chỉnh tổng thời gian"
+                                                >
+                                                    {formatTotalDuration(stats.totalTime)}
+                                                </button>
+                                            )}
+                                        </>
                                     )}
                                 </div>
-                                <button
-                                    type="button"
-                                    onClick={handleAddQuestion}
-                                    className="inline-flex h-10 items-center gap-2 rounded-[8px] border border-slate-200 bg-white px-5 text-sm font-extrabold text-slate-700 transition hover:bg-slate-50"
-                                >
-                                    <Plus className="h-4 w-4" />
-                                    Tạo câu hỏi
-                                </button>
+                                {!isFlashcards && (
+                                    <button
+                                        type="button"
+                                        onClick={handleAddQuestion}
+                                        className="inline-flex h-10 items-center gap-2 rounded-[8px] border border-slate-200 bg-white px-5 text-sm font-extrabold text-slate-700 transition hover:bg-slate-50"
+                                    >
+                                        <Plus className="h-4 w-4" />
+                                        {contentCopy.add}
+                                    </button>
+                                )}
                             </div>
 
                             <div className="mb-8 flex flex-wrap items-center gap-3">
@@ -763,7 +985,7 @@ export default function QuizPreviewPage() {
                                     <Sparkles className="h-4 w-4 text-[#6DA6E8]" />
                                     Trợ lý AI
                                 </span>
-                                {['Thêm câu hỏi tương tự', 'Thêm giải thích đáp án', 'Dịch bài quiz', 'Tùy chọn khác'].map((label) => (
+                                {contentCopy.aiActions.map((label) => (
                                     <button
                                         key={label}
                                         type="button"
@@ -789,7 +1011,9 @@ export default function QuizPreviewPage() {
                                                     index={index}
                                                 >
                                                     {(draggableProvided, dragSnapshot) =>
-                                                        renderQuestionCard(question, index, draggableProvided, dragSnapshot)
+                                                        isFlashcards
+                                                            ? renderFlashcardCard(question, index, draggableProvided, dragSnapshot)
+                                                            : renderQuestionCard(question, index, draggableProvided, dragSnapshot)
                                                     }
                                                 </Draggable>
                                             ))}
@@ -805,7 +1029,7 @@ export default function QuizPreviewPage() {
                                 className="mt-8 flex w-full items-center justify-center gap-2 rounded-[10px] border-2 border-dashed border-slate-200 py-5 text-sm font-extrabold text-slate-400 transition hover:border-[#BFDDFB] hover:bg-[#F8FBFF] hover:text-[#4F92DD]"
                             >
                                 <Plus className="h-4 w-4" />
-                                Thêm câu hỏi
+                                {contentCopy.addBottom}
                             </button>
                         </>
                     )}

@@ -1,8 +1,23 @@
 ﻿import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { X, Upload, Sparkles, CheckCircle2, ArrowRight, Loader2, File } from 'lucide-react';
+import { X, Upload, Sparkles, CheckCircle2, ArrowRight, Loader2, File, Layers, ListChecks } from 'lucide-react';
 import { generateUploadUrl, uploadFileToS3, createDocument } from '@/services/documentService';
 import { zipFileForUpload } from '@/utils/zipFile';
+
+const ACTIVITY_TYPES = [
+    {
+        id: 'quiz',
+        label: 'Trắc nghiệm',
+        description: 'Tạo bộ câu hỏi nhanh từ tài liệu.',
+        Icon: ListChecks,
+    },
+    {
+        id: 'flashcards',
+        label: 'Thẻ ôn tập',
+        description: 'Tạo thẻ mặt trước/mặt sau để ôn tập.',
+        Icon: Layers,
+    },
+];
 
 /**
  * CreateFlowModal — Upload document then navigate to Quiz Settings
@@ -15,6 +30,7 @@ export default function CreateFlowModal({ onClose }) {
     const [uploadedFile, setUploadedFile] = useState(null);
     const [isProcessing, setIsProcessing] = useState(false);
     const [uploadError, setUploadError] = useState(null);
+    const [activityType, setActivityType] = useState('quiz');
 
     const handleDrag = useCallback((e) => {
         e.preventDefault();
@@ -69,10 +85,11 @@ export default function CreateFlowModal({ onClose }) {
                     fileSize: uploadedFile.size,
                     documentId: doc?.id ?? doc?.documentId ?? null,
                     fileUrl: doc?.presignedUrl ?? null,
+                    activityType,
                 },
             });
         } catch (err) {
-            setUploadError(err.message || 'Tai len that bai. Vui long thu lai.');
+            setUploadError(err.message || 'Tải lên thất bại. Vui lòng thử lại.');
         } finally {
             setIsProcessing(false);
         }
@@ -93,7 +110,7 @@ export default function CreateFlowModal({ onClose }) {
                             animate-in"
                 role="dialog"
                 aria-modal="true"
-                aria-label="Tạo quiz mới"
+                aria-label="Tạo hoạt động mới"
             >
                 {/* -- Header -- */}
                 <div className="flex items-center justify-between px-8 py-5 border-b border-slate-100/60">
@@ -106,7 +123,7 @@ export default function CreateFlowModal({ onClose }) {
                                 Tải lên tài liệu
                             </h2>
                             <p className="text-[12px] text-slate-400 mt-0.5">
-                                Bước 1 — Chọn file để AI tạo câu hỏi
+                                Bước 1 — Chọn file để AI tạo hoạt động
                             </p>
                         </div>
                     </div>
@@ -186,6 +203,43 @@ export default function CreateFlowModal({ onClose }) {
                                     </p>
                                 </div>
                             )}
+                        </div>
+
+                        <div>
+                            <p className="mb-3 text-[13px] font-bold text-slate-700">
+                                Chọn loại nội dung
+                            </p>
+                            <div className="grid gap-3 sm:grid-cols-2">
+                                {ACTIVITY_TYPES.map((type) => {
+                                    const active = activityType === type.id;
+                                    return (
+                                        <button
+                                            key={type.id}
+                                            type="button"
+                                            onClick={() => setActivityType(type.id)}
+                                            className={[
+                                                'flex min-h-[92px] items-center gap-3 rounded-xl border p-4 text-left transition-all duration-200',
+                                                active
+                                                    ? 'border-sky-300 bg-sky-50/70 shadow-sm'
+                                                    : 'border-slate-200 bg-white hover:border-sky-200 hover:bg-sky-50/30',
+                                            ].join(' ')}
+                                        >
+                                            <span className={[
+                                                'grid h-11 w-11 flex-none place-items-center rounded-lg',
+                                                active ? 'bg-sky-500 text-white' : 'bg-slate-100 text-slate-500',
+                                            ].join(' ')}
+                                            >
+                                                <type.Icon className="h-5 w-5" />
+                                            </span>
+                                            <span className="min-w-0">
+                                                <span className="block text-[14px] font-bold text-slate-800">{type.label}</span>
+                                                <span className="mt-1 block text-[12px] leading-5 text-slate-500">{type.description}</span>
+                                            </span>
+                                            {active && <CheckCircle2 className="ml-auto h-5 w-5 flex-none text-sky-500" />}
+                                        </button>
+                                    );
+                                })}
+                            </div>
                         </div>
 
                         {/* Continue Button */}
