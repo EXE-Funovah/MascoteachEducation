@@ -13,6 +13,7 @@ import {
 import { cn } from '@/lib/utils';
 
 const PAYOS_ELEMENT_ID = 'payos-embedded-checkout';
+const PAYOS_HOSTED_PAGE_ORIGIN = 'https://pay.payos.vn';
 
 function getFallbackPayOsReturnUrl() {
   const configuredReturnUrl = import.meta.env.VITE_PAYOS_RETURN_URL?.trim();
@@ -29,6 +30,32 @@ function formatCurrency(amount, currency = 'VND') {
     currency,
     maximumFractionDigits: 0,
   }).format(amount);
+}
+
+function normalizePayOsCheckoutUrl(value) {
+  if (!value) return '';
+
+  const rawUrl = String(value).trim();
+  if (!rawUrl) return '';
+
+  try {
+    const parsedUrl = new URL(rawUrl);
+    const pathParts = parsedUrl.pathname.split('/').filter(Boolean);
+    const paymentLinkId = pathParts[pathParts.length - 1];
+
+    if (parsedUrl.hostname === 'pay.payos.vn' || parsedUrl.hostname.endsWith('.pay.payos.vn')) {
+      return parsedUrl.href;
+    }
+
+    if (paymentLinkId) {
+      return `${PAYOS_HOSTED_PAGE_ORIGIN}/web/${paymentLinkId}`;
+    }
+  } catch {
+    // Fall through and treat plain values as a PayOS payment link id.
+  }
+
+  const paymentLinkId = rawUrl.replace(/^\/+/, '').split('?')[0].split('/').filter(Boolean).pop();
+  return `${PAYOS_HOSTED_PAGE_ORIGIN}/web/${paymentLinkId || rawUrl}`;
 }
 
 function getPlanCode(planParam) {
@@ -189,7 +216,7 @@ export default function CheckoutPage() {
 
       try {
         const response = await createPaymentLink(planCode);
-        const checkoutUrl = response?.checkoutUrl ?? response?.CheckoutUrl;
+        const checkoutUrl = normalizePayOsCheckoutUrl(response?.checkoutUrl ?? response?.CheckoutUrl);
         const orderCode = response?.orderCode ?? response?.OrderCode;
         const amount = response?.amount ?? response?.Amount;
         const responsePlanCode = response?.planCode ?? response?.PlanCode;
