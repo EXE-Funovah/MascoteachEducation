@@ -29,7 +29,7 @@ export const PRICING_PLANS = [
     yearlyUnit: '/ tháng',
     yearlyBillingNote: 'Thanh toán 1.188.000đ/năm',
     cta: 'Nâng cấp lên Pro',
-    href: '/register',
+    href: '/checkout',
     tone: 'pro',
     featured: true,
     features: [

@@ -21,6 +21,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { createDocument, generateUploadUrl, getMyDocuments } from '@/services/documentService';
 import { getMySessions } from '@/services/liveSessionService';
 import { zipFileForUpload } from '@/utils/zipFile';
+import { getDocumentUploadErrorMessage } from '@/utils/documentLimitError';
 
 const TABS = [
     { id: 'create', label: 'Tạo mới', hint: 'từ tài liệu', Icon: PencilLine },
@@ -298,7 +299,7 @@ export default function HomePage() {
                 setPendingUpload(upload);
             }
         } catch (err) {
-            setUploadError(err.message || 'Tải lên thất bại. Vui lòng thử lại.');
+            setUploadError(getDocumentUploadErrorMessage(err));
         } finally {
             setIsUploading(false);
         }

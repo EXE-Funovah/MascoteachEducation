@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Home from '@/pages/Home';
 import MarketingPlaceholderPage from '@/pages/MarketingPlaceholderPage';
 import PricingPage from '@/pages/PricingPage';
+import CheckoutPage from '@/pages/CheckoutPage';
 import LoginPage from '@/pages/LoginPage';
 import SignUpPage from '@/pages/SignUpPage';
 import ForgotPasswordPage from '@/pages/ForgotPasswordPage';
@@ -38,6 +39,7 @@ export default function App() {
         <Route path="/product" element={<MarketingPlaceholderPage type="product" />} />
         <Route path="/features" element={<MarketingPlaceholderPage type="features" />} />
         <Route path="/pricing" element={<PricingPage />} />
+        <Route path="/checkout" element={<CheckoutPage />} />
         <Route path="/signin" element={<LoginPage />} />
         <Route path="/register" element={<SignUpPage />} />
         <Route path="/login" element={<LoginPage />} />

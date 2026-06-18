@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { X, Upload, Sparkles, CheckCircle2, ArrowRight, Loader2, File, Layers, ListChecks } from 'lucide-react';
 import { generateUploadUrl, uploadFileToS3, createDocument } from '@/services/documentService';
 import { zipFileForUpload } from '@/utils/zipFile';
+import { getDocumentUploadErrorMessage } from '@/utils/documentLimitError';
 
 const ACTIVITY_TYPES = [
     {
@@ -89,7 +90,7 @@ export default function CreateFlowModal({ onClose }) {
                 },
             });
         } catch (err) {
-            setUploadError(err.message || 'Tải lên thất bại. Vui lòng thử lại.');
+            setUploadError(getDocumentUploadErrorMessage(err));
         } finally {
             setIsProcessing(false);
         }

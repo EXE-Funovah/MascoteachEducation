@@ -346,6 +346,7 @@ export default function MascotWidget() {
         '/product',
         '/features',
         '/pricing',
+        '/checkout',
         '/signin',
         '/register',
         '/login',

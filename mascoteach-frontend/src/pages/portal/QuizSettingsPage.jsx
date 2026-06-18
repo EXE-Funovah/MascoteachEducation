@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { createDocument, generateUploadUrl } from '@/services/documentService';
 import { zipFileForUpload } from '@/utils/zipFile';
+import { getDocumentUploadErrorMessage } from '@/utils/documentLimitError';
 
 const STRUCTURE_OPTIONS = [
     'Phát triển chuyên môn',
@@ -296,7 +297,7 @@ export default function QuizSettingsPage() {
             });
             setEditingStep(null);
         } catch (error) {
-            setReplaceError(error.message || 'Không thể tải tài liệu mới. Vui lòng thử lại.');
+            setReplaceError(getDocumentUploadErrorMessage(error, 'Không thể tải tài liệu mới. Vui lòng thử lại.'));
         } finally {
             setIsReplacingFile(false);
         }
