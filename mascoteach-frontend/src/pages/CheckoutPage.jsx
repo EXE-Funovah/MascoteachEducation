@@ -138,7 +138,7 @@ function PayOsEmbeddedCheckout({ checkoutUrl, orderCode, returnUrl, onExit }) {
   return (
     <div
       id={PAYOS_ELEMENT_ID}
-      className="h-[520px] overflow-hidden rounded-[14px] border border-slate-200 bg-white shadow-[0_18px_44px_rgba(27,58,107,0.08)]"
+      className="mx-auto h-[460px] w-full max-w-[520px] overflow-hidden rounded-[14px] border border-[#D7E0EA] bg-white shadow-[0_16px_36px_rgba(27,58,107,0.07)] [&_iframe]:block [&_iframe]:h-full [&_iframe]:w-full [&_iframe]:border-0"
     />
   );
 }
@@ -351,9 +351,9 @@ export default function CheckoutPage() {
           <div className="mt-8">
             <h2 className="text-2xl font-black tracking-[-0.01em] text-[#22272E]">Thanh toán bằng QR</h2>
 
-            <div className="mt-6 rounded-[18px] border border-[#CAD2DC] bg-white p-5 sm:p-6">
+            <div className="mt-6 rounded-[18px] border border-[#CAD2DC] bg-white p-4 sm:p-5">
               {loading && (
-                <div className="grid h-[520px] place-items-center rounded-[14px] border border-dashed border-brand-light bg-white">
+                <div className="mx-auto grid h-[460px] w-full max-w-[520px] place-items-center rounded-[14px] border border-dashed border-brand-light bg-white">
                   <div className="text-center">
                     <Loader2 className="mx-auto h-9 w-9 animate-spin text-brand-blue" />
                     <p className="mt-4 text-sm font-black text-brand-navy">Đang tạo mã thanh toán PayOS</p>
@@ -362,7 +362,7 @@ export default function CheckoutPage() {
               )}
 
               {!loading && error && (
-                <div className="grid h-[520px] place-items-center rounded-[14px] border border-rose-200 bg-rose-50 px-6 text-center">
+                <div className="mx-auto grid h-[460px] w-full max-w-[520px] place-items-center rounded-[14px] border border-rose-200 bg-rose-50 px-6 text-center">
                   <div>
                     <p className="text-lg font-black text-rose-700">{error}</p>
                     <button
@@ -380,7 +380,7 @@ export default function CheckoutPage() {
               {!loading && !error && paymentLink?.checkoutUrl && (
                 <>
                   {frameClosed ? (
-                    <div className="grid h-[520px] place-items-center rounded-[14px] border border-brand-light bg-surface-blue px-6 text-center">
+                    <div className="mx-auto grid h-[460px] w-full max-w-[520px] place-items-center rounded-[14px] border border-brand-light bg-surface-blue px-6 text-center">
                       <div>
                         <QrCode className="mx-auto h-10 w-10 text-brand-blue" />
                         <p className="mt-4 text-base font-black text-brand-navy">Khung thanh toán đã đóng</p>
