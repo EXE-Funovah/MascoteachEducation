@@ -91,7 +91,7 @@ export default function AccountBillingPage() {
               Tài khoản và thanh toán
             </h1>
             <p className="mt-2 max-w-[620px] text-sm font-semibold leading-6 text-[#64748B]">
-              Trạng thái Pro được đọc từ backend. Frontend không tự kích hoạt Premium.
+              Theo dõi gói hiện tại, ngày hết hạn và lịch sử thanh toán của bạn.
             </p>
           </div>
 

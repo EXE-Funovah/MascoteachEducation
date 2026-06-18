@@ -27,7 +27,7 @@ export default function PaymentSuccessPage() {
     let cancelled = false;
     let timerId;
 
-    async function refreshBilling(nextAttempt) {
+    async function checkBillingStatus(nextAttempt) {
       try {
         setError('');
         const status = await getMyBilling();
@@ -37,7 +37,7 @@ export default function PaymentSuccessPage() {
         setAttempts(nextAttempt);
 
         if (!status?.isPremiumActive && nextAttempt < MAX_ATTEMPTS) {
-          timerId = window.setTimeout(() => refreshBilling(nextAttempt + 1), POLL_DELAY_MS);
+          timerId = window.setTimeout(() => checkBillingStatus(nextAttempt + 1), POLL_DELAY_MS);
         }
       } catch (err) {
         if (!cancelled) {
@@ -49,7 +49,7 @@ export default function PaymentSuccessPage() {
       }
     }
 
-    refreshBilling(1);
+    checkBillingStatus(1);
     return () => {
       cancelled = true;
       if (timerId) window.clearTimeout(timerId);
@@ -73,8 +73,8 @@ export default function PaymentSuccessPage() {
         </h1>
         <p className="mx-auto mt-3 max-w-[500px] text-sm font-semibold leading-6 text-[#64748B]">
           {isPremium
-            ? 'Backend đã nhận webhook PayOS và tài khoản Pro đang hoạt động.'
-            : 'Thanh toán đã quay về Mascoteach. Trang này chỉ refresh trạng thái từ backend, không tự cấp Pro.'}
+            ? 'Tài khoản Pro của bạn đang hoạt động.'
+            : 'Mascoteach đang cập nhật trạng thái thanh toán. Vui lòng chờ trong giây lát.'}
         </p>
 
         {orderCode && (
@@ -86,7 +86,7 @@ export default function PaymentSuccessPage() {
         {loading || stillChecking ? (
           <div className="mx-auto mt-5 inline-flex items-center gap-2 rounded-full bg-[#F5F8FC] px-4 py-2 text-sm font-black text-[#64748B]">
             <Loader2 className="h-4 w-4 animate-spin" />
-            Đang kiểm tra lần {Math.max(attempts, 1)}/{MAX_ATTEMPTS}
+            Đang kiểm tra {Math.max(attempts, 1)}/{MAX_ATTEMPTS}
           </div>
         ) : null}
 
@@ -115,7 +115,7 @@ export default function PaymentSuccessPage() {
 
         {!isPremium && attempts >= MAX_ATTEMPTS && !error && (
           <p className="mt-5 rounded-[10px] border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
-            Webhook PayOS có thể chưa xử lý xong. Vui lòng kiểm tra lại ở trang billing sau ít phút.
+            Nếu gói Pro chưa cập nhật, vui lòng kiểm tra lại sau ít phút hoặc liên hệ hỗ trợ.
           </p>
         )}
 

@@ -272,7 +272,7 @@ export default function PricingTable() {
 
         <div className="mx-auto mt-7 flex max-w-fit items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-[#64748B]">
           <ShieldCheck className="h-4 w-4 text-brand-blue" />
-          Pro chỉ được kích hoạt sau khi backend nhận webhook PayOS thành công.
+          Gói Pro sẽ được cập nhật tự động sau khi thanh toán được xác nhận.
         </div>
       </div>
     </section>

@@ -50,7 +50,7 @@ export default function PaymentCancelPage() {
         </h1>
         <p className="mx-auto mt-3 max-w-[460px] text-sm font-semibold leading-6 text-[#64748B]">
           {shouldCancel
-            ? 'Mascoteach đã nhận callback hủy từ PayOS và gọi backend để cập nhật trạng thái đơn.'
+            ? 'Đơn thanh toán PayOS của bạn đã được ghi nhận là đã hủy.'
             : 'Không có thông tin hủy hợp lệ trong đường dẫn PayOS.'}
         </p>
 
