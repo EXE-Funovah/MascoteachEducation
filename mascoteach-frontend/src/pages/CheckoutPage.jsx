@@ -14,25 +14,13 @@ import { cn } from '@/lib/utils';
 
 const PAYOS_ELEMENT_ID = 'payos-embedded-checkout';
 
-function getPayOsReturnUrl() {
-  if (import.meta.env.VITE_PAYOS_RETURN_URL) {
-    return import.meta.env.VITE_PAYOS_RETURN_URL;
+function getFallbackPayOsReturnUrl() {
+  const configuredReturnUrl = import.meta.env.VITE_PAYOS_RETURN_URL?.trim();
+  if (configuredReturnUrl) {
+    return configuredReturnUrl;
   }
 
-  const hostname = window.location.hostname;
-  if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '0.0.0.0') {
-    return 'https://mascoteach.com/payment/success';
-  }
-
-  if (hostname.startsWith('dev.') || hostname.startsWith('dev-') || hostname.includes('-git-') || hostname.endsWith('.vercel.app')) {
-    return 'https://dev.mascoteach.com/payment/success';
-  }
-
-  if (hostname === 'www.mascoteach.com') {
-    return 'https://mascoteach.com/payment/success';
-  }
-
-  return `${window.location.origin}/payment/success`;
+  return `${window.location.origin}/checkout`;
 }
 
 function formatCurrency(amount, currency = 'VND') {
@@ -85,11 +73,11 @@ function getPlanMeta(planCode, billingPlan = null) {
   };
 }
 
-function PayOsEmbeddedCheckout({ checkoutUrl, orderCode, onExit }) {
+function PayOsEmbeddedCheckout({ checkoutUrl, orderCode, returnUrl, onExit }) {
   const navigate = useNavigate();
-  const returnUrl = getPayOsReturnUrl();
+  const payOsReturnUrl = returnUrl || getFallbackPayOsReturnUrl();
   const { open, exit } = usePayOS({
-    RETURN_URL: returnUrl,
+    RETURN_URL: payOsReturnUrl,
     ELEMENT_ID: PAYOS_ELEMENT_ID,
     CHECKOUT_URL: checkoutUrl,
     embedded: true,
@@ -97,7 +85,7 @@ function PayOsEmbeddedCheckout({ checkoutUrl, orderCode, onExit }) {
       navigate(`/payment/success?orderCode=${orderCode}`, { replace: true });
     },
     onCancel: () => {
-      navigate(`/payment/cancel?cancel=true&status=CANCELLED&orderCode=${orderCode}`, { replace: true });
+      navigate(`/checkout/cancel?cancel=true&status=CANCELLED&orderCode=${orderCode}`, { replace: true });
     },
     onExit,
   });
@@ -125,8 +113,14 @@ function PayOsEmbeddedCheckout({ checkoutUrl, orderCode, onExit }) {
 
 export default function CheckoutPage() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const { user } = useAuth();
-  const planCode = useMemo(() => getPlanCode(searchParams.get('plan')), [searchParams]);
+  const planParam = searchParams.get('plan');
+  const payOsOrderCode = searchParams.get('orderCode');
+  const payOsStatus = searchParams.get('status');
+  const payOsCancel = searchParams.get('cancel');
+  const isPayOsReturn = Boolean(payOsOrderCode && !planParam);
+  const planCode = useMemo(() => getPlanCode(planParam), [planParam]);
   const [billingPlans, setBillingPlans] = useState(() => ({
     [BILLING_PLAN_CODES.monthly]: normalizePlan(BILLING_PLAN_FALLBACKS.PRO_MONTHLY),
     [BILLING_PLAN_CODES.yearly]: normalizePlan(BILLING_PLAN_FALLBACKS.PRO_YEARLY),
@@ -144,6 +138,17 @@ export default function CheckoutPage() {
   const [error, setError] = useState('');
   const [frameClosed, setFrameClosed] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+
+  useEffect(() => {
+    if (!isPayOsReturn) return;
+
+    const query = searchParams.toString();
+    const targetPath = payOsCancel === 'true' || payOsStatus === 'CANCELLED'
+      ? '/checkout/cancel'
+      : '/payment/success';
+
+    navigate(`${targetPath}${query ? `?${query}` : ''}`, { replace: true });
+  }, [isPayOsReturn, navigate, payOsCancel, payOsStatus, searchParams]);
 
   useEffect(() => {
     let cancelled = false;
@@ -172,6 +177,8 @@ export default function CheckoutPage() {
   }, []);
 
   useEffect(() => {
+    if (isPayOsReturn) return undefined;
+
     let cancelled = false;
 
     async function loadPaymentLink() {
@@ -186,13 +193,23 @@ export default function CheckoutPage() {
         const orderCode = response?.orderCode ?? response?.OrderCode;
         const amount = response?.amount ?? response?.Amount;
         const responsePlanCode = response?.planCode ?? response?.PlanCode;
+        const returnUrl = response?.returnUrl ?? response?.ReturnUrl;
+        const cancelUrl = response?.cancelUrl ?? response?.CancelUrl;
 
         if (!checkoutUrl || !orderCode) {
           throw new Error('Không thể tạo đơn thanh toán. Vui lòng thử lại.');
         }
 
         if (!cancelled) {
-          setPaymentLink({ ...response, checkoutUrl, orderCode, amount, planCode: responsePlanCode || planCode });
+          setPaymentLink({
+            ...response,
+            checkoutUrl,
+            orderCode,
+            amount,
+            planCode: responsePlanCode || planCode,
+            returnUrl,
+            cancelUrl,
+          });
         }
       } catch (err) {
         if (!cancelled) {
@@ -207,7 +224,7 @@ export default function CheckoutPage() {
     return () => {
       cancelled = true;
     };
-  }, [planCode, reloadKey]);
+  }, [isPayOsReturn, planCode, reloadKey]);
 
   function selectPlan(planId) {
     setSearchParams({ plan: planId });
@@ -353,6 +370,7 @@ export default function CheckoutPage() {
                       key={`${paymentLink.orderCode}-${paymentLink.checkoutUrl}`}
                       checkoutUrl={paymentLink.checkoutUrl}
                       orderCode={paymentLink.orderCode}
+                      returnUrl={paymentLink.returnUrl}
                       onExit={() => setFrameClosed(true)}
                     />
                   )}

@@ -59,6 +59,14 @@ export default function App() {
           }
         />
         <Route
+          path="/checkout/cancel"
+          element={
+            <ProtectedRoute allowedRoles={['Teacher']}>
+              <PaymentCancelPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/payment/cancel"
           element={
             <ProtectedRoute allowedRoles={['Teacher']}>
