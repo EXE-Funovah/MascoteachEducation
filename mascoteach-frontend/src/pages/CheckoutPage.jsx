@@ -15,13 +15,15 @@ import { cn } from '@/lib/utils';
 const PAYOS_ELEMENT_ID = 'payos-embedded-checkout';
 const PAYOS_HOSTED_PAGE_ORIGIN = 'https://pay.payos.vn';
 
-function getFallbackPayOsReturnUrl() {
+function getPayOsReturnUrl() {
   const configuredReturnUrl = import.meta.env.VITE_PAYOS_RETURN_URL?.trim();
-  if (configuredReturnUrl) {
+  const currentCheckoutUrl = `${window.location.origin}/checkout`;
+
+  if (configuredReturnUrl === currentCheckoutUrl) {
     return configuredReturnUrl;
   }
 
-  return `${window.location.origin}/checkout`;
+  return currentCheckoutUrl;
 }
 
 function formatCurrency(amount, currency = 'VND') {
@@ -100,9 +102,9 @@ function getPlanMeta(planCode, billingPlan = null) {
   };
 }
 
-function PayOsEmbeddedCheckout({ checkoutUrl, orderCode, returnUrl, onExit }) {
+function PayOsEmbeddedCheckout({ checkoutUrl, orderCode, onExit }) {
   const navigate = useNavigate();
-  const payOsReturnUrl = returnUrl || getFallbackPayOsReturnUrl();
+  const payOsReturnUrl = getPayOsReturnUrl();
   const { open, exit } = usePayOS({
     RETURN_URL: payOsReturnUrl,
     ELEMENT_ID: PAYOS_ELEMENT_ID,
@@ -128,7 +130,7 @@ function PayOsEmbeddedCheckout({ checkoutUrl, orderCode, returnUrl, onExit }) {
         exit();
       }
     };
-  }, [checkoutUrl, open, exit]);
+  }, [checkoutUrl]);
 
   return (
     <div
@@ -220,7 +222,6 @@ export default function CheckoutPage() {
         const orderCode = response?.orderCode ?? response?.OrderCode;
         const amount = response?.amount ?? response?.Amount;
         const responsePlanCode = response?.planCode ?? response?.PlanCode;
-        const returnUrl = response?.returnUrl ?? response?.ReturnUrl;
         const cancelUrl = response?.cancelUrl ?? response?.CancelUrl;
 
         if (!checkoutUrl || !orderCode) {
@@ -234,7 +235,6 @@ export default function CheckoutPage() {
             orderCode,
             amount,
             planCode: responsePlanCode || planCode,
-            returnUrl,
             cancelUrl,
           });
         }
@@ -397,7 +397,6 @@ export default function CheckoutPage() {
                       key={`${paymentLink.orderCode}-${paymentLink.checkoutUrl}`}
                       checkoutUrl={paymentLink.checkoutUrl}
                       orderCode={paymentLink.orderCode}
-                      returnUrl={paymentLink.returnUrl}
                       onExit={() => setFrameClosed(true)}
                     />
                   )}
