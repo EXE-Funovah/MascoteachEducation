@@ -15,15 +15,18 @@ import { cn } from '@/lib/utils';
 const PAYOS_ELEMENT_ID = 'payos-embedded-checkout';
 const PAYOS_HOSTED_PAGE_ORIGIN = 'https://pay.payos.vn';
 
-function getPayOsReturnUrl() {
-  const configuredReturnUrl = import.meta.env.VITE_PAYOS_RETURN_URL?.trim();
-  const currentCheckoutUrl = `${window.location.origin}/checkout`;
+function getPayOsReturnUrl(returnUrl) {
+  const backendReturnUrl = returnUrl?.trim();
+  if (backendReturnUrl) {
+    return backendReturnUrl;
+  }
 
-  if (configuredReturnUrl === currentCheckoutUrl) {
+  const configuredReturnUrl = import.meta.env.VITE_PAYOS_RETURN_URL?.trim();
+  if (configuredReturnUrl) {
     return configuredReturnUrl;
   }
 
-  return currentCheckoutUrl;
+  return `${window.location.origin}/checkout`;
 }
 
 function formatCurrency(amount, currency = 'VND') {
@@ -102,9 +105,9 @@ function getPlanMeta(planCode, billingPlan = null) {
   };
 }
 
-function PayOsEmbeddedCheckout({ checkoutUrl, orderCode, onExit }) {
+function PayOsEmbeddedCheckout({ checkoutUrl, orderCode, returnUrl, onExit }) {
   const navigate = useNavigate();
-  const payOsReturnUrl = getPayOsReturnUrl();
+  const payOsReturnUrl = getPayOsReturnUrl(returnUrl);
   const { open, exit } = usePayOS({
     RETURN_URL: payOsReturnUrl,
     ELEMENT_ID: PAYOS_ELEMENT_ID,
@@ -222,6 +225,7 @@ export default function CheckoutPage() {
         const orderCode = response?.orderCode ?? response?.OrderCode;
         const amount = response?.amount ?? response?.Amount;
         const responsePlanCode = response?.planCode ?? response?.PlanCode;
+        const returnUrl = response?.returnUrl ?? response?.ReturnUrl;
         const cancelUrl = response?.cancelUrl ?? response?.CancelUrl;
 
         if (!checkoutUrl || !orderCode) {
@@ -235,6 +239,7 @@ export default function CheckoutPage() {
             orderCode,
             amount,
             planCode: responsePlanCode || planCode,
+            returnUrl,
             cancelUrl,
           });
         }
@@ -397,6 +402,7 @@ export default function CheckoutPage() {
                       key={`${paymentLink.orderCode}-${paymentLink.checkoutUrl}`}
                       checkoutUrl={paymentLink.checkoutUrl}
                       orderCode={paymentLink.orderCode}
+                      returnUrl={paymentLink.returnUrl}
                       onExit={() => setFrameClosed(true)}
                     />
                   )}
