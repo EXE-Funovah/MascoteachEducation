@@ -1,6 +1,7 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import {
     ArrowUpRight,
+    CreditCard,
     History,
     Home,
     Library,
@@ -13,6 +14,7 @@ const mainItems = [
     { to: '/teacher', icon: Home, label: 'Trang chủ', end: true },
     { to: '/teacher/library', icon: Library, label: 'Thư viện của tôi' },
     { to: '/teacher/sessions', icon: History, label: 'Lịch sử buổi học' },
+    { to: '/teacher/billing', icon: CreditCard, label: 'Billing' },
 ];
 
 export default function Sidebar() {
@@ -51,8 +53,8 @@ export default function Sidebar() {
                     ))}
                 </nav>
 
-                <button
-                    type="button"
+                <NavLink
+                    to="/pricing"
                     className="group absolute bottom-[88px] left-5 right-5 flex min-h-[62px] items-center justify-between gap-2 overflow-hidden rounded-[20px] border border-brand-light/70 bg-[#edf7fd] px-3 text-left shadow-[0_16px_36px_rgba(43,122,181,0.16),inset_0_1px_0_rgba(255,255,255,0.96)] transition-all duration-300 before:absolute before:inset-y-[-10px] before:left-[-48%] before:w-[34%] before:-skew-x-12 before:bg-gradient-to-r before:from-transparent before:via-white before:to-transparent before:opacity-0 before:blur-[1px] before:transition-all before:duration-700 hover:-translate-y-0.5 hover:border-brand-mid/70 hover:bg-[#e5f3fb] hover:shadow-[0_22px_48px_rgba(43,122,181,0.24),inset_0_1px_0_rgba(255,255,255,1)] hover:before:left-[124%] hover:before:opacity-90 active:translate-y-0"
                     aria-label="Nâng cấp PRO"
                 >
@@ -67,7 +69,7 @@ export default function Sidebar() {
                     <span className="relative z-10 grid h-9 w-9 flex-none place-items-center rounded-full bg-white text-black shadow-[0_10px_24px_rgba(15,23,42,0.11)] transition-all duration-300 group-hover:scale-105">
                         <ArrowUpRight className="h-5 w-5" strokeWidth={3} />
                     </span>
-                </button>
+                </NavLink>
 
                 <button
                     onClick={logout}

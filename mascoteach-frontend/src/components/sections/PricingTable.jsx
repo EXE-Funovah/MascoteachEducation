@@ -1,7 +1,15 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Check, Sparkle, ShieldCheck } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 import { PRICING_PLANS } from '@/lib/pricingData';
+import {
+  BILLING_PLAN_CODES,
+  BILLING_PLAN_FALLBACKS,
+  getBillingPlans,
+  normalizePlan,
+} from '@/services/billingService';
 import { cn } from '@/lib/utils';
 
 const cardTone = {
@@ -12,24 +20,32 @@ const cardTone = {
     muted: 'text-[#64748B]',
     border: 'border-[#1E293B]',
     badgeBg: 'bg-[#F0F7FF]',
-    divider: 'border-[#D8E8FC]',
+    divider: 'border-brand-light/50',
     check: 'bg-[#1E293B] text-white',
     cta: 'bg-[#1E293B] text-white shadow-[0_14px_34px_rgba(30,41,59,0.22)] hover:bg-[#0F172A]',
     note: 'text-[#0B6FB8]',
   },
   pro: {
-    card: 'border border-[#8CBDFC] bg-[#EAF4FF]',
-    glow: 'shadow-[0_28px_82px_rgba(93,156,236,0.20)]',
+    card: 'border border-brand-light/80 bg-surface-blue',
+    glow: 'shadow-[0_28px_82px_rgba(43,122,181,0.16)]',
     text: 'text-[#1E293B]',
     muted: 'text-[#52657D]',
-    border: 'border-[#5D9CEC]',
+    border: 'border-brand-blue',
     badgeBg: 'bg-white/62',
-    divider: 'border-[#BFD8FA]',
-    check: 'bg-[#5D9CEC] text-white',
-    cta: 'bg-[#5D9CEC] text-white shadow-[0_16px_36px_rgba(93,156,236,0.26)] hover:bg-[#4A8DDF]',
-    note: 'text-[#0B6FB8]',
+    divider: 'border-brand-light/70',
+    check: 'bg-brand-blue text-white',
+    cta: 'bg-brand-blue text-white shadow-[0_16px_36px_rgba(43,122,181,0.26)] hover:bg-brand-navy',
+    note: 'text-brand-blue',
   },
 };
+
+function formatCurrency(amount, currency = 'VND') {
+  return new Intl.NumberFormat('vi-VN', {
+    style: 'currency',
+    currency,
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
 
 function BillingToggle({ billing, setBilling }) {
   const yearly = billing === 'yearly';
@@ -50,7 +66,7 @@ function BillingToggle({ billing, setBilling }) {
           role="switch"
           aria-checked={yearly}
           aria-label="Chuyển chu kỳ thanh toán"
-          className="relative h-7 w-14 rounded-full bg-[#5D9CEC] p-1 shadow-[inset_0_1px_2px_rgba(15,23,42,0.12),0_8px_18px_rgba(93,156,236,0.24)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#5D9CEC]/30"
+          className="relative h-7 w-14 rounded-full bg-brand-blue p-1 shadow-[inset_0_1px_2px_rgba(15,23,42,0.12),0_8px_18px_rgba(43,122,181,0.24)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-blue/30"
           onClick={() => setBilling(yearly ? 'monthly' : 'yearly')}
         >
           <span
@@ -73,11 +89,17 @@ function BillingToggle({ billing, setBilling }) {
   );
 }
 
-function PricingCard({ plan, billing, index }) {
+function PricingCard({ plan, billing, index, billingPlans, onUpgrade }) {
   const tone = cardTone[plan.tone] || cardTone.free;
-  const price = billing === 'yearly' ? plan.yearlyPriceLabel : plan.monthlyPriceLabel;
+  const selectedPlanCode = billing === 'yearly' ? BILLING_PLAN_CODES.yearly : BILLING_PLAN_CODES.monthly;
+  const selectedBillingPlan = billingPlans[selectedPlanCode];
+  const price = plan.id === 'pro' && selectedBillingPlan
+    ? formatCurrency(billing === 'yearly' ? Math.round(selectedBillingPlan.amount / 12) : selectedBillingPlan.amount, selectedBillingPlan.currency)
+    : billing === 'yearly' ? plan.yearlyPriceLabel : plan.monthlyPriceLabel;
   const unit = billing === 'yearly' ? plan.yearlyUnit : plan.monthlyUnit;
-  const billingNote = billing === 'yearly' ? plan.yearlyBillingNote : plan.monthlyBillingNote;
+  const billingNote = plan.id === 'pro' && selectedBillingPlan && billing === 'yearly'
+    ? `Thanh toán ${formatCurrency(selectedBillingPlan.amount, selectedBillingPlan.currency)}/năm`
+    : billing === 'yearly' ? plan.yearlyBillingNote : plan.monthlyBillingNote;
 
   return (
     <motion.article
@@ -142,12 +164,22 @@ function PricingCard({ plan, billing, index }) {
           ))}
         </ul>
 
-        <a
-          href={plan.href}
-          className={cn('mt-auto inline-flex h-12 w-full items-center justify-center rounded-[7px] px-5 text-sm font-extrabold transition duration-300 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#5D9CEC]/35', tone.cta)}
-        >
-          {plan.cta}
-        </a>
+        {plan.id === 'pro' ? (
+          <button
+            type="button"
+            className={cn('mt-auto inline-flex h-12 w-full items-center justify-center gap-2 rounded-[7px] px-5 text-sm font-extrabold transition duration-300 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-blue/35', tone.cta)}
+            onClick={() => onUpgrade(selectedPlanCode)}
+          >
+            {plan.cta}
+          </button>
+        ) : (
+          <Link
+            to={plan.href}
+            className={cn('mt-auto inline-flex h-12 w-full items-center justify-center rounded-[7px] px-5 text-sm font-extrabold transition duration-300 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-blue/35', tone.cta)}
+          >
+            {plan.cta}
+          </Link>
+        )}
       </div>
     </motion.article>
   );
@@ -155,9 +187,53 @@ function PricingCard({ plan, billing, index }) {
 
 export default function PricingTable() {
   const [billing, setBilling] = useState('yearly');
+  const [billingPlans, setBillingPlans] = useState(() => ({
+    PRO_MONTHLY: normalizePlan(BILLING_PLAN_FALLBACKS.PRO_MONTHLY),
+    PRO_YEARLY: normalizePlan(BILLING_PLAN_FALLBACKS.PRO_YEARLY),
+  }));
+  const { isLoggedIn, loading } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadPlans() {
+      try {
+        const plans = await getBillingPlans();
+        if (cancelled || plans.length === 0) return;
+
+        setBillingPlans((current) => {
+          const next = { ...current };
+          plans.forEach((plan) => {
+            if (plan.planCode) next[plan.planCode] = plan;
+          });
+          return next;
+        });
+      } catch {
+        // Pricing is public; unauthenticated visitors use the local fallback prices.
+      }
+    }
+
+    loadPlans();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  function handleUpgrade(planCode) {
+    const plan = planCode === BILLING_PLAN_CODES.yearly ? 'yearly' : 'monthly';
+    const checkoutPath = `/checkout?plan=${plan}`;
+
+    if (!loading && !isLoggedIn) {
+      navigate('/signin', { state: { from: { pathname: checkoutPath } } });
+      return;
+    }
+
+    navigate(checkoutPath);
+  }
 
   return (
-    <section id="pricing" className="relative overflow-hidden bg-[#F8FBFF] pb-20 pt-14 text-[#1E293B] md:pb-24 md:pt-16" aria-label="Bảng giá">
+    <section id="pricing" className="relative overflow-hidden bg-surface-blue pb-20 pt-14 text-[#1E293B] md:pb-24 md:pt-16" aria-label="Bảng giá">
       <div className="mx-auto max-w-[1200px] px-5 md:px-8">
         <motion.div
           className="mx-auto max-w-[760px] text-center"
@@ -183,13 +259,20 @@ export default function PricingTable() {
 
         <div className="mt-10 grid gap-8 lg:grid-cols-2">
           {PRICING_PLANS.map((plan, index) => (
-            <PricingCard key={plan.id} plan={plan} billing={billing} index={index} />
+            <PricingCard
+              key={plan.id}
+              plan={plan}
+              billing={billing}
+              index={index}
+              billingPlans={billingPlans}
+              onUpgrade={handleUpgrade}
+            />
           ))}
         </div>
 
         <div className="mx-auto mt-7 flex max-w-fit items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-[#64748B]">
-          <ShieldCheck className="h-4 w-4 text-[#5D9CEC]" />
-          Bạn có thể nâng cấp, hạ cấp hoặc hủy bất kỳ lúc nào.
+          <ShieldCheck className="h-4 w-4 text-brand-blue" />
+          Pro chỉ được kích hoạt sau khi backend nhận webhook PayOS thành công.
         </div>
       </div>
     </section>

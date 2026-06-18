@@ -3,6 +3,9 @@ import Home from '@/pages/Home';
 import MarketingPlaceholderPage from '@/pages/MarketingPlaceholderPage';
 import PricingPage from '@/pages/PricingPage';
 import CheckoutPage from '@/pages/CheckoutPage';
+import PaymentSuccessPage from '@/pages/PaymentSuccessPage';
+import PaymentCancelPage from '@/pages/PaymentCancelPage';
+import AccountBillingPage from '@/pages/AccountBillingPage';
 import LoginPage from '@/pages/LoginPage';
 import SignUpPage from '@/pages/SignUpPage';
 import ForgotPasswordPage from '@/pages/ForgotPasswordPage';
@@ -39,7 +42,38 @@ export default function App() {
         <Route path="/product" element={<MarketingPlaceholderPage type="product" />} />
         <Route path="/features" element={<MarketingPlaceholderPage type="features" />} />
         <Route path="/pricing" element={<PricingPage />} />
-        <Route path="/checkout" element={<CheckoutPage />} />
+        <Route
+          path="/checkout"
+          element={
+            <ProtectedRoute allowedRoles={['Teacher']}>
+              <CheckoutPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/payment/success"
+          element={
+            <ProtectedRoute allowedRoles={['Teacher']}>
+              <PaymentSuccessPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/payment/cancel"
+          element={
+            <ProtectedRoute allowedRoles={['Teacher']}>
+              <PaymentCancelPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/account/billing"
+          element={
+            <ProtectedRoute allowedRoles={['Teacher']}>
+              <AccountBillingPage />
+            </ProtectedRoute>
+          }
+        />
         <Route path="/signin" element={<LoginPage />} />
         <Route path="/register" element={<SignUpPage />} />
         <Route path="/login" element={<LoginPage />} />
@@ -59,6 +93,7 @@ export default function App() {
           <Route index element={<HomePage />} />
           <Route path="library" element={<LibraryPage />} />
           <Route path="sessions" element={<SessionsPage />} />
+          <Route path="billing" element={<AccountBillingPage />} />
           <Route path="quiz-settings" element={<QuizSettingsPage />} />
           <Route path="quiz-preview" element={<QuizPreviewPage />} />
         </Route>
@@ -69,6 +104,7 @@ export default function App() {
               <Route index element={<HomePage />} />
               <Route path="library" element={<LibraryPage />} />
               <Route path="sessions" element={<SessionsPage />} />
+              <Route path="billing" element={<AccountBillingPage />} />
               <Route path="quiz-settings" element={<QuizSettingsPage />} />
               <Route path="quiz-preview" element={<QuizPreviewPage />} />
             </Route>
