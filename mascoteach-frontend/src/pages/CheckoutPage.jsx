@@ -7,11 +7,33 @@ import {
   BILLING_PLAN_CODES,
   BILLING_PLAN_FALLBACKS,
   createPaymentLink,
+  getBillingPlans,
   normalizePlan,
 } from '@/services/billingService';
 import { cn } from '@/lib/utils';
 
 const PAYOS_ELEMENT_ID = 'payos-embedded-checkout';
+
+function getPayOsReturnUrl() {
+  if (import.meta.env.VITE_PAYOS_RETURN_URL) {
+    return import.meta.env.VITE_PAYOS_RETURN_URL;
+  }
+
+  const hostname = window.location.hostname;
+  if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '0.0.0.0') {
+    return 'https://mascoteach.com/payment/success';
+  }
+
+  if (hostname.startsWith('dev.') || hostname.startsWith('dev-') || hostname.includes('-git-') || hostname.endsWith('.vercel.app')) {
+    return 'https://dev.mascoteach.com/payment/success';
+  }
+
+  if (hostname === 'www.mascoteach.com') {
+    return 'https://mascoteach.com/payment/success';
+  }
+
+  return `${window.location.origin}/payment/success`;
+}
 
 function formatCurrency(amount, currency = 'VND') {
   return new Intl.NumberFormat('vi-VN', {
@@ -26,16 +48,13 @@ function getPlanCode(planParam) {
   return BILLING_PLAN_CODES.monthly;
 }
 
-function getPlanKey(planCode) {
-  return planCode === BILLING_PLAN_CODES.yearly ? 'yearly' : 'monthly';
-}
-
-function getPlanMeta(planCode) {
-  const fallback = normalizePlan(
+function getPlanMeta(planCode, billingPlan = null) {
+  const fallback = billingPlan || normalizePlan(
     planCode === BILLING_PLAN_CODES.yearly
       ? BILLING_PLAN_FALLBACKS.PRO_YEARLY
       : BILLING_PLAN_FALLBACKS.PRO_MONTHLY
   );
+  const yearlyMonthlyEquivalent = Math.round(fallback.amount / 12);
 
   if (planCode === BILLING_PLAN_CODES.yearly) {
     return {
@@ -43,8 +62,10 @@ function getPlanMeta(planCode) {
       id: 'yearly',
       label: 'Gói năm',
       description: 'Thanh toán một lần, tiết kiệm hơn cho cả năm học.',
-      priceLabel: formatCurrency(99000),
+      priceLabel: formatCurrency(yearlyMonthlyEquivalent, fallback.currency),
       unit: '/ tháng',
+      totalLabel: formatCurrency(fallback.amount, fallback.currency),
+      totalUnit: '/ năm',
       note: `Thanh toán ${formatCurrency(fallback.amount, fallback.currency)}/năm`,
       totalNote: '365 ngày sử dụng Pro',
     };
@@ -57,6 +78,8 @@ function getPlanMeta(planCode) {
     description: 'Phù hợp khi lớp học cần dùng linh hoạt.',
     priceLabel: formatCurrency(fallback.amount, fallback.currency),
     unit: '/ tháng',
+    totalLabel: formatCurrency(fallback.amount, fallback.currency),
+    totalUnit: '/ tháng',
     note: 'Gia hạn theo tháng',
     totalNote: '30 ngày sử dụng Pro',
   };
@@ -64,7 +87,7 @@ function getPlanMeta(planCode) {
 
 function PayOsEmbeddedCheckout({ checkoutUrl, orderCode, onExit }) {
   const navigate = useNavigate();
-  const returnUrl = `${window.location.origin}/payment/success`;
+  const returnUrl = getPayOsReturnUrl();
   const { open, exit } = usePayOS({
     RETURN_URL: returnUrl,
     ELEMENT_ID: PAYOS_ELEMENT_ID,
@@ -104,16 +127,49 @@ export default function CheckoutPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
   const planCode = useMemo(() => getPlanCode(searchParams.get('plan')), [searchParams]);
-  const selectedPlan = useMemo(() => getPlanMeta(planCode), [planCode]);
+  const [billingPlans, setBillingPlans] = useState(() => ({
+    [BILLING_PLAN_CODES.monthly]: normalizePlan(BILLING_PLAN_FALLBACKS.PRO_MONTHLY),
+    [BILLING_PLAN_CODES.yearly]: normalizePlan(BILLING_PLAN_FALLBACKS.PRO_YEARLY),
+  }));
+  const selectedPlan = useMemo(() => getPlanMeta(planCode, billingPlans[planCode]), [billingPlans, planCode]);
   const plans = useMemo(
-    () => [getPlanMeta(BILLING_PLAN_CODES.monthly), getPlanMeta(BILLING_PLAN_CODES.yearly)],
-    []
+    () => [
+      getPlanMeta(BILLING_PLAN_CODES.monthly, billingPlans[BILLING_PLAN_CODES.monthly]),
+      getPlanMeta(BILLING_PLAN_CODES.yearly, billingPlans[BILLING_PLAN_CODES.yearly]),
+    ],
+    [billingPlans]
   );
   const [paymentLink, setPaymentLink] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [frameClosed, setFrameClosed] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadPlans() {
+      try {
+        const plans = await getBillingPlans();
+        if (cancelled || plans.length === 0) return;
+
+        setBillingPlans((current) => {
+          const next = { ...current };
+          plans.forEach((plan) => {
+            if (plan.planCode) next[plan.planCode] = plan;
+          });
+          return next;
+        });
+      } catch {
+        // Keep local fallback prices if plan lookup is unavailable.
+      }
+    }
+
+    loadPlans();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -128,13 +184,15 @@ export default function CheckoutPage() {
         const response = await createPaymentLink(planCode);
         const checkoutUrl = response?.checkoutUrl ?? response?.CheckoutUrl;
         const orderCode = response?.orderCode ?? response?.OrderCode;
+        const amount = response?.amount ?? response?.Amount;
+        const responsePlanCode = response?.planCode ?? response?.PlanCode;
 
         if (!checkoutUrl || !orderCode) {
           throw new Error('Không thể tạo đơn thanh toán. Vui lòng thử lại.');
         }
 
         if (!cancelled) {
-          setPaymentLink({ ...response, checkoutUrl, orderCode });
+          setPaymentLink({ ...response, checkoutUrl, orderCode, amount, planCode: responsePlanCode || planCode });
         }
       } catch (err) {
         if (!cancelled) {
@@ -154,6 +212,11 @@ export default function CheckoutPage() {
   function selectPlan(planId) {
     setSearchParams({ plan: planId });
   }
+
+  const payableAmount = paymentLink?.planCode === planCode && paymentLink?.amount
+    ? paymentLink.amount
+    : selectedPlan.amount;
+  const totalLabel = formatCurrency(payableAmount, selectedPlan.currency);
 
   return (
     <main className="min-h-[100dvh] bg-gradient-subtle px-4 py-7 text-[#24282E] sm:px-6 lg:px-10">
@@ -308,8 +371,8 @@ export default function CheckoutPage() {
                 </p>
               </div>
               <div className="text-right">
-                <p className="text-3xl font-black text-[#24282E]">{selectedPlan.priceLabel}</p>
-                <p className="text-sm font-semibold text-[#64748B]">{selectedPlan.unit}</p>
+                <p className="text-3xl font-black text-[#24282E]">{totalLabel}</p>
+                <p className="text-sm font-semibold text-[#64748B]">{selectedPlan.totalUnit}</p>
               </div>
             </div>
 
