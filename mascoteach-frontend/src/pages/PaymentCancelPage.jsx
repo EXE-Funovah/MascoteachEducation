@@ -71,7 +71,7 @@ export default function PaymentCancelPage() {
           <Link to="/pricing" className="inline-flex h-11 items-center justify-center rounded-[10px] bg-brand-blue px-5 text-sm font-black text-white hover:bg-brand-navy">
             Chọn lại gói
           </Link>
-          <Link to="/account/billing" className="inline-flex h-11 items-center justify-center rounded-[10px] border border-[#CAD2DC] bg-white px-5 text-sm font-black text-[#1E293B]">
+          <Link to="/teacher/billing" className="inline-flex h-11 items-center justify-center rounded-[10px] border border-[#CAD2DC] bg-white px-5 text-sm font-black text-[#1E293B]">
             Xem billing
           </Link>
         </div>

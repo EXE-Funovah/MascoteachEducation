@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { usePayOS } from '@payos/payos-checkout';
-import { ArrowLeft, Clock3, Loader2, QrCode, RefreshCw, ShieldCheck, XCircle } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, Clock3, Loader2, QrCode, RefreshCw, ShieldCheck, XCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   BILLING_PLAN_CODES,
@@ -195,6 +195,7 @@ export default function CheckoutPage() {
   const [paymentLinkRemainingMs, setPaymentLinkRemainingMs] = useState(0);
   const [cancelLoading, setCancelLoading] = useState(false);
   const [cancelError, setCancelError] = useState('');
+  const [confirmCancelOpen, setConfirmCancelOpen] = useState(false);
   const lastAutoRefreshKeyRef = useRef('');
 
   useEffect(() => {
@@ -325,6 +326,7 @@ export default function CheckoutPage() {
 
     setCancelLoading(true);
     setCancelError('');
+    setConfirmCancelOpen(false);
 
     try {
       await cancelPaymentOrder(paymentLink.orderCode);
@@ -511,7 +513,7 @@ export default function CheckoutPage() {
                 <button
                   type="button"
                   className="inline-flex h-9 items-center justify-center gap-2 rounded-[9px] border border-rose-200 bg-white px-3 text-sm font-black text-rose-600 transition hover:border-rose-300 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
-                  onClick={cancelCurrentPayment}
+                  onClick={() => setConfirmCancelOpen(true)}
                   disabled={cancelLoading}
                 >
                   {cancelLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />}
@@ -533,6 +535,46 @@ export default function CheckoutPage() {
           </div>
         </div>
       </section>
+
+      {confirmCancelOpen && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/45 px-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="cancel-payment-title">
+          <div className="w-full max-w-[440px] rounded-[18px] border border-rose-100 bg-white p-6 shadow-[0_28px_90px_rgba(15,23,42,0.24)]">
+            <div className="flex items-start gap-4">
+              <div className="grid h-11 w-11 flex-none place-items-center rounded-full bg-rose-50 text-rose-600">
+                <AlertTriangle className="h-6 w-6" />
+              </div>
+              <div>
+                <h2 id="cancel-payment-title" className="text-xl font-black text-[#22272E]">
+                  Hủy thanh toán?
+                </h2>
+                <p className="mt-2 text-sm font-semibold leading-6 text-[#64748B]">
+                  Đơn hiện tại sẽ được chuyển sang trạng thái Cancelled. Bạn cần tạo mã QR mới nếu muốn thanh toán lại.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                className="inline-flex h-11 items-center justify-center rounded-[10px] border border-[#CAD2DC] bg-white px-5 text-sm font-black text-[#1E293B] transition hover:bg-[#F5F8FC]"
+                onClick={() => setConfirmCancelOpen(false)}
+                disabled={cancelLoading}
+              >
+                Giữ lại
+              </button>
+              <button
+                type="button"
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-[10px] bg-rose-600 px-5 text-sm font-black text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-70"
+                onClick={cancelCurrentPayment}
+                disabled={cancelLoading}
+              >
+                {cancelLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+                Xác nhận hủy
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
