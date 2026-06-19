@@ -3,9 +3,13 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { Ban, Loader2 } from 'lucide-react';
 import { cancelPaymentOrder } from '@/services/billingService';
 
+const CHECKOUT_PLAN_STORAGE_KEY = 'mascoteach_checkout_plan';
+
 export default function PaymentCancelPage() {
   const [searchParams] = useSearchParams();
   const orderCode = searchParams.get('orderCode');
+  const planParam = searchParams.get('plan') || window.sessionStorage.getItem(CHECKOUT_PLAN_STORAGE_KEY) || 'monthly';
+  const nextCheckoutPath = `/checkout?plan=${planParam === 'yearly' ? 'yearly' : 'monthly'}`;
   const isCancelled = searchParams.get('cancel') === 'true';
   const isHandled = searchParams.get('cancel') === 'handled';
   const status = searchParams.get('status');
@@ -99,8 +103,8 @@ export default function PaymentCancelPage() {
             )}
 
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <Link to="/pricing" className="inline-flex h-11 items-center justify-center rounded-[10px] bg-brand-blue px-5 text-sm font-black text-white transition hover:bg-brand-navy active:translate-y-px">
-                Chọn gói khác
+              <Link to={nextCheckoutPath} className="inline-flex h-11 items-center justify-center rounded-[10px] bg-brand-blue px-5 text-sm font-black text-white transition hover:bg-brand-navy active:translate-y-px">
+                Tạo mã mới
               </Link>
               <Link to="/teacher/billing" className="inline-flex h-11 items-center justify-center rounded-[10px] border border-[#CAD2DC] bg-white px-5 text-sm font-black text-[#1E293B] transition hover:bg-[#F5F8FC] active:translate-y-px">
                 Xem thanh toán

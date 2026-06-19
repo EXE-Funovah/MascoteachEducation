@@ -121,7 +121,13 @@ export default function PaymentSuccessPage() {
 
         <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:justify-center">
           <Link to="/teacher/billing" className="inline-flex h-11 items-center justify-center rounded-[10px] bg-brand-blue px-5 text-sm font-black text-white hover:bg-brand-navy">
-            Xem billing
+            Xem thanh toán
+          </Link>
+          <Link
+            to="/teacher"
+            className="inline-flex h-11 items-center justify-center rounded-[10px] border border-[#CAD2DC] bg-white px-5 text-sm font-black text-[#1E293B]"
+          >
+            Vào trang giáo viên
           </Link>
           <button
             type="button"

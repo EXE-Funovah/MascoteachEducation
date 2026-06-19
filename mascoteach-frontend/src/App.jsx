@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Navigate, Routes, Route } from 'react-router-dom';
 import Home from '@/pages/Home';
 import MarketingPlaceholderPage from '@/pages/MarketingPlaceholderPage';
 import PricingPage from '@/pages/PricingPage';
@@ -78,7 +78,7 @@ export default function App() {
           path="/account/billing"
           element={
             <ProtectedRoute allowedRoles={['Teacher']}>
-              <AccountBillingPage />
+              <Navigate to="/teacher/billing" replace />
             </ProtectedRoute>
           }
         />

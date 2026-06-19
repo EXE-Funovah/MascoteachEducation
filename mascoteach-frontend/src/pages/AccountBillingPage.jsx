@@ -104,7 +104,7 @@ export default function AccountBillingPage() {
               <RefreshCw className="h-4 w-4" />
               Làm mới
             </button>
-            <Link to="/pricing" className="inline-flex h-11 items-center justify-center rounded-[10px] bg-brand-blue px-5 text-sm font-black text-white hover:bg-brand-navy">
+            <Link to="/checkout?plan=yearly" className="inline-flex h-11 items-center justify-center rounded-[10px] bg-brand-blue px-5 text-sm font-black text-white hover:bg-brand-navy">
               Nâng cấp Pro
             </Link>
           </div>

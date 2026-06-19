@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { ArrowUpRight, Menu, X } from 'lucide-react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 import { SITE } from '@/lib/constants';
 
 const NAV_ITEMS = [
@@ -16,7 +17,9 @@ const lerp = (from, to, progress) => from + (to - from) * progress;
 
 export default function Header() {
   const location = useLocation();
+  const { user, isLoggedIn, loading, logout } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
   const [collapse, setCollapse] = useState(0);
   const shouldReduceMotion = useReducedMotion();
 
@@ -41,12 +44,22 @@ export default function Header() {
     };
   }, []);
 
+  useEffect(() => {
+    setMobileOpen(false);
+    setAccountOpen(false);
+  }, [location.pathname]);
+
   const navWidth = `${lerp(1148, 820, collapse)}px`;
   const navHeight = `${lerp(64, 58, collapse)}px`;
   const navPadding = `${lerp(18, 10, collapse)}px`;
   const logoScale = lerp(1, 0.88, collapse);
   const logoWidth = '190px';
   const authOpacity = 1 - collapse;
+  const userRole = (user?.role || user?.roleName || '').toLowerCase();
+  const isTeacher = userRole === 'teacher';
+  const portalPath = userRole === 'student' ? '/student' : userRole === 'parent' ? '/parent' : '/teacher';
+  const displayName = user?.fullName || user?.email || 'Tài khoản';
+  const avatarInitial = displayName.trim().charAt(0).toUpperCase() || 'M';
 
   const navLinkClass = ({ isActive }) => [
     'relative rounded-full px-4 py-2 text-[15px] font-semibold transition-colors duration-300',
@@ -98,55 +111,122 @@ export default function Header() {
         </nav>
 
         <div className="hidden shrink-0 items-center md:flex">
-          <Link
-            to="/signin"
-            className="mr-4 inline-flex h-10 items-center justify-center rounded-full px-3 text-[15px] font-semibold text-[#173154]/76 transition-colors duration-300 hover:text-[#6DA6E8]"
-            style={{
-              opacity: authOpacity,
-              transform: `translateX(${lerp(0, 18, collapse)}px)`,
-              pointerEvents: collapse > 0.86 ? 'none' : 'auto',
-              width: `${lerp(86, 0, collapse)}px`,
-            }}
-          >
-            <span className="whitespace-nowrap">Đăng nhập</span>
-          </Link>
+          {!loading && isLoggedIn ? (
+            <div className="relative flex items-center gap-2">
+              <Link
+                to={portalPath}
+                className="inline-flex h-10 items-center justify-center rounded-full px-4 text-[15px] font-semibold text-[#173154]/78 transition-colors duration-300 hover:bg-[#EAF4FF] hover:text-[#173154]"
+              >
+                Trang quản lý
+              </Link>
 
-          <Link
-            to="/register"
-            className="grid h-11 place-items-center overflow-hidden rounded-full bg-[#6DA6E8] text-[15px] font-bold text-white shadow-[0_10px_24px_rgba(109,166,232,0.3)] transition-colors duration-300 hover:bg-[#4F92DD] active:scale-[0.97]"
-            style={{
-              width: `${lerp(104, 44, collapse)}px`,
-            }}
-            aria-label="Đăng ký"
-          >
-            <span
-              className="inline-block overflow-hidden whitespace-nowrap transition-all duration-300"
-              style={{
-                opacity: 1 - clamp(collapse * 1.6),
-                transform: `translateX(${lerp(0, -18, collapse)}px)`,
-                width: `${lerp(72, 0, collapse)}px`,
-              }}
-            >
-              Đăng ký
-            </span>
-            <ArrowUpRight
-              className="absolute h-4 w-4 transition-all duration-300"
-              style={{
-                opacity: clamp((collapse - 0.35) / 0.65),
-                transform: `translate(${lerp(24, 0, collapse)}px, ${lerp(10, 0, collapse)}px)`,
-              }}
-              aria-hidden="true"
-            />
-          </Link>
+              {isTeacher && (
+                <Link
+                  to="/teacher/billing"
+                  className="inline-flex h-10 items-center justify-center rounded-full px-4 text-[15px] font-semibold text-[#173154]/78 transition-colors duration-300 hover:bg-[#EAF4FF] hover:text-[#173154]"
+                >
+                  Thanh toán
+                </Link>
+              )}
+
+              <button
+                type="button"
+                className="grid h-11 w-11 place-items-center rounded-full bg-[#173154] text-sm font-black text-white shadow-[0_10px_24px_rgba(23,49,84,0.24)] transition hover:bg-[#244D82] active:scale-[0.97]"
+                aria-label="Mở menu tài khoản"
+                aria-expanded={accountOpen}
+                onClick={() => setAccountOpen((open) => !open)}
+              >
+                {avatarInitial}
+              </button>
+
+              {accountOpen && (
+                <div className="absolute right-0 top-[calc(100%+12px)] w-[250px] overflow-hidden rounded-[18px] border border-[#DDE7F1] bg-white text-left shadow-[0_22px_58px_rgba(15,23,42,0.16)]">
+                  <div className="border-b border-[#EEF2F6] px-4 py-3">
+                    <p className="truncate text-sm font-black text-[#173154]">{displayName}</p>
+                    {user?.email && <p className="mt-1 truncate text-xs font-semibold text-[#64748B]">{user.email}</p>}
+                  </div>
+                  <div className="p-2">
+                    <Link to={portalPath} className="block rounded-[12px] px-3 py-2.5 text-sm font-bold text-[#173154] hover:bg-[#F0F7FF]">
+                      Trang quản lý
+                    </Link>
+                    {isTeacher && (
+                      <Link to="/teacher/billing" className="block rounded-[12px] px-3 py-2.5 text-sm font-bold text-[#173154] hover:bg-[#F0F7FF]">
+                        Thanh toán
+                      </Link>
+                    )}
+                    <button
+                      type="button"
+                      className="mt-1 block w-full rounded-[12px] px-3 py-2.5 text-left text-sm font-bold text-rose-600 hover:bg-rose-50"
+                      onClick={logout}
+                    >
+                      Đăng xuất
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <>
+              <Link
+                to="/signin"
+                className="mr-4 inline-flex h-10 items-center justify-center rounded-full px-3 text-[15px] font-semibold text-[#173154]/76 transition-colors duration-300 hover:text-[#6DA6E8]"
+                style={{
+                  opacity: authOpacity,
+                  transform: `translateX(${lerp(0, 18, collapse)}px)`,
+                  pointerEvents: collapse > 0.86 ? 'none' : 'auto',
+                  width: `${lerp(86, 0, collapse)}px`,
+                }}
+              >
+                <span className="whitespace-nowrap">Đăng nhập</span>
+              </Link>
+
+              <Link
+                to="/register"
+                className="grid h-11 place-items-center overflow-hidden rounded-full bg-[#6DA6E8] text-[15px] font-bold text-white shadow-[0_10px_24px_rgba(109,166,232,0.3)] transition-colors duration-300 hover:bg-[#4F92DD] active:scale-[0.97]"
+                style={{
+                  width: `${lerp(104, 44, collapse)}px`,
+                }}
+                aria-label="Đăng ký"
+              >
+                <span
+                  className="inline-block overflow-hidden whitespace-nowrap transition-all duration-300"
+                  style={{
+                    opacity: 1 - clamp(collapse * 1.6),
+                    transform: `translateX(${lerp(0, -18, collapse)}px)`,
+                    width: `${lerp(72, 0, collapse)}px`,
+                  }}
+                >
+                  Đăng ký
+                </span>
+                <ArrowUpRight
+                  className="absolute h-4 w-4 transition-all duration-300"
+                  style={{
+                    opacity: clamp((collapse - 0.35) / 0.65),
+                    transform: `translate(${lerp(24, 0, collapse)}px, ${lerp(10, 0, collapse)}px)`,
+                  }}
+                  aria-hidden="true"
+                />
+              </Link>
+            </>
+          )}
         </div>
 
         <div className="flex items-center gap-3 md:hidden">
-          <Link
-            to="/register"
-            className="inline-flex h-10 items-center justify-center whitespace-nowrap rounded-full bg-[#6DA6E8] px-4 text-[15px] font-semibold text-white"
-          >
-            Đăng ký
-          </Link>
+          {!loading && isLoggedIn ? (
+            <Link
+              to={portalPath}
+              className="inline-flex h-10 items-center justify-center whitespace-nowrap rounded-full bg-[#6DA6E8] px-4 text-[15px] font-semibold text-white"
+            >
+              Quản lý
+            </Link>
+          ) : (
+            <Link
+              to="/register"
+              className="inline-flex h-10 items-center justify-center whitespace-nowrap rounded-full bg-[#6DA6E8] px-4 text-[15px] font-semibold text-white"
+            >
+              Đăng ký
+            </Link>
+          )}
           <button
             type="button"
             className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-900"
@@ -162,7 +242,15 @@ export default function Header() {
       {mobileOpen && (
         <div className="mx-4 mt-3 rounded-3xl border border-white/80 bg-white/94 p-2 shadow-[0_18px_48px_rgba(15,23,42,0.16)] backdrop-blur-xl md:hidden">
           <nav className="flex flex-col gap-1" aria-label="Mobile primary">
-            {[...NAV_ITEMS, { label: 'Đăng nhập', href: '/signin' }].map((item) => {
+            {[
+              ...NAV_ITEMS,
+              ...(!loading && isLoggedIn
+                ? [
+                    { label: 'Trang quản lý', href: portalPath },
+                    ...(isTeacher ? [{ label: 'Thanh toán', href: '/teacher/billing' }] : []),
+                  ]
+                : [{ label: 'Đăng nhập', href: '/signin' }]),
+            ].map((item) => {
               const active = location.pathname === item.href;
 
               return (
@@ -179,6 +267,15 @@ export default function Header() {
                 </Link>
               );
             })}
+            {!loading && isLoggedIn && (
+              <button
+                type="button"
+                className="rounded-2xl px-4 py-3.5 text-left text-base font-semibold text-rose-600 transition-colors hover:bg-rose-50"
+                onClick={logout}
+              >
+                Đăng xuất
+              </button>
+            )}
           </nav>
         </div>
       )}

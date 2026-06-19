@@ -19,8 +19,19 @@ export default function LoginPage() {
     const navigate = useNavigate();
     const location = useLocation();
 
-    const from = location.state?.from?.pathname;
     const successMessage = location.state?.message;
+
+    function getRedirectPath(from) {
+        if (!from) return '';
+        if (typeof from === 'string') return from;
+
+        const pathname = from.pathname || '';
+        const search = from.search || '';
+        const hash = from.hash || '';
+        return `${pathname}${search}${hash}`;
+    }
+
+    const from = getRedirectPath(location.state?.from);
 
     function getRoleRedirect(profile) {
         const role = (profile?.role || profile?.roleName || '').toLowerCase();

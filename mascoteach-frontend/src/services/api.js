@@ -10,6 +10,7 @@ const API_BASE_URL = resolveApiBaseUrl();
 
 const AUTH_TOKEN_KEY = 'mascoteach_token';
 const AUTH_USER_KEY = 'mascoteach_user';
+export const AUTH_CLEARED_EVENT = 'mascoteach:auth-cleared';
 
 /**
  * Get stored auth token
@@ -39,6 +40,9 @@ export function clearAuth() {
     sessionStorage.removeItem(AUTH_TOKEN_KEY);
     localStorage.removeItem(AUTH_USER_KEY);
     sessionStorage.removeItem(AUTH_USER_KEY);
+    if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event(AUTH_CLEARED_EVENT));
+    }
 }
 
 /**

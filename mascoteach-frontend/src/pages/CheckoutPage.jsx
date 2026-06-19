@@ -18,6 +18,7 @@ const PAYOS_HOSTED_PAGE_ORIGIN = 'https://pay.payos.vn';
 const PAYMENT_LINK_REFRESH_GRACE_MS = 3000;
 const PAYMENT_LINK_EXPIRED_RETRY_MS = 5000;
 const PAYMENT_LINK_MAX_EXPIRED_REFRESH_ATTEMPTS = 5;
+const CHECKOUT_PLAN_STORAGE_KEY = 'mascoteach_checkout_plan';
 const paymentLinkRequests = new Map();
 
 function getPaymentLink(planCode) {
@@ -129,7 +130,7 @@ function getPlanMeta(planCode, billingPlan = null) {
   };
 }
 
-function PayOsEmbeddedCheckout({ checkoutUrl, orderCode, returnUrl, onExit }) {
+function PayOsEmbeddedCheckout({ checkoutUrl, orderCode, planId, returnUrl, onExit }) {
   const navigate = useNavigate();
   const payOsReturnUrl = getPayOsReturnUrl(returnUrl);
   const { open, exit } = usePayOS({
@@ -141,7 +142,7 @@ function PayOsEmbeddedCheckout({ checkoutUrl, orderCode, returnUrl, onExit }) {
       navigate(`/payment/success?orderCode=${orderCode}`, { replace: true });
     },
     onCancel: () => {
-      navigate(`/checkout/cancel?cancel=true&status=CANCELLED&orderCode=${orderCode}`, { replace: true });
+      navigate(`/checkout/cancel?cancel=true&status=CANCELLED&orderCode=${orderCode}&plan=${planId}`, { replace: true });
     },
     onExit,
   });
@@ -210,6 +211,11 @@ export default function CheckoutPage() {
 
     navigate(`${targetPath}${query ? `?${query}` : ''}`, { replace: true });
   }, [isPayOsReturn, navigate, payOsCancel, payOsStatus, searchParams]);
+
+  useEffect(() => {
+    if (isPayOsReturn) return;
+    window.sessionStorage.setItem(CHECKOUT_PLAN_STORAGE_KEY, selectedPlan.id);
+  }, [isPayOsReturn, selectedPlan.id]);
 
   useEffect(() => {
     let cancelled = false;
@@ -343,7 +349,7 @@ export default function CheckoutPage() {
 
     try {
       await cancelPaymentOrder(paymentLink.orderCode);
-      navigate(`/checkout/cancel?cancel=handled&status=CANCELLED&orderCode=${paymentLink.orderCode}`, { replace: true });
+      navigate(`/checkout/cancel?cancel=handled&status=CANCELLED&orderCode=${paymentLink.orderCode}&plan=${selectedPlan.id}`, { replace: true });
     } catch (err) {
       setCancelError(err.message || 'Không thể hủy đơn thanh toán. Vui lòng thử lại.');
       setCancelLoading(false);
@@ -494,6 +500,7 @@ export default function CheckoutPage() {
                       key={`${paymentLink.orderCode}-${paymentLink.checkoutUrl}`}
                       checkoutUrl={paymentLink.checkoutUrl}
                       orderCode={paymentLink.orderCode}
+                      planId={selectedPlan.id}
                       returnUrl={paymentLink.returnUrl}
                       onExit={() => setFrameClosed(true)}
                     />

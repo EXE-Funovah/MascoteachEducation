@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { AUTH_CLEARED_EVENT } from '@/services/api';
 import {
     googleLogin as apiGoogleLogin,
     login as apiLogin,
@@ -34,6 +35,16 @@ export function AuthProvider({ children }) {
             setLoading(false);
         }
         loadUser();
+    }, []);
+
+    useEffect(() => {
+        function handleAuthCleared() {
+            setUser(null);
+            setError(null);
+        }
+
+        window.addEventListener(AUTH_CLEARED_EVENT, handleAuthCleared);
+        return () => window.removeEventListener(AUTH_CLEARED_EVENT, handleAuthCleared);
     }, []);
 
     const login = useCallback(async (email, password, remember = true) => {

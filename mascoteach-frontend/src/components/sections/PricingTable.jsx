@@ -225,7 +225,7 @@ export default function PricingTable() {
     const checkoutPath = `/checkout?plan=${plan}`;
 
     if (!loading && !isLoggedIn) {
-      navigate('/signin', { state: { from: { pathname: checkoutPath } } });
+      navigate('/signin', { state: { from: { pathname: '/checkout', search: `?plan=${plan}` } } });
       return;
     }
 
