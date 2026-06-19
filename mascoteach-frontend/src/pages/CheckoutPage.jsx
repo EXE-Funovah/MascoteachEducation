@@ -37,6 +37,14 @@ function formatCurrency(amount, currency = 'VND') {
   }).format(amount);
 }
 
+function formatCountdown(milliseconds) {
+  const totalSeconds = Math.max(0, Math.ceil(milliseconds / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+}
+
 function normalizePayOsCheckoutUrl(value) {
   if (!value) return '';
 
@@ -170,6 +178,7 @@ export default function CheckoutPage() {
   const [error, setError] = useState('');
   const [frameClosed, setFrameClosed] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+  const [paymentLinkRemainingMs, setPaymentLinkRemainingMs] = useState(0);
 
   useEffect(() => {
     if (!isPayOsReturn) return;
@@ -227,6 +236,7 @@ export default function CheckoutPage() {
         const responsePlanCode = response?.planCode ?? response?.PlanCode;
         const returnUrl = response?.returnUrl ?? response?.ReturnUrl;
         const cancelUrl = response?.cancelUrl ?? response?.CancelUrl;
+        const expiresAt = response?.expiresAt ?? response?.ExpiresAt;
 
         if (!checkoutUrl || !orderCode) {
           throw new Error('Không thể tạo đơn thanh toán. Vui lòng thử lại.');
@@ -241,6 +251,7 @@ export default function CheckoutPage() {
             planCode: responsePlanCode || planCode,
             returnUrl,
             cancelUrl,
+            expiresAt,
           });
         }
       } catch (err) {
@@ -258,6 +269,29 @@ export default function CheckoutPage() {
     };
   }, [isPayOsReturn, planCode, reloadKey]);
 
+  useEffect(() => {
+    const expiresAt = paymentLink?.expiresAt ? new Date(paymentLink.expiresAt).getTime() : null;
+    if (!expiresAt || Number.isNaN(expiresAt) || loading || error) {
+      setPaymentLinkRemainingMs(0);
+      return undefined;
+    }
+
+    let refreshed = false;
+    function tick() {
+      const nextRemainingMs = Math.max(0, expiresAt - Date.now());
+      setPaymentLinkRemainingMs(nextRemainingMs);
+
+      if (nextRemainingMs === 0 && !refreshed) {
+        refreshed = true;
+        setReloadKey((key) => key + 1);
+      }
+    }
+
+    tick();
+    const timerId = window.setInterval(tick, 1000);
+    return () => window.clearInterval(timerId);
+  }, [error, loading, paymentLink?.expiresAt]);
+
   function selectPlan(planId) {
     setSearchParams({ plan: planId });
   }
@@ -266,6 +300,9 @@ export default function CheckoutPage() {
     ? paymentLink.amount
     : selectedPlan.amount;
   const totalLabel = formatCurrency(payableAmount, selectedPlan.currency);
+  const paymentExpiryLabel = paymentLink?.expiresAt
+    ? `Mã QR còn hiệu lực ${formatCountdown(paymentLinkRemainingMs)}`
+    : selectedPlan.totalNote;
 
   return (
     <main className="min-h-[100dvh] bg-gradient-subtle px-4 py-7 text-[#24282E] sm:px-6 lg:px-10">
@@ -415,9 +452,9 @@ export default function CheckoutPage() {
             <div className="flex items-end justify-between gap-5">
               <div>
                 <p className="text-2xl font-black text-[#22272E]">Tổng cộng</p>
-                <p className="mt-1 flex items-center gap-2 text-sm font-semibold text-[#64748B]">
+                <p className="mt-1 flex items-center gap-2 text-sm font-semibold text-[#64748B]" aria-live="polite">
                   <Clock3 className="h-4 w-4" />
-                  {selectedPlan.totalNote}
+                  {loading && paymentLink?.expiresAt ? 'Đang làm mới mã QR...' : paymentExpiryLabel}
                 </p>
               </div>
               <div className="text-right">
