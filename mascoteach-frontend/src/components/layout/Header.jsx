@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
-import { motion, useReducedMotion } from 'framer-motion';
-import { ArrowUpRight, Menu, X } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { ArrowUpRight, ChevronDown, CreditCard, Crown, LayoutDashboard, LogOut, Menu, X } from 'lucide-react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { SITE } from '@/lib/constants';
@@ -18,6 +18,7 @@ const lerp = (from, to, progress) => from + (to - from) * progress;
 export default function Header() {
   const location = useLocation();
   const { user, isLoggedIn, loading, logout } = useAuth();
+  const accountMenuRef = useRef(null);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const [collapse, setCollapse] = useState(0);
@@ -49,6 +50,30 @@ export default function Header() {
     setAccountOpen(false);
   }, [location.pathname]);
 
+  useEffect(() => {
+    if (!accountOpen) return undefined;
+
+    function handlePointerDown(event) {
+      if (accountMenuRef.current && !accountMenuRef.current.contains(event.target)) {
+        setAccountOpen(false);
+      }
+    }
+
+    function handleKeyDown(event) {
+      if (event.key === 'Escape') {
+        setAccountOpen(false);
+      }
+    }
+
+    document.addEventListener('pointerdown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [accountOpen]);
+
   const navWidth = `${lerp(1148, 820, collapse)}px`;
   const navHeight = `${lerp(64, 58, collapse)}px`;
   const navPadding = `${lerp(18, 10, collapse)}px`;
@@ -77,7 +102,7 @@ export default function Header() {
       transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
     >
       <div
-        className="mx-auto flex items-center justify-between overflow-hidden rounded-full border border-white/90 bg-white shadow-[0_12px_42px_rgba(15,23,42,0.11)] backdrop-blur-2xl transition-[border-color,box-shadow] duration-300"
+        className="mx-auto flex items-center justify-between overflow-visible rounded-full border border-white/90 bg-white shadow-[0_12px_42px_rgba(15,23,42,0.11)] backdrop-blur-2xl transition-[border-color,box-shadow] duration-300"
         style={{
           width: `min(calc(100vw - 40px), ${navWidth})`,
           height: navHeight,
@@ -112,58 +137,62 @@ export default function Header() {
 
         <div className="hidden shrink-0 items-center md:flex">
           {!loading && isLoggedIn ? (
-            <div className="relative flex items-center gap-2">
-              <Link
-                to={portalPath}
-                className="inline-flex h-10 items-center justify-center rounded-full px-4 text-[15px] font-semibold text-[#173154]/78 transition-colors duration-300 hover:bg-[#EAF4FF] hover:text-[#173154]"
-              >
-                Trang quản lý
-              </Link>
-
-              {isTeacher && (
-                <Link
-                  to="/teacher/billing"
-                  className="inline-flex h-10 items-center justify-center rounded-full px-4 text-[15px] font-semibold text-[#173154]/78 transition-colors duration-300 hover:bg-[#EAF4FF] hover:text-[#173154]"
-                >
-                  Thanh toán
-                </Link>
-              )}
-
+            <div ref={accountMenuRef} className="relative">
               <button
                 type="button"
-                className="grid h-11 w-11 place-items-center rounded-full bg-[#173154] text-sm font-black text-white shadow-[0_10px_24px_rgba(23,49,84,0.24)] transition hover:bg-[#244D82] active:scale-[0.97]"
+                className="group inline-flex h-11 items-center gap-2 rounded-full border border-[#D8E5F2] bg-[#F7FBFF] py-1 pl-1 pr-3 text-[#173154] shadow-[0_10px_24px_rgba(23,49,84,0.10)] transition duration-300 hover:border-[#BFD8FA] hover:bg-white hover:shadow-[0_16px_36px_rgba(23,49,84,0.15)] active:scale-[0.98]"
                 aria-label="Mở menu tài khoản"
                 aria-expanded={accountOpen}
                 onClick={() => setAccountOpen((open) => !open)}
               >
-                {avatarInitial}
+                <span className="grid h-9 w-9 place-items-center rounded-full bg-[#173154] text-sm font-black text-white shadow-[0_8px_18px_rgba(23,49,84,0.24)]">
+                  {avatarInitial}
+                </span>
+                <ChevronDown
+                  className={`h-4 w-4 text-[#64748B] transition duration-300 group-hover:text-[#173154] ${accountOpen ? 'rotate-180' : ''}`}
+                  strokeWidth={2.4}
+                />
               </button>
 
-              {accountOpen && (
-                <div className="absolute right-0 top-[calc(100%+12px)] w-[250px] overflow-hidden rounded-[18px] border border-[#DDE7F1] bg-white text-left shadow-[0_22px_58px_rgba(15,23,42,0.16)]">
-                  <div className="border-b border-[#EEF2F6] px-4 py-3">
-                    <p className="truncate text-sm font-black text-[#173154]">{displayName}</p>
-                    {user?.email && <p className="mt-1 truncate text-xs font-semibold text-[#64748B]">{user.email}</p>}
-                  </div>
-                  <div className="p-2">
-                    <Link to={portalPath} className="block rounded-[12px] px-3 py-2.5 text-sm font-bold text-[#173154] hover:bg-[#F0F7FF]">
-                      Trang quản lý
-                    </Link>
-                    {isTeacher && (
-                      <Link to="/teacher/billing" className="block rounded-[12px] px-3 py-2.5 text-sm font-bold text-[#173154] hover:bg-[#F0F7FF]">
-                        Thanh toán
-                      </Link>
-                    )}
-                    <button
-                      type="button"
-                      className="mt-1 block w-full rounded-[12px] px-3 py-2.5 text-left text-sm font-bold text-rose-600 hover:bg-rose-50"
-                      onClick={logout}
-                    >
-                      Đăng xuất
-                    </button>
-                  </div>
-                </div>
-              )}
+              <AnimatePresence>
+                {accountOpen && (
+                  <motion.div
+                    className="absolute right-0 top-[calc(100%+14px)] w-[332px] overflow-hidden rounded-[22px] border border-[#DDE7F1] bg-white text-left shadow-[0_28px_76px_rgba(15,23,42,0.18)]"
+                    initial={shouldReduceMotion ? false : { opacity: 0, y: -8, scale: 0.96, filter: 'blur(6px)' }}
+                    animate={shouldReduceMotion ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
+                    exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: -6, scale: 0.98, filter: 'blur(4px)' }}
+                    transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                  >
+                    <div className="flex items-center gap-4 border-b border-[#EEF2F6] bg-[#F8FBFE] px-5 py-5">
+                      <div className="relative grid h-14 w-14 flex-none place-items-center rounded-full bg-[#173154] text-lg font-black text-white shadow-[0_14px_30px_rgba(23,49,84,0.22)]">
+                        {avatarInitial}
+                        <span className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-white bg-[#22C55E]" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate text-lg font-black leading-tight text-[#173154]">{displayName}</p>
+                        {user?.email && <p className="mt-1 truncate text-sm font-semibold text-[#64748B]">{user.email}</p>}
+                      </div>
+                    </div>
+
+                    <div className="p-3">
+                      <HeaderMenuLink to={portalPath} icon={LayoutDashboard} label="Trang quản lý" />
+                      {isTeacher && <HeaderMenuLink to="/teacher/billing" icon={CreditCard} label="Thanh toán" />}
+                      {isTeacher && <HeaderMenuLink to="/checkout?plan=yearly" icon={Crown} label="Nâng cấp Pro" />}
+                    </div>
+
+                    <div className="border-t border-[#EEF2F6] p-3">
+                      <button
+                        type="button"
+                        className="flex min-h-12 w-full items-center gap-3 rounded-[14px] px-4 text-left text-sm font-black text-rose-600 transition duration-200 hover:bg-rose-50 active:translate-y-px"
+                        onClick={logout}
+                      >
+                        <LogOut className="h-5 w-5" strokeWidth={2.2} />
+                        Đăng xuất
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           ) : (
             <>
@@ -280,5 +309,17 @@ export default function Header() {
         </div>
       )}
     </motion.header>
+  );
+}
+
+function HeaderMenuLink({ to, icon: Icon, label }) {
+  return (
+    <Link
+      to={to}
+      className="group flex min-h-12 items-center gap-3 rounded-[14px] px-4 text-sm font-black text-[#173154] transition duration-200 hover:bg-[#F0F7FF] active:translate-y-px"
+    >
+      <Icon className="h-5 w-5 text-[#64748B] transition duration-200 group-hover:text-[#173154]" strokeWidth={2.15} />
+      <span>{label}</span>
+    </Link>
   );
 }
