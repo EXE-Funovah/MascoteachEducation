@@ -16,6 +16,8 @@ import { cn } from '@/lib/utils';
 const PAYOS_ELEMENT_ID = 'payos-embedded-checkout';
 const PAYOS_HOSTED_PAGE_ORIGIN = 'https://pay.payos.vn';
 const PAYMENT_LINK_REFRESH_GRACE_MS = 3000;
+const PAYMENT_LINK_EXPIRED_RETRY_MS = 5000;
+const PAYMENT_LINK_MAX_EXPIRED_REFRESH_ATTEMPTS = 5;
 const paymentLinkRequests = new Map();
 
 function getPaymentLink(planCode) {
@@ -196,7 +198,7 @@ export default function CheckoutPage() {
   const [cancelLoading, setCancelLoading] = useState(false);
   const [cancelError, setCancelError] = useState('');
   const [confirmCancelOpen, setConfirmCancelOpen] = useState(false);
-  const lastAutoRefreshKeyRef = useRef('');
+  const expiredRefreshRef = useRef({ key: '', attempts: 0 });
 
   useEffect(() => {
     if (!isPayOsReturn) return;
@@ -248,13 +250,13 @@ export default function CheckoutPage() {
 
       try {
         const response = await getPaymentLink(planCode);
-        const checkoutUrl = normalizePayOsCheckoutUrl(response?.checkoutUrl ?? response?.CheckoutUrl);
-        const orderCode = response?.orderCode ?? response?.OrderCode;
-        const amount = response?.amount ?? response?.Amount;
-        const responsePlanCode = response?.planCode ?? response?.PlanCode;
-        const returnUrl = response?.returnUrl ?? response?.ReturnUrl;
-        const cancelUrl = response?.cancelUrl ?? response?.CancelUrl;
-        const expiresAt = response?.expiresAt ?? response?.ExpiresAt;
+        const checkoutUrl = normalizePayOsCheckoutUrl(response?.checkoutUrl);
+        const orderCode = response?.orderCode;
+        const amount = response?.amount;
+        const responsePlanCode = response?.planCode;
+        const returnUrl = response?.returnUrl;
+        const cancelUrl = response?.cancelUrl;
+        const expiresAt = response?.expiresAt;
 
         if (!checkoutUrl || !orderCode) {
           throw new Error('Không thể tạo đơn thanh toán. Vui lòng thử lại.');
@@ -289,7 +291,7 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     const expiresAt = paymentLink?.expiresAt ? new Date(paymentLink.expiresAt).getTime() : null;
-    if (!expiresAt || Number.isNaN(expiresAt) || loading || error) {
+    if (!expiresAt || Number.isNaN(expiresAt) || loading || error || cancelLoading) {
       setPaymentLinkRemainingMs(0);
       return undefined;
     }
@@ -297,15 +299,26 @@ export default function CheckoutPage() {
     let refreshTimerId;
     const autoRefreshKey = `${paymentLink.orderCode}-${paymentLink.expiresAt}`;
 
+    if (expiredRefreshRef.current.key !== autoRefreshKey) {
+      expiredRefreshRef.current = { key: autoRefreshKey, attempts: 0 };
+    }
+
     function tick() {
       const nextRemainingMs = Math.max(0, expiresAt - Date.now());
       setPaymentLinkRemainingMs(nextRemainingMs);
 
-      if (nextRemainingMs === 0 && lastAutoRefreshKeyRef.current !== autoRefreshKey) {
-        lastAutoRefreshKeyRef.current = autoRefreshKey;
+      if (
+        nextRemainingMs === 0
+        && !refreshTimerId
+        && expiredRefreshRef.current.attempts < PAYMENT_LINK_MAX_EXPIRED_REFRESH_ATTEMPTS
+      ) {
+        const delay = expiredRefreshRef.current.attempts === 0
+          ? PAYMENT_LINK_REFRESH_GRACE_MS
+          : PAYMENT_LINK_EXPIRED_RETRY_MS;
+        expiredRefreshRef.current.attempts += 1;
         refreshTimerId = window.setTimeout(() => {
           setReloadKey((key) => key + 1);
-        }, PAYMENT_LINK_REFRESH_GRACE_MS);
+        }, delay);
       }
     }
 
@@ -315,7 +328,7 @@ export default function CheckoutPage() {
       window.clearInterval(timerId);
       if (refreshTimerId) window.clearTimeout(refreshTimerId);
     };
-  }, [error, loading, paymentLink?.expiresAt, paymentLink?.orderCode]);
+  }, [cancelLoading, error, loading, paymentLink?.expiresAt, paymentLink?.orderCode]);
 
   function selectPlan(planId) {
     setSearchParams({ plan: planId });
@@ -537,39 +550,60 @@ export default function CheckoutPage() {
       </section>
 
       {confirmCancelOpen && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/45 px-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="cancel-payment-title">
-          <div className="w-full max-w-[440px] rounded-[18px] border border-rose-100 bg-white p-6 shadow-[0_28px_90px_rgba(15,23,42,0.24)]">
-            <div className="flex items-start gap-4">
-              <div className="grid h-11 w-11 flex-none place-items-center rounded-full bg-rose-50 text-rose-600">
-                <AlertTriangle className="h-6 w-6" />
-              </div>
-              <div>
-                <h2 id="cancel-payment-title" className="text-xl font-black text-[#22272E]">
-                  Hủy thanh toán?
-                </h2>
-                <p className="mt-2 text-sm font-semibold leading-6 text-[#64748B]">
-                  Đơn hiện tại sẽ được chuyển sang trạng thái Cancelled. Bạn cần tạo mã QR mới nếu muốn thanh toán lại.
-                </p>
+        <div className="fixed inset-0 z-50 grid place-items-center bg-[#101828]/45 px-4 backdrop-blur-[6px]" role="dialog" aria-modal="true" aria-labelledby="cancel-payment-title">
+          <div className="w-full max-w-[480px] rounded-[18px] border border-[#E5D1D7] bg-white shadow-[0_26px_80px_rgba(27,58,107,0.22)]">
+            <div className="border-b border-[#EEF2F6] px-6 py-5">
+              <div className="flex items-start gap-4">
+                <div className="grid h-10 w-10 flex-none place-items-center rounded-[12px] bg-[#FFF1F3] text-rose-600">
+                  <AlertTriangle className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.08em] text-[#8A94A6]">
+                    Đơn đang chờ thanh toán
+                  </p>
+                  <h2 id="cancel-payment-title" className="mt-1 text-xl font-black text-[#22272E]">
+                    Hủy mã thanh toán này?
+                  </h2>
+                </div>
               </div>
             </div>
 
-            <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+            <div className="px-6 py-5">
+              <p className="text-sm font-semibold leading-6 text-[#5D6572]">
+                Mã QR hiện tại sẽ không còn dùng được. Gói Pro chưa được kích hoạt, và bạn có thể tạo mã mới nếu muốn thanh toán lại.
+              </p>
+
+              <div className="mt-4 grid gap-2 rounded-[13px] border border-[#E5EAF1] bg-[#F8FBFE] px-4 py-3 text-sm">
+                {paymentLink?.orderCode && (
+                  <div className="flex items-center justify-between gap-4">
+                    <span className="font-semibold text-[#64748B]">Mã đơn</span>
+                    <span className="font-black text-[#24282E]">{paymentLink.orderCode}</span>
+                  </div>
+                )}
+                <div className="flex items-center justify-between gap-4">
+                  <span className="font-semibold text-[#64748B]">Số tiền</span>
+                  <span className="font-black text-[#24282E]">{totalLabel}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-col-reverse gap-3 border-t border-[#EEF2F6] px-6 py-5 sm:flex-row sm:justify-end">
               <button
                 type="button"
-                className="inline-flex h-11 items-center justify-center rounded-[10px] border border-[#CAD2DC] bg-white px-5 text-sm font-black text-[#1E293B] transition hover:bg-[#F5F8FC]"
+                className="inline-flex h-11 items-center justify-center rounded-[10px] border border-[#CAD2DC] bg-white px-5 text-sm font-black text-[#1E293B] transition hover:bg-[#F5F8FC] active:translate-y-px"
                 onClick={() => setConfirmCancelOpen(false)}
                 disabled={cancelLoading}
               >
-                Giữ lại
+                Tiếp tục thanh toán
               </button>
               <button
                 type="button"
-                className="inline-flex h-11 items-center justify-center gap-2 rounded-[10px] bg-rose-600 px-5 text-sm font-black text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-70"
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-[10px] bg-[#D92D4B] px-5 text-sm font-black text-white transition hover:bg-[#BE2440] active:translate-y-px disabled:cursor-not-allowed disabled:opacity-70"
                 onClick={cancelCurrentPayment}
                 disabled={cancelLoading}
               >
                 {cancelLoading && <Loader2 className="h-4 w-4 animate-spin" />}
-                Xác nhận hủy
+                Hủy thanh toán
               </button>
             </div>
           </div>

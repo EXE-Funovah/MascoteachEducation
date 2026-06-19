@@ -62,13 +62,29 @@ export function normalizePaymentOrder(rawOrder) {
     };
 }
 
+export function normalizePaymentLink(rawLink) {
+    if (!rawLink) return null;
+
+    return {
+        orderCode: rawLink.orderCode ?? rawLink.OrderCode,
+        planCode: rawLink.planCode ?? rawLink.PlanCode,
+        amount: rawLink.amount ?? rawLink.Amount,
+        status: rawLink.status ?? rawLink.Status,
+        checkoutUrl: rawLink.checkoutUrl ?? rawLink.CheckoutUrl,
+        qrCode: rawLink.qrCode ?? rawLink.QrCode,
+        returnUrl: rawLink.returnUrl ?? rawLink.ReturnUrl,
+        cancelUrl: rawLink.cancelUrl ?? rawLink.CancelUrl,
+        expiresAt: rawLink.expiresAt ?? rawLink.ExpiresAt,
+    };
+}
+
 export async function getBillingPlans() {
     const plans = await api.get('/api/Billing/plans');
     return Array.isArray(plans) ? plans.map(normalizePlan).filter(Boolean) : [];
 }
 
 export async function createPaymentLink(planCode) {
-    return api.post('/api/Billing/create-payment-link', { planCode });
+    return normalizePaymentLink(await api.post('/api/Billing/create-payment-link', { planCode }));
 }
 
 export async function getMyBilling() {
