@@ -1,11 +1,12 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { usePayOS } from '@payos/payos-checkout';
-import { ArrowLeft, Check, Clock3, Loader2, QrCode, RefreshCw, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, Clock3, Loader2, QrCode, RefreshCw, ShieldCheck, XCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   BILLING_PLAN_CODES,
   BILLING_PLAN_FALLBACKS,
+  cancelPaymentOrder,
   createPaymentLink,
   getBillingPlans,
   normalizePlan,
@@ -14,6 +15,19 @@ import { cn } from '@/lib/utils';
 
 const PAYOS_ELEMENT_ID = 'payos-embedded-checkout';
 const PAYOS_HOSTED_PAGE_ORIGIN = 'https://pay.payos.vn';
+const PAYMENT_LINK_REFRESH_GRACE_MS = 3000;
+const paymentLinkRequests = new Map();
+
+function getPaymentLink(planCode) {
+  const existingRequest = paymentLinkRequests.get(planCode);
+  if (existingRequest) return existingRequest;
+
+  const request = createPaymentLink(planCode).finally(() => {
+    paymentLinkRequests.delete(planCode);
+  });
+  paymentLinkRequests.set(planCode, request);
+  return request;
+}
 
 function getPayOsReturnUrl(returnUrl) {
   const backendReturnUrl = returnUrl?.trim();
@@ -179,6 +193,9 @@ export default function CheckoutPage() {
   const [frameClosed, setFrameClosed] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
   const [paymentLinkRemainingMs, setPaymentLinkRemainingMs] = useState(0);
+  const [cancelLoading, setCancelLoading] = useState(false);
+  const [cancelError, setCancelError] = useState('');
+  const lastAutoRefreshKeyRef = useRef('');
 
   useEffect(() => {
     if (!isPayOsReturn) return;
@@ -226,10 +243,10 @@ export default function CheckoutPage() {
       setLoading(true);
       setError('');
       setFrameClosed(false);
-      setPaymentLink(null);
+      setPaymentLink((current) => (current?.planCode === planCode ? current : null));
 
       try {
-        const response = await createPaymentLink(planCode);
+        const response = await getPaymentLink(planCode);
         const checkoutUrl = normalizePayOsCheckoutUrl(response?.checkoutUrl ?? response?.CheckoutUrl);
         const orderCode = response?.orderCode ?? response?.OrderCode;
         const amount = response?.amount ?? response?.Amount;
@@ -276,24 +293,46 @@ export default function CheckoutPage() {
       return undefined;
     }
 
-    let refreshed = false;
+    let refreshTimerId;
+    const autoRefreshKey = `${paymentLink.orderCode}-${paymentLink.expiresAt}`;
+
     function tick() {
       const nextRemainingMs = Math.max(0, expiresAt - Date.now());
       setPaymentLinkRemainingMs(nextRemainingMs);
 
-      if (nextRemainingMs === 0 && !refreshed) {
-        refreshed = true;
-        setReloadKey((key) => key + 1);
+      if (nextRemainingMs === 0 && lastAutoRefreshKeyRef.current !== autoRefreshKey) {
+        lastAutoRefreshKeyRef.current = autoRefreshKey;
+        refreshTimerId = window.setTimeout(() => {
+          setReloadKey((key) => key + 1);
+        }, PAYMENT_LINK_REFRESH_GRACE_MS);
       }
     }
 
     tick();
     const timerId = window.setInterval(tick, 1000);
-    return () => window.clearInterval(timerId);
-  }, [error, loading, paymentLink?.expiresAt]);
+    return () => {
+      window.clearInterval(timerId);
+      if (refreshTimerId) window.clearTimeout(refreshTimerId);
+    };
+  }, [error, loading, paymentLink?.expiresAt, paymentLink?.orderCode]);
 
   function selectPlan(planId) {
     setSearchParams({ plan: planId });
+  }
+
+  async function cancelCurrentPayment() {
+    if (!paymentLink?.orderCode || cancelLoading) return;
+
+    setCancelLoading(true);
+    setCancelError('');
+
+    try {
+      await cancelPaymentOrder(paymentLink.orderCode);
+      navigate(`/checkout/cancel?cancel=handled&status=CANCELLED&orderCode=${paymentLink.orderCode}`, { replace: true });
+    } catch (err) {
+      setCancelError(err.message || 'Không thể hủy đơn thanh toán. Vui lòng thử lại.');
+      setCancelLoading(false);
+    }
   }
 
   const payableAmount = paymentLink?.planCode === planCode && paymentLink?.amount
@@ -303,6 +342,7 @@ export default function CheckoutPage() {
   const paymentExpiryLabel = paymentLink?.expiresAt
     ? `Mã QR còn hiệu lực ${formatCountdown(paymentLinkRemainingMs)}`
     : selectedPlan.totalNote;
+  const hasVisiblePaymentLink = Boolean(paymentLink?.checkoutUrl);
 
   return (
     <main className="min-h-[100dvh] bg-gradient-subtle px-4 py-7 text-[#24282E] sm:px-6 lg:px-10">
@@ -389,7 +429,7 @@ export default function CheckoutPage() {
             <h2 className="text-2xl font-black tracking-[-0.01em] text-[#22272E]">Thanh toán bằng QR</h2>
 
             <div className="mt-6 rounded-[18px] border border-[#CAD2DC] bg-white p-4 sm:p-5">
-              {loading && (
+              {loading && !hasVisiblePaymentLink && (
                 <div className="mx-auto grid h-[460px] w-full max-w-[520px] place-items-center rounded-[14px] border border-dashed border-brand-light bg-white">
                   <div className="text-center">
                     <Loader2 className="mx-auto h-9 w-9 animate-spin text-brand-blue" />
@@ -414,7 +454,7 @@ export default function CheckoutPage() {
                 </div>
               )}
 
-              {!loading && !error && paymentLink?.checkoutUrl && (
+              {!error && hasVisiblePaymentLink && (
                 <>
                   {frameClosed ? (
                     <div className="mx-auto grid h-[460px] w-full max-w-[520px] place-items-center rounded-[14px] border border-brand-light bg-surface-blue px-6 text-center">
@@ -464,8 +504,25 @@ export default function CheckoutPage() {
             </div>
 
             {paymentLink?.orderCode && (
-              <p className="mt-4 rounded-[11px] bg-brand-light/20 px-4 py-3 text-sm font-bold text-brand-blue">
-                Mã đơn hàng: {paymentLink.orderCode}
+              <div className="mt-4 flex flex-col gap-3 rounded-[11px] bg-brand-light/20 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-sm font-bold text-brand-blue">
+                  Mã đơn hàng: {paymentLink.orderCode}
+                </p>
+                <button
+                  type="button"
+                  className="inline-flex h-9 items-center justify-center gap-2 rounded-[9px] border border-rose-200 bg-white px-3 text-sm font-black text-rose-600 transition hover:border-rose-300 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
+                  onClick={cancelCurrentPayment}
+                  disabled={cancelLoading}
+                >
+                  {cancelLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />}
+                  {cancelLoading ? 'Đang hủy' : 'Hủy thanh toán'}
+                </button>
+              </div>
+            )}
+
+            {cancelError && (
+              <p className="mt-3 rounded-[10px] border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">
+                {cancelError}
               </p>
             )}
 

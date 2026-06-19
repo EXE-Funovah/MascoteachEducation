@@ -7,10 +7,11 @@ export default function PaymentCancelPage() {
   const [searchParams] = useSearchParams();
   const orderCode = searchParams.get('orderCode');
   const isCancelled = searchParams.get('cancel') === 'true';
+  const isHandled = searchParams.get('cancel') === 'handled';
   const status = searchParams.get('status');
   const shouldCancel = useMemo(
-    () => Boolean(isCancelled && status === 'CANCELLED' && orderCode),
-    [isCancelled, orderCode, status]
+    () => Boolean(isCancelled && status === 'CANCELLED' && orderCode && !isHandled),
+    [isCancelled, isHandled, orderCode, status]
   );
   const [state, setState] = useState(shouldCancel ? 'cancelling' : 'done');
   const [error, setError] = useState('');
@@ -49,7 +50,7 @@ export default function PaymentCancelPage() {
           {state === 'cancelling' ? 'Đang cập nhật đơn hủy' : 'Bạn đã hủy thanh toán'}
         </h1>
         <p className="mx-auto mt-3 max-w-[460px] text-sm font-semibold leading-6 text-[#64748B]">
-          {shouldCancel
+          {shouldCancel || isHandled
             ? 'Đơn thanh toán PayOS của bạn đã được ghi nhận là đã hủy.'
             : 'Không có thông tin hủy hợp lệ trong đường dẫn PayOS.'}
         </p>
