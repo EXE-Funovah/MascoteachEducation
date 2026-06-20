@@ -62,10 +62,12 @@ export async function apiRequest(endpoint, options = {}) {
         body,
         headers = {},
         skipAuth = false,
+        signal,
     } = options;
 
     const config = {
         method,
+        signal,
         headers: {
             'Content-Type': 'application/json',
             ...headers,
@@ -151,6 +153,9 @@ export async function apiRequest(endpoint, options = {}) {
     } catch (error) {
         if (error instanceof ApiError) {
             throw error;
+        }
+        if (error?.name === 'AbortError') {
+            throw new ApiError('Yêu cầu mất quá lâu. Vui lòng thử lại.', 408, error);
         }
         // Network error
         throw new ApiError(

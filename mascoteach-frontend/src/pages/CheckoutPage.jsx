@@ -19,6 +19,7 @@ import {
   BILLING_PLAN_FALLBACKS,
   cancelPaymentOrder,
   createPaymentLink,
+  getMyBilling,
   getBillingPlans,
   getMyBillingOrders,
   normalizePlan,
@@ -35,15 +36,30 @@ import { cn } from '@/lib/utils';
 const PAYOS_ELEMENT_ID = 'payos-embedded-checkout';
 const PAYOS_HOSTED_PAGE_ORIGIN = 'https://pay.payos.vn';
 const CHECKOUT_PLAN_STORAGE_KEY = 'mascoteach_checkout_plan';
+const PAYMENT_LINK_TIMEOUT_MS = 20000;
+const PAYMENT_STATUS_POLL_MS = 3000;
 const paymentLinkRequests = new Map();
 
 function getPaymentLink(planCode) {
   const existingRequest = paymentLinkRequests.get(planCode);
   if (existingRequest) return existingRequest;
 
-  const request = createPaymentLink(planCode).finally(() => {
-    paymentLinkRequests.delete(planCode);
-  });
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => {
+    controller.abort();
+  }, PAYMENT_LINK_TIMEOUT_MS);
+
+  const request = createPaymentLink(planCode, { signal: controller.signal })
+    .catch((error) => {
+      if (error?.status === 408 || error?.name === 'AbortError') {
+        throw new Error('Tạo mã QR mất quá lâu. Vui lòng thử lại.');
+      }
+      throw error;
+    })
+    .finally(() => {
+      window.clearTimeout(timeoutId);
+      paymentLinkRequests.delete(planCode);
+    });
 
   paymentLinkRequests.set(planCode, request);
   return request;
@@ -181,6 +197,33 @@ function extractRetryAfterSeconds(error) {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
 }
 
+function isPaidOrderStatus(status) {
+  return ['paid', 'success', 'succeeded', 'completed'].includes(String(status || '').trim().toLowerCase());
+}
+
+function getOrderCodeValue(orderCode) {
+  return orderCode == null ? '' : String(orderCode);
+}
+
+function findOrderByCode(orders, orderCode) {
+  const targetOrderCode = getOrderCodeValue(orderCode);
+  if (!targetOrderCode) return null;
+  return (orders || []).find((order) => getOrderCodeValue(order?.orderCode) === targetOrderCode) ?? null;
+}
+
+function getFriendlyPaymentLinkError(error) {
+  const message = error?.message || '';
+  if (!message) return 'Không thể tạo mã QR. Vui lòng thử lại.';
+  if (message.includes(' at ') || message.includes('/src/') || message.length > 220) {
+    return 'Không thể tạo mã QR cho giao dịch này. Vui lòng làm mới trang hoặc kiểm tra lại trong mục Thanh toán.';
+  }
+  return message;
+}
+
+function getPaymentSuccessPath(orderCode) {
+  return `/payment/success${orderCode ? `?orderCode=${orderCode}` : ''}`;
+}
+
 function normalizePaymentLinkResponse(response, fallbackPlanCode) {
   const checkoutUrl = normalizePayOsCheckoutUrl(response?.checkoutUrl);
   const orderCode = response?.orderCode;
@@ -209,8 +252,19 @@ function buildPendingOrderFromPaymentLink(paymentLink, previousOrder) {
     status: 'Pending',
     provider: previousOrder?.provider ?? 'PayOS',
     checkoutUrl: paymentLink.checkoutUrl,
+    expiresAt: paymentLink.expiresAt ?? previousOrder?.expiresAt ?? null,
     createdAt: previousOrder?.createdAt ?? new Date().toISOString(),
   };
+}
+
+function buildPaymentLinkFromPendingOrder(order, fallbackPlanCode) {
+  return normalizePaymentLinkResponse({
+    orderCode: order?.orderCode,
+    planCode: order?.planCode || fallbackPlanCode,
+    amount: order?.amount,
+    checkoutUrl: order?.checkoutUrl,
+    expiresAt: order?.expiresAt,
+  }, fallbackPlanCode);
 }
 
 const PayOsEmbeddedCheckout = memo(function PayOsEmbeddedCheckout({
@@ -228,7 +282,7 @@ const PayOsEmbeddedCheckout = memo(function PayOsEmbeddedCheckout({
     CHECKOUT_URL: checkoutUrl,
     embedded: true,
     onSuccess: () => {
-      navigate(`/payment/success?orderCode=${orderCode}`, { replace: true });
+      navigate(getPaymentSuccessPath(orderCode), { replace: true });
     },
     onCancel: () => {
       navigate(`/checkout/cancel?cancel=true&status=CANCELLED&orderCode=${orderCode}&plan=${planId}`, { replace: true });
@@ -377,7 +431,7 @@ export default function CheckoutPage() {
     }
   }, [isPayOsReturn]);
 
-  async function openPaymentLinkForPlan(planCode) {
+  async function openPaymentLinkForPlan(planCode, reusableOrder = pendingOrder) {
     setPaymentModalOpen(true);
     setPaymentLinkLoading(true);
     setError('');
@@ -385,6 +439,20 @@ export default function CheckoutPage() {
     setConfirmSwitchPlanOpen(false);
 
     try {
+      if (reusableOrder?.planCode === planCode && reusableOrder?.checkoutUrl) {
+        const reusedPaymentLink = buildPaymentLinkFromPendingOrder(reusableOrder, planCode);
+        if (!mountedRef.current) return null;
+
+        const expiresAtMs = reusedPaymentLink.expiresAt ? new Date(reusedPaymentLink.expiresAt).getTime() : NaN;
+        expiredOrderSyncRef.current = '';
+        setPaymentLink(reusedPaymentLink);
+        setPendingOrder(reusableOrder);
+        setPaymentLinkRemainingMs(Number.isNaN(expiresAtMs) ? 0 : Math.max(0, expiresAtMs - Date.now()));
+        setRetryAfterUntilMs(0);
+        setRetryAfterRemainingMs(0);
+        return reusedPaymentLink;
+      }
+
       const nextPaymentLink = normalizePaymentLinkResponse(await getPaymentLink(planCode), planCode);
       if (!mountedRef.current) return null;
 
@@ -406,7 +474,7 @@ export default function CheckoutPage() {
         setRetryAfterRemainingMs(retryAfterSeconds * 1000);
       }
 
-      setError(err.message || 'Không thể tạo link thanh toán. Vui lòng thử lại.');
+      setError(getFriendlyPaymentLinkError(err));
       return null;
     } finally {
       if (mountedRef.current) {
@@ -544,6 +612,51 @@ export default function CheckoutPage() {
     return () => window.clearInterval(timerId);
   }, [paymentLink?.expiresAt, paymentLink?.orderCode]);
 
+  useEffect(() => {
+    const watchedOrderCode = paymentLink?.orderCode || pendingOrder?.orderCode;
+    if (!paymentModalOpen || !watchedOrderCode) return undefined;
+
+    let cancelled = false;
+    let timerId;
+
+    async function checkPaymentStatus() {
+      try {
+        const orders = await getMyBillingOrders();
+        if (cancelled || !mountedRef.current) return;
+
+        const latestPendingOrder = getLatestPendingOrder(orders);
+        setPendingOrder(latestPendingOrder);
+
+        const watchedOrder = findOrderByCode(orders, watchedOrderCode);
+        if (isPaidOrderStatus(watchedOrder?.status)) {
+          navigate(getPaymentSuccessPath(watchedOrderCode), { replace: true });
+          return;
+        }
+
+        const billingStatus = await getMyBilling();
+        if (cancelled || !mountedRef.current) return;
+
+        if (billingStatus?.isPremiumActive) {
+          navigate(getPaymentSuccessPath(watchedOrderCode), { replace: true });
+          return;
+        }
+      } catch {
+        // Keep the modal usable; the success page and manual refresh can verify later.
+      }
+
+      if (!cancelled) {
+        timerId = window.setTimeout(checkPaymentStatus, PAYMENT_STATUS_POLL_MS);
+      }
+    }
+
+    timerId = window.setTimeout(checkPaymentStatus, PAYMENT_STATUS_POLL_MS);
+
+    return () => {
+      cancelled = true;
+      if (timerId) window.clearTimeout(timerId);
+    };
+  }, [navigate, paymentLink?.orderCode, paymentModalOpen, pendingOrder?.orderCode]);
+
   const hasPendingOrder = Boolean(pendingOrder?.orderCode);
   const hasDifferentPlanPending = hasPendingOrder && pendingOrder.planCode !== selectedPlanCode;
   const hasSamePlanPending = hasPendingOrder && pendingOrder.planCode === selectedPlanCode;
@@ -551,7 +664,7 @@ export default function CheckoutPage() {
   const paymentLinkExpired = paymentLinkMatchesSelection && Boolean(paymentLink?.expiresAt) && paymentLinkRemainingMs === 0;
   const hasVisiblePaymentLink = Boolean(paymentLink?.checkoutUrl) && paymentLinkMatchesSelection;
   const showPaymentFrame = hasVisiblePaymentLink && !frameClosed && !paymentLinkExpired;
-  const controlsDisabled = loading || paymentLinkLoading || cancelLoading;
+  const controlsDisabled = loading || paymentLinkLoading || cancelLoading || refreshingOrders;
   const payableAmount = paymentLinkMatchesSelection && paymentLink?.amount
     ? paymentLink.amount
     : selectedPlan.amount;
@@ -575,9 +688,46 @@ export default function CheckoutPage() {
   async function handleCreateOrReusePayment() {
     if (controlsDisabled || retryAfterRemainingMs > 0) return;
 
-    if (hasDifferentPlanPending) {
-      setConfirmSwitchPlanOpen(true);
+    setRefreshingOrders(true);
+    setError('');
+
+    try {
+      const [orders, billingStatus] = await Promise.all([
+        getMyBillingOrders(),
+        getMyBilling(),
+      ]);
+      if (!mountedRef.current) return;
+
+      const latestPendingOrder = getLatestPendingOrder(orders);
+      const paidOrderForPlan = (orders || []).find(
+        (order) => order?.planCode === selectedPlanCode && isPaidOrderStatus(order?.status)
+      );
+
+      setPendingOrder(latestPendingOrder);
+
+      if (paidOrderForPlan || billingStatus?.isPremiumActive) {
+        navigate(getPaymentSuccessPath(paidOrderForPlan?.orderCode || pendingOrder?.orderCode), { replace: true });
+        return;
+      }
+
+      if (latestPendingOrder?.orderCode && latestPendingOrder.planCode !== selectedPlanCode) {
+        setConfirmSwitchPlanOpen(true);
+        return;
+      }
+
+      if (latestPendingOrder?.orderCode && latestPendingOrder.planCode === selectedPlanCode) {
+        await openPaymentLinkForPlan(selectedPlanCode, latestPendingOrder);
+        return;
+      }
+    } catch (err) {
+      if (mountedRef.current) {
+        setError(err.message || 'Không thể kiểm tra trạng thái thanh toán. Vui lòng thử lại.');
+      }
       return;
+    } finally {
+      if (mountedRef.current) {
+        setRefreshingOrders(false);
+      }
     }
 
     await openPaymentLinkForPlan(selectedPlanCode);
@@ -952,7 +1102,7 @@ export default function CheckoutPage() {
                 onClick={handleCreateOrReusePayment}
                 disabled={controlsDisabled || retryAfterRemainingMs > 0}
               >
-                {(paymentLinkLoading || cancelLoading) && <Loader2 className="h-4 w-4 animate-spin" />}
+                {(paymentLinkLoading || cancelLoading || refreshingOrders) && <Loader2 className="h-4 w-4 animate-spin" />}
                 {payButtonLabel}
               </button>
 
