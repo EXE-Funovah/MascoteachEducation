@@ -21,17 +21,17 @@ export default function LoginPage() {
 
     const successMessage = location.state?.message;
 
-    function getRedirectPath(from) {
-        if (!from) return '';
-        if (typeof from === 'string') return from;
+    function getRedirectTarget(from) {
+        if (!from) return { path: '', state: undefined };
+        if (typeof from === 'string') return { path: from, state: undefined };
 
         const pathname = from.pathname || '';
         const search = from.search || '';
         const hash = from.hash || '';
-        return `${pathname}${search}${hash}`;
+        return { path: `${pathname}${search}${hash}`, state: from.state };
     }
 
-    const from = getRedirectPath(location.state?.from);
+    const redirectTarget = getRedirectTarget(location.state?.from);
 
     async function handleSubmit(e) {
         e.preventDefault();
@@ -43,7 +43,7 @@ export default function LoginPage() {
         setSubmitting(true);
         try {
             await login(email, password, remember);
-            navigate(from || '/', { replace: true });
+            navigate(redirectTarget.path || '/', { replace: true, state: redirectTarget.state });
         } catch {
             // AuthContext owns the visible error message.
         } finally {
@@ -57,13 +57,13 @@ export default function LoginPage() {
         setGoogleSubmitting(true);
         try {
             await googleLogin(credential, remember);
-            navigate(from || '/', { replace: true });
+            navigate(redirectTarget.path || '/', { replace: true, state: redirectTarget.state });
         } catch (err) {
             setGoogleError(err.message || 'Đăng nhập Google thất bại. Vui lòng thử lại.');
         } finally {
             setGoogleSubmitting(false);
         }
-    }, [clearError, from, googleLogin, navigate, remember]);
+    }, [clearError, googleLogin, navigate, redirectTarget.path, redirectTarget.state, remember]);
 
     return (
         <AuthLayout>

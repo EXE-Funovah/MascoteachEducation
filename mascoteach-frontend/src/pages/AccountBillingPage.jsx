@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { CalendarDays, Crown, CreditCard, Loader2, ReceiptText, RefreshCw } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { getMyBilling, getMyBillingOrders } from '@/services/billingService';
@@ -17,6 +17,7 @@ import {
 import { cn } from '@/lib/utils';
 
 export default function AccountBillingPage() {
+  const location = useLocation();
   const { refreshUser } = useAuth();
   const [billing, setBilling] = useState(null);
   const [orders, setOrders] = useState([]);
@@ -58,6 +59,7 @@ export default function AccountBillingPage() {
   }, [refreshUser, reloadKey]);
 
   const isPremium = isPremiumActive(billing);
+  const checkoutBackState = { checkoutBackTo: `${location.pathname}${location.search}${location.hash}` };
   const pendingOrders = useMemo(() => getPendingOrders(orders), [orders]);
   const historyOrders = useMemo(
     () => sortOrdersByCreatedAtDesc(orders).filter((order) => order.status !== 'Pending'),
@@ -69,10 +71,6 @@ export default function AccountBillingPage() {
       <div className="mx-auto w-full max-w-[1120px] px-5 py-8 md:px-8">
         <div className="flex flex-col justify-between gap-5 md:flex-row md:items-end">
           <div>
-            <div className="inline-flex items-center gap-2 rounded-[7px] border border-brand-light/70 bg-white px-3 py-2 text-xs font-black uppercase tracking-[0.08em] text-brand-blue">
-              <ReceiptText className="h-4 w-4" />
-              Billing
-            </div>
             <h1 className="mt-4 font-display text-[34px] font-black leading-tight tracking-[-0.02em]">
               Tài khoản và thanh toán
             </h1>
@@ -97,7 +95,11 @@ export default function AccountBillingPage() {
                 Bạn đang ở gói Pro
               </div>
             ) : (
-              <Link to="/checkout?plan=yearly" className="inline-flex h-11 items-center justify-center rounded-[10px] bg-brand-blue px-5 text-sm font-black text-white hover:bg-brand-navy">
+              <Link
+                to="/checkout?plan=yearly"
+                state={checkoutBackState}
+                className="inline-flex h-11 items-center justify-center rounded-[10px] bg-brand-blue px-5 text-sm font-black text-white hover:bg-brand-navy"
+              >
                 Nâng cấp Pro
               </Link>
             )}
@@ -168,6 +170,7 @@ export default function AccountBillingPage() {
                         <div className="flex flex-wrap gap-3">
                           <Link
                             to={`/checkout?plan=${getPlanIdFromPlanCode(order.planCode)}`}
+                            state={checkoutBackState}
                             className="inline-flex h-11 items-center justify-center gap-2 rounded-[10px] bg-brand-blue px-5 text-sm font-black text-white transition hover:bg-brand-navy"
                           >
                             <CreditCard className="h-4 w-4" />

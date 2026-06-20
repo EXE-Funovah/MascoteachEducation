@@ -229,13 +229,14 @@ export default function PricingTable() {
   function handleUpgrade(planCode) {
     const plan = planCode === BILLING_PLAN_CODES.yearly ? 'yearly' : 'monthly';
     const checkoutPath = `/checkout?plan=${plan}`;
+    const checkoutState = { checkoutBackTo: '/pricing' };
 
     if (!loading && !isLoggedIn) {
-      navigate('/signin', { state: { from: { pathname: '/checkout', search: `?plan=${plan}` } } });
+      navigate('/signin', { state: { from: { pathname: '/checkout', search: `?plan=${plan}`, state: checkoutState } } });
       return;
     }
 
-    navigate(checkoutPath);
+    navigate(checkoutPath, { state: checkoutState });
   }
 
   return (

@@ -24,6 +24,7 @@ export default function Sidebar() {
     const location = useLocation();
     const basePath = location.pathname.startsWith('/dev/teacher') ? '/dev/teacher' : '/teacher';
     const isPremiumTeacher = isPremiumActive(user);
+    const checkoutBackState = { checkoutBackTo: `${location.pathname}${location.search}${location.hash}` };
     const scopedNavItems = mainItems.map((item) => ({
         ...item,
         to: item.to.replace('/teacher', basePath),
@@ -84,6 +85,7 @@ export default function Sidebar() {
                 ) : (
                     <NavLink
                         to="/checkout?plan=yearly"
+                        state={checkoutBackState}
                         className="group absolute bottom-[88px] left-5 right-5 flex min-h-[62px] items-center justify-between gap-2 overflow-hidden rounded-[20px] border border-brand-light/70 bg-[#edf7fd] px-3 text-left shadow-[0_16px_36px_rgba(43,122,181,0.16),inset_0_1px_0_rgba(255,255,255,0.96)] transition-all duration-300 before:absolute before:inset-y-[-10px] before:left-[-48%] before:w-[34%] before:-skew-x-12 before:bg-gradient-to-r before:from-transparent before:via-white before:to-transparent before:opacity-0 before:blur-[1px] before:transition-all before:duration-700 hover:-translate-y-0.5 hover:border-brand-mid/70 hover:bg-[#e5f3fb] hover:shadow-[0_22px_48px_rgba(43,122,181,0.24),inset_0_1px_0_rgba(255,255,255,1)] hover:before:left-[124%] hover:before:opacity-90 active:translate-y-0"
                         aria-label="Nâng cấp PRO"
                     >
