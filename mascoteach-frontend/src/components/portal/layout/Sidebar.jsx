@@ -24,6 +24,7 @@ export default function Sidebar() {
     const location = useLocation();
     const basePath = location.pathname.startsWith('/dev/teacher') ? '/dev/teacher' : '/teacher';
     const isPremiumTeacher = isPremiumActive(user);
+    const avatarInitial = (user?.fullName || user?.email || 'M').trim().charAt(0).toUpperCase() || 'M';
     const scopedNavItems = mainItems.map((item) => ({
         ...item,
         to: item.to.replace('/teacher', basePath),
@@ -57,7 +58,7 @@ export default function Sidebar() {
                 </nav>
 
                 {isPremiumTeacher ? (
-                    <div className="absolute bottom-[88px] left-5 right-5 rounded-[20px] border border-emerald-200 bg-emerald-50 px-4 py-4 shadow-[0_16px_36px_rgba(34,197,94,0.12)]">
+                    <div className="absolute bottom-[154px] left-5 right-5 rounded-[20px] border border-emerald-200 bg-emerald-50 px-4 py-4 shadow-[0_16px_36px_rgba(34,197,94,0.12)]">
                         <div className="flex items-center justify-between gap-3">
                             <div>
                                 <p className="text-[11px] font-black uppercase tracking-[0.08em] text-emerald-700">
@@ -75,7 +76,7 @@ export default function Sidebar() {
                 ) : (
                     <NavLink
                         to="/checkout?plan=yearly"
-                        className="group absolute bottom-[88px] left-5 right-5 flex min-h-[62px] items-center justify-between gap-2 overflow-hidden rounded-[20px] border border-brand-light/70 bg-[#edf7fd] px-3 text-left shadow-[0_16px_36px_rgba(43,122,181,0.16),inset_0_1px_0_rgba(255,255,255,0.96)] transition-all duration-300 before:absolute before:inset-y-[-10px] before:left-[-48%] before:w-[34%] before:-skew-x-12 before:bg-gradient-to-r before:from-transparent before:via-white before:to-transparent before:opacity-0 before:blur-[1px] before:transition-all before:duration-700 hover:-translate-y-0.5 hover:border-brand-mid/70 hover:bg-[#e5f3fb] hover:shadow-[0_22px_48px_rgba(43,122,181,0.24),inset_0_1px_0_rgba(255,255,255,1)] hover:before:left-[124%] hover:before:opacity-90 active:translate-y-0"
+                        className="group absolute bottom-[154px] left-5 right-5 flex min-h-[62px] items-center justify-between gap-2 overflow-hidden rounded-[20px] border border-brand-light/70 bg-[#edf7fd] px-3 text-left shadow-[0_16px_36px_rgba(43,122,181,0.16),inset_0_1px_0_rgba(255,255,255,0.96)] transition-all duration-300 before:absolute before:inset-y-[-10px] before:left-[-48%] before:w-[34%] before:-skew-x-12 before:bg-gradient-to-r before:from-transparent before:via-white before:to-transparent before:opacity-0 before:blur-[1px] before:transition-all before:duration-700 hover:-translate-y-0.5 hover:border-brand-mid/70 hover:bg-[#e5f3fb] hover:shadow-[0_22px_48px_rgba(43,122,181,0.24),inset_0_1px_0_rgba(255,255,255,1)] hover:before:left-[124%] hover:before:opacity-90 active:translate-y-0"
                         aria-label="Nâng cấp PRO"
                     >
                         <span className="relative z-10 flex items-center gap-2">
@@ -91,6 +92,32 @@ export default function Sidebar() {
                         </span>
                     </NavLink>
                 )}
+
+                <NavLink
+                    to={`${basePath}/profile`}
+                    className={({ isActive }) =>
+                        `absolute bottom-[84px] left-5 right-5 flex min-h-12 items-center gap-4 rounded-2xl px-4 text-left text-[15px] font-extrabold transition-all duration-200 ${
+                            isActive
+                                ? 'bg-brand-light/55 text-slate-950 shadow-sm'
+                                : 'text-slate-800 hover:bg-brand-light/25 hover:text-brand-navy'
+                        }`
+                    }
+                >
+                    <span className="-ml-3 flex min-w-0 items-center gap-4">
+                        <span className="ml-2 grid h-8 w-8 flex-none place-items-center overflow-hidden rounded-full border-2 border-[#5DA9F6] bg-brand-blue text-[10px] font-black text-white ring-2 ring-[#DCEEFF] shadow-[0_10px_22px_rgba(43,122,181,0.22)]">
+                            {user?.avatarUrl ? (
+                                <img
+                                    src={user.avatarUrl}
+                                    alt={`${user?.fullName || user?.email || 'Người dùng'} avatar`}
+                                    className="h-full w-full object-cover"
+                                />
+                            ) : (
+                                avatarInitial
+                            )}
+                        </span>
+                        <span className="-ml-2 truncate">Hồ sơ cá nhân</span>
+                    </span>
+                </NavLink>
 
                 <button
                     onClick={logout}

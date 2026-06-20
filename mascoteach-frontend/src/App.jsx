@@ -6,6 +6,7 @@ import CheckoutPage from '@/pages/CheckoutPage';
 import PaymentSuccessPage from '@/pages/PaymentSuccessPage';
 import PaymentCancelPage from '@/pages/PaymentCancelPage';
 import AccountBillingPage from '@/pages/AccountBillingPage';
+import ProfilePage from '@/pages/ProfilePage';
 import LoginPage from '@/pages/LoginPage';
 import SignUpPage from '@/pages/SignUpPage';
 import ForgotPasswordPage from '@/pages/ForgotPasswordPage';
@@ -99,6 +100,7 @@ export default function App() {
           }
         >
           <Route index element={<HomePage />} />
+          <Route path="profile" element={<ProfilePage />} />
           <Route path="library" element={<LibraryPage />} />
           <Route path="sessions" element={<SessionsPage />} />
           <Route path="billing" element={<AccountBillingPage />} />
@@ -110,6 +112,7 @@ export default function App() {
           <>
             <Route path="/dev/teacher" element={<PortalLayout />}>
               <Route index element={<HomePage />} />
+              <Route path="profile" element={<ProfilePage />} />
               <Route path="library" element={<LibraryPage />} />
               <Route path="sessions" element={<SessionsPage />} />
               <Route path="billing" element={<AccountBillingPage />} />
@@ -156,6 +159,7 @@ export default function App() {
           }
         >
           <Route index element={<HomePage />} />
+          <Route path="profile" element={<ProfilePage />} />
         </Route>
 
         <Route
@@ -167,6 +171,7 @@ export default function App() {
           }
         >
           <Route index element={<HomePage />} />
+          <Route path="profile" element={<ProfilePage />} />
         </Route>
 
         <Route path="/play" element={<GameLobby />} />
