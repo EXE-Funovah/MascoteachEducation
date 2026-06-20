@@ -3,6 +3,7 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { ArrowUpRight, ChevronDown, CreditCard, Crown, LayoutDashboard, LogOut, Menu, X } from 'lucide-react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { isPremiumActive } from '@/lib/billingUi';
 import { SITE } from '@/lib/constants';
 
 const NAV_ITEMS = [
@@ -82,6 +83,7 @@ export default function Header() {
   const authOpacity = 1 - collapse;
   const userRole = (user?.role || user?.roleName || '').toLowerCase();
   const isTeacher = userRole === 'teacher';
+  const isPremiumTeacher = isTeacher && isPremiumActive(user);
   const portalPath = userRole === 'student' ? '/student' : userRole === 'parent' ? '/parent' : '/teacher';
   const displayName = user?.fullName || user?.email || 'Tài khoản';
   const avatarInitial = displayName.trim().charAt(0).toUpperCase() || 'M';
@@ -171,13 +173,18 @@ export default function Header() {
                       <div className="min-w-0">
                         <p className="truncate text-lg font-black leading-tight text-[#173154]">{displayName}</p>
                         {user?.email && <p className="mt-1 truncate text-sm font-semibold text-[#64748B]">{user.email}</p>}
+                        {isPremiumTeacher && (
+                          <div className="mt-2 inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-black uppercase tracking-[0.08em] text-emerald-700">
+                            Đang dùng Pro
+                          </div>
+                        )}
                       </div>
                     </div>
 
                     <div className="p-3">
                       <HeaderMenuLink to={portalPath} icon={LayoutDashboard} label="Trang quản lý" />
                       {isTeacher && <HeaderMenuLink to="/teacher/billing" icon={CreditCard} label="Thanh toán" />}
-                      {isTeacher && <HeaderMenuLink to="/checkout?plan=yearly" icon={Crown} label="Nâng cấp Pro" />}
+                      {isTeacher && !isPremiumTeacher && <HeaderMenuLink to="/checkout?plan=yearly" icon={Crown} label="Nâng cấp Pro" />}
                     </div>
 
                     <div className="border-t border-[#EEF2F6] p-3">

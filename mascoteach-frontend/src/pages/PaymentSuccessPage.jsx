@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { CheckCircle2, Clock3, Loader2, RefreshCw } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 import { getMyBilling } from '@/services/billingService';
 
 const MAX_ATTEMPTS = 8;
@@ -16,6 +17,7 @@ function formatDate(value) {
 }
 
 export default function PaymentSuccessPage() {
+  const { refreshUser } = useAuth();
   const [searchParams] = useSearchParams();
   const orderCode = searchParams.get('orderCode');
   const [billing, setBilling] = useState(null);
@@ -35,6 +37,10 @@ export default function PaymentSuccessPage() {
 
         setBilling(status);
         setAttempts(nextAttempt);
+
+        if (status?.isPremiumActive) {
+          refreshUser().catch(() => {});
+        }
 
         if (!status?.isPremiumActive && nextAttempt < MAX_ATTEMPTS) {
           timerId = window.setTimeout(() => checkBillingStatus(nextAttempt + 1), POLL_DELAY_MS);

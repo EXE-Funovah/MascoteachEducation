@@ -20,13 +20,23 @@ export function AuthProvider({ children }) {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
+    const refreshUser = useCallback(async () => {
+        if (!isAuthenticated()) {
+            setUser(null);
+            return null;
+        }
+
+        const profile = await getMyProfile();
+        setUser(profile);
+        return profile;
+    }, []);
+
     // On mount, check if user is already authenticated and fetch profile
     useEffect(() => {
         async function loadUser() {
             if (isAuthenticated()) {
                 try {
-                    const profile = await getMyProfile();
-                    setUser(profile);
+                    await refreshUser();
                 } catch {
                     // Token might be expired
                     setUser(null);
@@ -35,7 +45,7 @@ export function AuthProvider({ children }) {
             setLoading(false);
         }
         loadUser();
-    }, []);
+    }, [refreshUser]);
 
     useEffect(() => {
         function handleAuthCleared() {
@@ -52,9 +62,7 @@ export function AuthProvider({ children }) {
         setLoading(true);
         try {
             await apiLogin({ email, password, remember });
-            // After successful login, fetch the user profile
-            const profile = await getMyProfile();
-            setUser(profile);
+            const profile = await refreshUser();
             return profile;
         } catch (err) {
             const message = err.message || 'Đăng nhập thất bại. Vui lòng thử lại.';
@@ -63,7 +71,7 @@ export function AuthProvider({ children }) {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [refreshUser]);
 
     const register = useCallback(async (data) => {
         setError(null);
@@ -85,8 +93,7 @@ export function AuthProvider({ children }) {
         setLoading(true);
         try {
             await apiGoogleLogin({ credential, remember });
-            const profile = await getMyProfile();
-            setUser(profile);
+            const profile = await refreshUser();
             return profile;
         } catch (err) {
             const message = err.message || 'Đăng nhập Google thất bại. Vui lòng thử lại.';
@@ -95,7 +102,7 @@ export function AuthProvider({ children }) {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [refreshUser]);
 
     const logout = useCallback(() => {
         setUser(null);
@@ -117,6 +124,7 @@ export function AuthProvider({ children }) {
         register,
         logout,
         clearError,
+        refreshUser,
     };
 
     return (
