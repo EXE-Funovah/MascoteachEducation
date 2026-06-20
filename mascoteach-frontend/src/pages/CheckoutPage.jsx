@@ -11,7 +11,6 @@ import {
   QrCode,
   RefreshCw,
   ShieldCheck,
-  UserRound,
   WalletCards,
   X,
   XCircle,
@@ -41,10 +40,10 @@ const CHECKOUT_PLAN_STORAGE_KEY = 'mascoteach_checkout_plan';
 const paymentLinkRequests = new Map();
 
 const PRO_BENEFITS = [
-  'Tạo bộ câu hỏi và trò chơi lớp học nhanh hơn.',
-  'Mở khóa trải nghiệm Pro cho thư viện nội dung.',
-  'Quản lý tiến độ và hoạt động lớp học thuận tiện hơn.',
-  'Ưu tiên luồng sử dụng ổn định cho giáo viên trên Mascoteach.',
+  'Tạo tài liệu và hoạt động lớp học nhanh hơn.',
+  'Mở khóa đầy đủ công cụ Pro của Mascoteach.',
+  'Theo dõi nội dung và phiên học thuận tiện hơn.',
+  'Sử dụng ổn định trong suốt thời hạn gói.',
 ];
 
 function getPaymentLink(planCode) {
@@ -120,9 +119,9 @@ function getPlanMeta(planCode, billingPlan = null) {
     return {
       ...fallback,
       id: 'yearly',
-      label: 'Pro Yearly',
+      label: 'Mascoteach Pro',
       eyebrow: 'Gói năm',
-      description: 'Phù hợp khi bạn muốn chốt gói dài hạn cho cả năm học.',
+      description: 'Phù hợp nếu bạn muốn dùng Pro ổn định cho cả năm học.',
       priceLabel: formatBillingCurrency(yearlyMonthlyEquivalent, fallback.currency),
       unit: '/ tháng',
       totalLabel: formatBillingCurrency(fallback.amount, fallback.currency),
@@ -135,9 +134,9 @@ function getPlanMeta(planCode, billingPlan = null) {
   return {
     ...fallback,
     id: 'monthly',
-    label: 'Pro Monthly',
+    label: 'Mascoteach Pro',
     eyebrow: 'Gói tháng',
-    description: 'Linh hoạt khi bạn muốn nâng cấp và gia hạn theo từng tháng.',
+    description: 'Linh hoạt nếu bạn muốn bắt đầu Pro theo từng tháng.',
     priceLabel: formatBillingCurrency(fallback.amount, fallback.currency),
     unit: '/ tháng',
     totalLabel: formatBillingCurrency(fallback.amount, fallback.currency),
@@ -224,7 +223,7 @@ const PayOsEmbeddedCheckout = memo(function PayOsEmbeddedCheckout({
   return (
     <div
       id={PAYOS_ELEMENT_ID}
-      className="mx-auto h-[500px] w-full overflow-hidden rounded-[18px] border border-[#DCE6F2] bg-white shadow-[0_12px_28px_rgba(27,58,107,0.08)] [&_iframe]:block [&_iframe]:h-full [&_iframe]:w-full [&_iframe]:border-0"
+      className="mx-auto h-[500px] w-full overflow-hidden rounded-[22px] bg-white [&_iframe]:block [&_iframe]:h-full [&_iframe]:w-full [&_iframe]:border-0"
     />
   );
 });
@@ -581,7 +580,7 @@ export default function CheckoutPage() {
       await openPaymentLinkForPlan(selectedPlanCode);
     } catch (err) {
       if (mountedRef.current) {
-        setError(err.message || 'Không thể huỷ order cũ để tạo thanh toán mới.');
+        setError(err.message || 'Không thể huỷ thanh toán cũ. Vui lòng thử lại.');
       }
     } finally {
       if (mountedRef.current) {
@@ -617,11 +616,14 @@ export default function CheckoutPage() {
   function renderPaymentModalBody() {
     if (paymentLinkLoading || cancelLoading) {
       return (
-        <div className="grid h-[500px] place-items-center rounded-[18px] border border-dashed border-brand-light bg-white">
+        <div className="grid h-[500px] place-items-center rounded-[22px] bg-[#F6F9FD]">
           <div className="text-center">
             <Loader2 className="mx-auto h-10 w-10 animate-spin text-brand-blue" />
-            <p className="mt-4 text-base font-medium text-brand-navy">
-              {cancelLoading ? 'Đang xử lý order cũ' : 'Đang chuẩn bị QR PayOS'}
+            <p className="mt-4 text-[18px] font-semibold text-brand-navy">
+              {cancelLoading ? 'Đang cập nhật thanh toán' : 'Đang chuẩn bị mã QR'}
+            </p>
+            <p className="mt-2 text-[15px] font-normal leading-6 text-[#61748D]">
+              Vui lòng chờ trong giây lát.
             </p>
           </div>
         </div>
@@ -643,11 +645,11 @@ export default function CheckoutPage() {
 
     if (frameClosed && hasVisiblePaymentLink && !paymentLinkExpired) {
       return (
-        <div className="grid h-[500px] place-items-center rounded-[18px] border border-brand-light bg-surface-blue px-6 text-center">
+        <div className="grid h-[500px] place-items-center rounded-[22px] bg-[#F2F8FD] px-6 text-center">
           <div>
             <QrCode className="mx-auto h-10 w-10 text-brand-blue" />
-            <p className="mt-4 text-lg font-medium text-brand-navy">Khung thanh toán đã đóng</p>
-            <p className="mt-2 text-sm font-normal leading-6 text-[#64748B]">
+            <p className="mt-4 text-[20px] font-semibold text-brand-navy">Khung thanh toán đã đóng</p>
+            <p className="mt-2 text-[16px] font-normal leading-7 text-[#64748B]">
               QR vẫn còn hiệu lực, bạn có thể mở lại để tiếp tục thanh toán.
             </p>
             <button
@@ -665,11 +667,11 @@ export default function CheckoutPage() {
 
     if (paymentLinkExpired) {
       return (
-        <div className="grid h-[500px] place-items-center rounded-[18px] border border-rose-200 bg-rose-50 px-6 text-center">
+        <div className="grid h-[500px] place-items-center rounded-[22px] bg-rose-50 px-6 text-center">
           <div>
             <Clock3 className="mx-auto h-10 w-10 text-rose-600" />
-            <p className="mt-4 text-lg font-medium text-rose-700">Mã QR đã hết hạn</p>
-            <p className="mt-2 text-sm font-normal leading-6 text-rose-700">
+            <p className="mt-4 text-[20px] font-semibold text-rose-700">Mã QR đã hết hạn</p>
+            <p className="mt-2 text-[16px] font-normal leading-7 text-rose-700">
               Bấm tạo mã mới nếu bạn muốn thanh toán lại cho đơn này.
             </p>
             <button
@@ -687,12 +689,12 @@ export default function CheckoutPage() {
     }
 
     return (
-      <div className="grid h-[500px] place-items-center rounded-[18px] border border-dashed border-brand-light bg-white px-6 text-center">
+      <div className="grid h-[500px] place-items-center rounded-[22px] bg-[#F6F9FD] px-6 text-center">
         <div>
           <AlertCircle className="mx-auto h-10 w-10 text-brand-blue" />
-          <p className="mt-4 text-lg font-medium text-brand-navy">Chưa có mã thanh toán</p>
-          <p className="mt-2 text-sm font-normal leading-6 text-[#64748B]">
-            Hãy quay lại và bấm thanh toán để tạo QR PayOS.
+          <p className="mt-4 text-[20px] font-semibold text-brand-navy">Chưa có mã thanh toán</p>
+          <p className="mt-2 text-[16px] font-normal leading-7 text-[#64748B]">
+            Bấm thanh toán để Mascoteach tạo mã QR PayOS cho bạn.
           </p>
         </div>
       </div>
@@ -712,15 +714,15 @@ export default function CheckoutPage() {
               <span className="grid h-8 w-8 place-items-center rounded-full border border-[#D9E3EE] bg-white text-[#52657D]">
                 <ArrowLeft className="h-4 w-4" />
               </span>
-              Back to pricing
+              Quay lại bảng giá
             </Link>
 
             <div className="mt-10">
-              <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-[#7B8CA3]">
-                Product Information and Review
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#6F86A4]">
+                Thông tin gói và quyền lợi
               </p>
-              <p className="mt-2 max-w-[520px] text-sm font-normal leading-6 text-[#748499]">
-                Chọn giữa gói tháng hoặc gói năm cho Mascoteach Pro. Sau khi bấm thanh toán, hệ thống mới tạo QR PayOS trong modal.
+              <p className="mt-3 max-w-[540px] text-[17px] font-normal leading-8 text-[#61748D]">
+                Chọn gói Pro phù hợp. Bạn sẽ quét QR PayOS ở bước tiếp theo.
               </p>
             </div>
 
@@ -752,29 +754,29 @@ export default function CheckoutPage() {
 
                         <div>
                           <div className="flex flex-wrap items-center gap-2">
-                            <p className="text-lg font-medium text-[#1F2A37]">{plan.label}</p>
-                            <span className="rounded-full bg-brand-light/20 px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.12em] text-brand-blue">
+                            <p className="text-[28px] font-semibold leading-tight text-[#1F2A37]">{plan.eyebrow}</p>
+                            <span className="rounded-full bg-brand-light/20 px-2.5 py-1 text-[12px] font-semibold uppercase tracking-[0.12em] text-brand-blue">
                               {plan.badge}
                             </span>
                           </div>
-                          <p className="mt-1 text-sm font-normal leading-6 text-[#748499]">
+                          <p className="mt-2 text-[17px] font-normal leading-8 text-[#61748D]">
                             {plan.description}
                           </p>
-                          <p className="mt-3 text-xs font-medium uppercase tracking-[0.12em] text-[#8DA2BC]">
+                          <p className="mt-3 text-[13px] font-semibold uppercase tracking-[0.14em] text-[#7F97B6]">
                             {plan.detail}
                           </p>
                         </div>
                       </div>
 
                       <div className="sm:text-right">
-                        <p className="text-2xl font-medium text-[#1F2A37]">{plan.priceLabel}</p>
-                        <p className="mt-1 text-sm font-normal text-[#748499]">{plan.unit}</p>
+                        <p className="text-[22px] font-semibold text-[#1F2A37]">{plan.priceLabel}</p>
+                        <p className="mt-1 text-[15px] font-medium text-[#748499]">{plan.unit}</p>
                       </div>
                     </div>
 
                     <div className="mt-5 grid gap-3 border-t border-[#EEF3F8] pt-5">
                       {PRO_BENEFITS.map((benefit) => (
-                        <div key={`${plan.id}-${benefit}`} className="flex items-start gap-3 text-sm font-normal leading-6 text-[#52657D]">
+                        <div key={`${plan.id}-${benefit}`} className="flex items-start gap-3 text-[17px] font-normal leading-8 text-[#4E627B]">
                           <span className={cn(
                             'mt-1 grid h-5 w-5 flex-none place-items-center rounded-full border',
                             active ? 'border-brand-blue bg-brand-blue text-white' : 'border-[#D4DFEB] bg-white text-[#7B8CA3]'
@@ -795,10 +797,10 @@ export default function CheckoutPage() {
                 <div className="flex items-start gap-3">
                   <AlertTriangle className="mt-0.5 h-5 w-5 flex-none text-amber-600" />
                   <div>
-                    <p className="text-sm font-medium text-amber-900">Bạn có một order chưa thanh toán.</p>
-                    <p className="mt-1 text-sm font-normal leading-6 text-amber-800">
-                      Nếu tạo order mới cho gói <span className="font-medium">{selectedPlan.eyebrow}</span>, order cũ
-                      {pendingOrderLabel ? ` (${pendingOrderLabel})` : ''} sẽ bị huỷ trước.
+                    <p className="text-base font-semibold text-amber-900">Bạn có một thanh toán đang chờ.</p>
+                    <p className="mt-1 text-[16px] font-normal leading-7 text-amber-800">
+                      Nếu tiếp tục với <span className="font-medium">{selectedPlan.eyebrow}</span>, thanh toán cũ
+                      {pendingOrderLabel ? ` (${pendingOrderLabel})` : ''} sẽ được huỷ trước.
                     </p>
                   </div>
                 </div>
@@ -810,9 +812,9 @@ export default function CheckoutPage() {
                 <div className="flex items-start gap-3">
                   <Clock3 className="mt-0.5 h-5 w-5 flex-none text-brand-blue" />
                   <div>
-                    <p className="text-sm font-medium text-brand-navy">Bạn đang có một giao dịch pending cho gói này.</p>
-                    <p className="mt-1 text-sm font-normal leading-6 text-[#52657D]">
-                      Bấm thanh toán để lấy lại QR còn hiệu lực cho order <span className="font-medium">{pendingOrderCode}</span>.
+                    <p className="text-base font-semibold text-brand-navy">Bạn đang có một giao dịch chờ thanh toán cho gói này.</p>
+                    <p className="mt-1 text-[16px] font-normal leading-7 text-[#52657D]">
+                      Bấm thanh toán để mở lại mã QR cho giao dịch <span className="font-medium">{pendingOrderCode}</span>.
                     </p>
                   </div>
                 </div>
@@ -821,39 +823,39 @@ export default function CheckoutPage() {
           </div>
 
           <div className="bg-white px-7 py-8 sm:px-10 lg:px-12 lg:py-12">
-            <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-[#7B8CA3]">
-              Payment Details
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#6F86A4]">
+              Thông tin thanh toán
             </p>
-            <p className="mt-2 max-w-[420px] text-sm font-normal leading-6 text-[#748499]">
-              Hoàn tất thanh toán cho gói Pro bằng PayOS. Sau khi bấm thanh toán, Mascoteach sẽ mở modal chứa QR và thông tin chuyển khoản.
+            <p className="mt-3 max-w-[440px] text-[17px] font-normal leading-8 text-[#61748D]">
+              Kiểm tra lại gói và thông tin người mua trước khi thanh toán qua PayOS.
             </p>
 
             <div className="mt-8">
-              <label className="text-sm font-medium text-[#1F2A37]">Selected Product</label>
+              <label className="text-[17px] font-semibold text-[#1F2A37]">Gói đã chọn</label>
               <div className="mt-3 rounded-[18px] border border-[#E6EDF5] bg-[#FAFCFE] px-4 py-4">
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <p className="text-base font-medium text-[#1F2A37]">{selectedPlan.label}</p>
-                    <p className="mt-1 text-sm font-normal leading-6 text-[#748499]">
+                    <p className="text-[19px] font-semibold text-[#1F2A37]">{selectedPlan.eyebrow}</p>
+                    <p className="mt-1 text-[16px] font-normal leading-7 text-[#61748D]">
                       {selectedPlan.description}
                     </p>
                   </div>
-                  <span className="text-base font-medium text-[#1F2A37]">{selectedPlan.totalLabel}</span>
+                  <span className="text-[19px] font-semibold text-[#1F2A37]">{selectedPlan.totalLabel}</span>
                 </div>
               </div>
             </div>
 
             <div className="mt-6">
-              <label className="text-sm font-medium text-[#1F2A37]">Select Payment Method</label>
+              <label className="text-[17px] font-semibold text-[#1F2A37]">Phương thức thanh toán</label>
               <div className="mt-3 rounded-[18px] border border-[#1F2A37] bg-white px-4 py-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
                 <div className="flex items-start gap-3">
                   <span className="grid h-10 w-10 place-items-center rounded-[14px] border border-brand-light bg-brand-light/15 text-brand-blue">
                     <WalletCards className="h-5 w-5" />
                   </span>
                   <div>
-                    <p className="text-sm font-medium text-[#1F2A37]">PayOS</p>
-                    <p className="mt-1 text-sm font-normal leading-6 text-[#748499]">
-                      Hệ thống chỉ hỗ trợ thanh toán qua PayOS ở bước này.
+                    <p className="text-[18px] font-semibold text-[#1F2A37]">PayOS</p>
+                    <p className="mt-1 text-[16px] font-normal leading-7 text-[#61748D]">
+                      Quét QR bằng ứng dụng ngân hàng hoặc ví điện tử hỗ trợ PayOS.
                     </p>
                   </div>
                 </div>
@@ -861,17 +863,17 @@ export default function CheckoutPage() {
             </div>
 
             <div className="mt-6">
-              <label className="text-sm font-medium text-[#1F2A37]">Customer Information</label>
+              <label className="text-[17px] font-semibold text-[#1F2A37]">Thông tin người mua</label>
               <div className="mt-3 grid gap-3">
                 <div className="rounded-[18px] border border-[#E6EDF5] bg-[#FAFCFE] px-4 py-4">
-                  <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-[#8DA2BC]">Name</p>
-                  <p className="mt-2 text-base font-medium text-[#1F2A37]">
+                  <p className="text-[12px] font-semibold uppercase tracking-[0.14em] text-[#7F97B6]">Họ và tên</p>
+                  <p className="mt-2 text-[20px] font-semibold text-[#1F2A37]">
                     {user?.fullName || 'Giáo viên Mascoteach'}
                   </p>
                 </div>
                 <div className="rounded-[18px] border border-[#E6EDF5] bg-[#FAFCFE] px-4 py-4">
-                  <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-[#8DA2BC]">Email</p>
-                  <p className="mt-2 text-base font-medium text-[#1F2A37]">
+                  <p className="text-[12px] font-semibold uppercase tracking-[0.14em] text-[#7F97B6]">Email</p>
+                  <p className="mt-2 text-[20px] font-semibold text-[#1F2A37]">
                     {user?.email || 'Không có email'}
                   </p>
                 </div>
@@ -879,18 +881,18 @@ export default function CheckoutPage() {
             </div>
 
             <div className="mt-8 border-t border-[#EEF3F8] pt-6">
-              <div className="space-y-3 text-sm">
+              <div className="space-y-3 text-[16px]">
                 <div className="flex items-center justify-between gap-4 text-[#52657D]">
-                  <span className="font-normal">Sub Total</span>
-                  <span className="font-medium text-[#1F2A37]">{selectedPlan.totalLabel}</span>
+                  <span className="font-medium">Tạm tính</span>
+                  <span className="font-semibold text-[#1F2A37]">{selectedPlan.totalLabel}</span>
                 </div>
                 <div className="flex items-center justify-between gap-4 text-[#52657D]">
-                  <span className="font-normal">Payment Method</span>
-                  <span className="font-medium text-[#1F2A37]">PayOS</span>
+                  <span className="font-medium">Phương thức thanh toán</span>
+                  <span className="font-semibold text-[#1F2A37]">PayOS</span>
                 </div>
                 <div className="flex items-center justify-between gap-4 text-[#1F2A37]">
-                  <span className="text-base font-medium">Total</span>
-                  <span className="text-base font-medium">{totalLabel}</span>
+                  <span className="text-[20px] font-semibold">Tổng cộng</span>
+                  <span className="text-[20px] font-semibold">{totalLabel}</span>
                 </div>
               </div>
 
@@ -908,9 +910,9 @@ export default function CheckoutPage() {
 
               {pendingOrderCode && (
                 <div className="mt-5 rounded-[18px] border border-brand-light/70 bg-brand-light/15 px-4 py-4">
-                  <p className="text-sm font-medium text-brand-navy">Mã đơn hiện tại</p>
+                  <p className="text-base font-semibold text-brand-navy">Mã giao dịch hiện tại</p>
                   <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <p className="text-sm font-normal text-[#52657D]">{pendingOrderCode}</p>
+                    <p className="text-[16px] font-medium text-[#52657D]">{pendingOrderCode}</p>
                     <button
                       type="button"
                       className="inline-flex h-10 items-center justify-center gap-2 rounded-[999px] border border-rose-200 bg-white px-4 text-sm font-medium text-rose-600 transition hover:border-rose-300 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
@@ -926,7 +928,7 @@ export default function CheckoutPage() {
 
               <button
                 type="button"
-                className="mt-6 inline-flex h-12 w-full items-center justify-center gap-2 rounded-[999px] bg-[#1E293B] px-5 text-sm font-medium text-white transition hover:bg-[#0F172A] disabled:cursor-not-allowed disabled:opacity-60"
+                className="mt-6 inline-flex h-14 w-full items-center justify-center gap-2 rounded-[999px] bg-[#1E293B] px-5 text-[17px] font-semibold text-white transition hover:bg-[#0F172A] disabled:cursor-not-allowed disabled:opacity-60"
                 onClick={handleCreateOrReusePayment}
                 disabled={controlsDisabled || retryAfterRemainingMs > 0}
               >
@@ -934,9 +936,9 @@ export default function CheckoutPage() {
                 {payButtonLabel}
               </button>
 
-              <p className="mt-5 flex items-start gap-3 text-sm font-normal leading-6 text-[#748499]">
+              <p className="mt-5 flex items-start gap-3 text-[16px] font-normal leading-7 text-[#61748D]">
                 <ShieldCheck className="mt-0.5 h-5 w-5 flex-none text-brand-blue" />
-                Thanh toán được xử lý an toàn qua PayOS. Mascoteach chỉ nâng cấp Pro sau khi backend webhook xác nhận thành công.
+                Gói Pro sẽ tự kích hoạt sau khi giao dịch được xác nhận.
               </p>
             </div>
           </div>
@@ -945,17 +947,17 @@ export default function CheckoutPage() {
 
       {paymentModalOpen && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-[#101828]/52 px-4 py-6 backdrop-blur-[6px]" role="dialog" aria-modal="true" aria-labelledby="payment-modal-title">
-          <div className="w-full max-w-[1120px] overflow-hidden rounded-[28px] border border-white/70 bg-[#F7FAFD] shadow-[0_34px_100px_rgba(27,58,107,0.24)]">
-            <div className="flex items-start justify-between gap-4 border-b border-[#E6EDF5] px-6 py-5 sm:px-8">
+          <div className="w-full max-w-[1060px] overflow-hidden rounded-[30px] border border-white/80 bg-white shadow-[0_34px_100px_rgba(27,58,107,0.24)]">
+            <div className="flex items-start justify-between gap-4 border-b border-[#EAF0F7] px-6 py-6 sm:px-8">
               <div>
-                <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-[#7B8CA3]">
-                  Payment Details
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#6F86A4]">
+                  Thanh toán PayOS
                 </p>
-                <h2 id="payment-modal-title" className="mt-2 text-2xl font-medium text-[#1F2A37]">
-                  {selectedPlan.label}
+                <h2 id="payment-modal-title" className="mt-2 text-[32px] font-semibold leading-tight text-[#1F2A37]">
+                  Quét QR để thanh toán
                 </h2>
-                <p className="mt-2 max-w-[520px] text-sm font-normal leading-6 text-[#748499]">
-                  QR và thông tin thanh toán chỉ xuất hiện ở modal này sau khi bạn bấm thanh toán ở trang checkout.
+                <p className="mt-3 max-w-[560px] text-[17px] font-normal leading-8 text-[#61748D]">
+                  Giữ màn hình này mở trong lúc hoàn tất giao dịch. Mascoteach sẽ cập nhật Pro sau khi thanh toán được xác nhận.
                 </p>
               </div>
 
@@ -970,47 +972,53 @@ export default function CheckoutPage() {
               </button>
             </div>
 
-            <div className="grid gap-6 px-6 py-6 sm:px-8 lg:grid-cols-[320px_1fr]">
-              <aside className="rounded-[22px] border border-[#DCE6F2] bg-white p-5 shadow-[0_14px_36px_rgba(27,58,107,0.08)]">
-                <div className="rounded-[18px] border border-[#E6EDF5] bg-[#FAFCFE] px-4 py-4">
-                  <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-[#8DA2BC]">Plan</p>
-                  <p className="mt-2 text-base font-medium text-[#1F2A37]">{selectedPlan.eyebrow}</p>
+            <div className="grid bg-[#F8FBFE] lg:grid-cols-[330px_1fr]">
+              <aside className="border-b border-[#EAF0F7] px-6 py-6 sm:px-8 lg:border-b-0 lg:border-r lg:px-7">
+                <div>
+                  <p className="text-[13px] font-semibold uppercase tracking-[0.14em] text-[#7F97B6]">Tóm tắt</p>
+                  <div className="mt-5 divide-y divide-[#E3EBF4]">
+                    <div className="flex items-start justify-between gap-4 py-4 first:pt-0">
+                      <span className="text-[15px] font-medium text-[#61748D]">Gói</span>
+                      <span className="text-right text-[17px] font-semibold text-[#1F2A37]">{selectedPlan.eyebrow}</span>
+                    </div>
+
+                    <div className="py-4">
+                      <div className="flex items-start justify-between gap-4">
+                        <span className="text-[15px] font-medium text-[#61748D]">Người mua</span>
+                        <span className="text-right text-[17px] font-semibold text-[#1F2A37]">{user?.fullName || 'Giáo viên Mascoteach'}</span>
+                      </div>
+                      <p className="mt-1 break-all text-right text-[15px] font-medium text-[#748499]">{user?.email || 'Không có email'}</p>
+                    </div>
+
+                    <div className="flex items-start justify-between gap-4 py-4">
+                      <span className="text-[15px] font-medium text-[#61748D]">Mã giao dịch</span>
+                      <span className="break-all text-right text-[16px] font-semibold text-[#1F2A37]">{pendingOrderCode || 'Đang tạo'}</span>
+                    </div>
+
+                    <div className="flex items-start justify-between gap-4 py-4">
+                      <span className="text-[15px] font-medium text-[#61748D]">Tổng tiền</span>
+                      <span className="text-right text-[20px] font-semibold text-[#1F2A37]">{totalLabel}</span>
+                    </div>
+                  </div>
                 </div>
 
-                <div className="mt-3 rounded-[18px] border border-[#E6EDF5] bg-[#FAFCFE] px-4 py-4">
-                  <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-[#8DA2BC]">Customer</p>
-                  <p className="mt-2 text-base font-medium text-[#1F2A37]">{user?.fullName || 'Giáo viên Mascoteach'}</p>
-                  <p className="mt-1 text-sm font-normal text-[#748499]">{user?.email || 'Không có email'}</p>
-                </div>
-
-                <div className="mt-3 rounded-[18px] border border-[#E6EDF5] bg-[#FAFCFE] px-4 py-4">
-                  <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-[#8DA2BC]">Order</p>
-                  <p className="mt-2 text-base font-medium text-[#1F2A37]">{pendingOrderCode || 'Đang tạo'}</p>
-                </div>
-
-                <div className="mt-3 rounded-[18px] border border-[#E6EDF5] bg-[#FAFCFE] px-4 py-4">
-                  <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-[#8DA2BC]">Total</p>
-                  <p className="mt-2 text-base font-medium text-[#1F2A37]">{totalLabel}</p>
-                  <p className="mt-1 text-sm font-normal text-[#748499]">Thanh toán qua PayOS</p>
-                </div>
-
-                <div className="mt-4 rounded-[18px] border border-brand-light/70 bg-brand-light/15 px-4 py-4">
-                  <p className="text-sm font-medium text-brand-navy">
+                <div className="mt-5 rounded-[18px] bg-brand-light/15 px-4 py-4">
+                  <p className="text-[16px] font-semibold text-brand-navy">
                     {paymentLinkExpired
                       ? 'Mã QR đã hết hạn'
                       : showPaymentFrame && paymentLink?.expiresAt
                         ? `QR còn hiệu lực ${formatCountdown(paymentLinkRemainingMs)}`
                         : retryAfterRemainingMs > 0
-                          ? `Đang chờ tạo lại ${formatCountdown(retryAfterRemainingMs)}`
-                          : 'QR sẽ xuất hiện ở khung bên phải'}
+                          ? `Có thể tạo lại sau ${formatCountdown(retryAfterRemainingMs)}`
+                          : 'Mã QR đang được chuẩn bị'}
                   </p>
-                  <p className="mt-2 text-sm font-normal leading-6 text-[#52657D]">
-                    Không xác nhận Pro ở frontend. Hệ thống chỉ nâng cấp sau khi webhook từ PayOS được backend xử lý xong.
+                  <p className="mt-2 text-[15px] font-normal leading-7 text-[#52657D]">
+                    Sau khi thanh toán xong, gói Pro sẽ được kích hoạt tự động.
                   </p>
                 </div>
 
                 {error && (
-                  <div className="mt-4 rounded-[18px] border border-rose-200 bg-rose-50 px-4 py-4 text-sm font-normal leading-6 text-rose-700">
+                  <div className="mt-4 rounded-[18px] bg-rose-50 px-4 py-4 text-[15px] font-normal leading-6 text-rose-700">
                     {error}
                   </div>
                 )}
@@ -1018,7 +1026,7 @@ export default function CheckoutPage() {
                 {pendingOrderCode && (
                   <button
                     type="button"
-                    className="mt-4 inline-flex h-11 w-full items-center justify-center gap-2 rounded-[999px] border border-rose-200 bg-white px-5 text-sm font-medium text-rose-600 transition hover:border-rose-300 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="mt-5 inline-flex h-12 w-full items-center justify-center gap-2 rounded-[999px] border border-rose-200 bg-white px-5 text-[15px] font-semibold text-rose-600 transition hover:border-rose-300 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
                     onClick={() => setConfirmCancelOpen(true)}
                     disabled={cancelLoading}
                   >
@@ -1028,7 +1036,7 @@ export default function CheckoutPage() {
                 )}
               </aside>
 
-              <div className="rounded-[22px] border border-[#DCE6F2] bg-white p-5 shadow-[0_14px_36px_rgba(27,58,107,0.08)]">
+              <div className="bg-white px-5 py-6 sm:px-7">
                 {renderPaymentModalBody()}
               </div>
             </div>
@@ -1046,10 +1054,10 @@ export default function CheckoutPage() {
                 </div>
                 <div>
                   <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-[#8A94A6]">
-                    Order đang chờ thanh toán
+                    Thanh toán đang chờ
                   </p>
                   <h2 id="switch-plan-title" className="mt-2 text-xl font-medium text-[#22272E]">
-                    Tạo order mới cho gói này?
+                    Tạo thanh toán mới cho gói này?
                   </h2>
                 </div>
               </div>
@@ -1057,14 +1065,14 @@ export default function CheckoutPage() {
 
             <div className="px-6 py-5">
               <p className="text-sm font-normal leading-6 text-[#5D6572]">
-                Bạn có một order chưa thanh toán. Nếu tạo order mới cho <span className="font-medium">{selectedPlan.eyebrow}</span>, order cũ
-                {pendingOrderLabel ? ` (${pendingOrderLabel})` : ''} sẽ bị huỷ trước.
+                Bạn có một giao dịch chưa hoàn tất. Nếu tiếp tục với <span className="font-medium">{selectedPlan.eyebrow}</span>, giao dịch cũ
+                {pendingOrderLabel ? ` (${pendingOrderLabel})` : ''} sẽ được huỷ trước.
               </p>
 
               <div className="mt-4 grid gap-2 rounded-[16px] border border-[#E5EAF1] bg-[#F8FBFE] px-4 py-3 text-sm">
                 {pendingOrder?.orderCode && (
                   <div className="flex items-center justify-between gap-4">
-                    <span className="font-normal text-[#64748B]">Mã đơn cũ</span>
+                    <span className="font-normal text-[#64748B]">Mã giao dịch cũ</span>
                     <span className="font-medium text-[#24282E]">{pendingOrder.orderCode}</span>
                   </div>
                 )}
@@ -1082,7 +1090,7 @@ export default function CheckoutPage() {
                 onClick={() => setConfirmSwitchPlanOpen(false)}
                 disabled={cancelLoading || paymentLinkLoading}
               >
-                Giữ order cũ
+                Giữ giao dịch cũ
               </button>
               <button
                 type="button"
@@ -1091,7 +1099,7 @@ export default function CheckoutPage() {
                 disabled={cancelLoading || paymentLinkLoading}
               >
                 {(cancelLoading || paymentLinkLoading) && <Loader2 className="h-4 w-4 animate-spin" />}
-                Huỷ order cũ và tạo mới
+                Huỷ giao dịch cũ và tạo mới
               </button>
             </div>
           </div>
@@ -1108,7 +1116,7 @@ export default function CheckoutPage() {
                 </div>
                 <div>
                   <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-[#8A94A6]">
-                    Đơn đang chờ thanh toán
+                    Thanh toán đang chờ
                   </p>
                   <h2 id="cancel-payment-title" className="mt-2 text-xl font-medium text-[#22272E]">
                     Huỷ mã thanh toán này?
@@ -1125,7 +1133,7 @@ export default function CheckoutPage() {
               <div className="mt-4 grid gap-2 rounded-[16px] border border-[#E5EAF1] bg-[#F8FBFE] px-4 py-3 text-sm">
                 {pendingOrderCode && (
                   <div className="flex items-center justify-between gap-4">
-                    <span className="font-normal text-[#64748B]">Mã đơn</span>
+                    <span className="font-normal text-[#64748B]">Mã giao dịch</span>
                     <span className="font-medium text-[#24282E]">{pendingOrderCode}</span>
                   </div>
                 )}
