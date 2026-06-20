@@ -701,8 +701,8 @@ export default function CheckoutPage() {
       <section className="mx-auto max-w-[1180px] overflow-hidden rounded-[28px] border border-white/80 bg-[#F6F9FD] shadow-[0_34px_100px_rgba(27,58,107,0.18)]">
         <div className="grid lg:grid-cols-[1.06fr_0.94fr]">
           <div className="border-b border-white/80 bg-[#F1F5FA] px-7 py-8 sm:px-10 lg:border-b-0 lg:border-r lg:border-r-white/80 lg:px-12 lg:py-12">
-            <Link to="/pricing" className="inline-flex items-center gap-2 text-sm font-medium text-[#52657D] transition hover:text-brand-blue">
-              <span className="grid h-8 w-8 place-items-center rounded-full border border-[#D9E3EE] bg-white text-[#52657D]">
+            <Link to="/pricing" className="inline-flex items-center gap-2 text-sm font-semibold text-[#243B5A] transition hover:text-brand-blue">
+              <span className="grid h-8 w-8 place-items-center rounded-full border border-[#CBD8E7] bg-white text-[#243B5A]">
                 <ArrowLeft className="h-4 w-4" />
               </span>
               Quay lại bảng giá
@@ -726,37 +726,39 @@ export default function CheckoutPage() {
                     key={plan.id}
                     type="button"
                     className={cn(
-                      'rounded-[22px] border bg-white p-5 text-left transition duration-200',
+                      'relative overflow-hidden rounded-[22px] border bg-white px-6 py-5 text-left transition duration-200',
                       active
-                        ? 'border-brand-mid/70 shadow-[0_18px_42px_rgba(27,58,107,0.08)]'
+                        ? 'border-brand-mid/75 shadow-[0_18px_42px_rgba(27,58,107,0.08)]'
                         : 'border-white/90 hover:border-brand-light/80 hover:shadow-[0_14px_30px_rgba(27,58,107,0.05)]'
                     )}
                     onClick={() => updateSelectedPlan(plan.id)}
                     disabled={paymentLinkLoading || cancelLoading}
                   >
-                    <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
-                      <div className="flex gap-4">
-                        <div className={cn(
-                          'grid h-16 w-16 flex-none place-items-center rounded-[18px] border',
-                          active ? 'border-brand-light bg-brand-light/25 text-brand-blue' : 'border-[#E6EDF5] bg-[#F7FAFD] text-[#8AA0BB]'
-                        )}>
-                          <ShieldCheck className="h-7 w-7" />
-                        </div>
+                    {active && <span className="absolute inset-y-5 left-0 w-1 rounded-r-full bg-brand-blue" aria-hidden="true" />}
 
-                        <div>
-                          <div className="flex flex-wrap items-center gap-2">
-                            <p className="text-[28px] font-semibold leading-tight text-[#1F2A37]">{plan.eyebrow}</p>
-                            <span className="rounded-full bg-brand-light/20 px-2.5 py-1 text-[12px] font-semibold uppercase tracking-[0.12em] text-brand-blue">
-                              {plan.badge}
-                            </span>
-                          </div>
-                          <p className="mt-2 text-[17px] font-medium leading-8 text-[#61748D]">
-                            {plan.description}
-                          </p>
-                          <p className="mt-3 text-[13px] font-semibold uppercase tracking-[0.14em] text-[#7F97B6]">
-                            {plan.detail}
-                          </p>
+                    <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2.5">
+                          <span
+                            className={cn(
+                              'grid h-4 w-4 place-items-center rounded-full border transition',
+                              active ? 'border-brand-blue bg-brand-blue shadow-[0_0_0_4px_rgba(47,132,196,0.12)]' : 'border-[#C8D6E7] bg-white'
+                            )}
+                            aria-hidden="true"
+                          >
+                            {active && <span className="h-1.5 w-1.5 rounded-full bg-white" />}
+                          </span>
+                          <p className="text-[28px] font-semibold leading-tight text-[#1F2A37]">{plan.eyebrow}</p>
+                          <span className="rounded-full bg-brand-light/20 px-2.5 py-1 text-[12px] font-semibold uppercase tracking-[0.12em] text-brand-blue">
+                            {plan.badge}
+                          </span>
                         </div>
+                        <p className="mt-2 text-[17px] font-medium leading-8 text-[#61748D]">
+                          {plan.description}
+                        </p>
+                        <p className="mt-3 text-[13px] font-semibold uppercase tracking-[0.14em] text-[#7F97B6]">
+                          {plan.detail}
+                        </p>
                       </div>
 
                       <div className="sm:text-right">
@@ -800,7 +802,7 @@ export default function CheckoutPage() {
           </div>
 
           <div className="bg-white px-7 py-8 sm:px-10 lg:px-12 lg:py-12">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#6F86A4]">
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#344A67]">
               Thông tin thanh toán
             </p>
             <p className="mt-3 max-w-[440px] text-[17px] font-medium leading-8 text-[#61748D]">
