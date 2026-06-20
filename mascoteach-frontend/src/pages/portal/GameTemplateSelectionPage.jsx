@@ -17,8 +17,8 @@ import {
 } from 'lucide-react';
 import { getAllGameTemplates } from '@/services/gameTemplateService';
 import { createSession } from '@/services/liveSessionService';
-import { getQuestionsByQuiz } from '@/services/questionService';
 import { normalizeQuestion } from '@/services/gameService';
+import { getQuizQuestions } from '@/services/quizService';
 
 const BUILTIN_TEMPLATES = [
     {
@@ -224,7 +224,7 @@ export default function GameTemplateSelectionPage() {
 
         try {
             if (activeGame.id === '__adventure__') {
-                const rawQuestions = await getQuestionsByQuiz(quizId);
+                const rawQuestions = await getQuizQuestions(quizId);
                 const questions = (Array.isArray(rawQuestions) ? rawQuestions : []).map(normalizeQuestion);
 
                 if (!questions.length) {

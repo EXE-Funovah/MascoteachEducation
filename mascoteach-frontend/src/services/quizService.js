@@ -1,9 +1,19 @@
 /**
- * Mascoteach — Quiz Service
+ * Mascoteach - Quiz Service
  * CRUD operations for quizzes.
  */
 
 import api from './api';
+
+export function toBackendActivityType(activityType) {
+    return activityType === 'flashcards' || activityType === 'Flashcard'
+        ? 'Flashcard'
+        : 'Quiz';
+}
+
+export function toFrontendActivityType(activityType) {
+    return activityType === 'Flashcard' ? 'flashcards' : 'quiz';
+}
 
 /**
  * Get all quizzes for a specific document
@@ -25,13 +35,36 @@ export async function getQuizById(id) {
 
 /**
  * Create a new quiz
- * @param {{ documentId: number, title: string }} data
+ * @param {{ documentId: number, title: string, activityType?: string }} data
  * @returns {Promise<object>}
  */
 export async function createQuiz(data) {
     return api.post('/api/Quiz', {
         documentId: data.documentId,
         title: data.title,
+        activityType: toBackendActivityType(data.activityType),
+    });
+}
+
+/**
+ * Publish a whole quiz/flashcard set in one request
+ * @param {{
+ *   documentId: number,
+ *   title: string,
+ *   activityType: string,
+ *   questions: Array<{
+ *     questionText: string,
+ *     questionType: string,
+ *     position: number,
+ *     options: Array<{ optionText: string, isCorrect: boolean }>
+ *   }>
+ * }} data
+ * @returns {Promise<object>}
+ */
+export async function publishQuiz(data) {
+    return api.post('/api/Quiz/publish', {
+        ...data,
+        activityType: toBackendActivityType(data.activityType),
     });
 }
 
@@ -67,31 +100,59 @@ export async function toggleDeleteQuiz(id) {
 }
 
 /**
- * Get all quizzes for a specific user (via their documents).
- * Backend returns quizzes under each document → we flatten.
- * Alternatively, if Backend has GET /api/Quiz/me, use that directly.
- *
- * This fetches all documents and their quizzes concurrently.
- * @param {Array<{id: number}>} documents — user's documents list
- * @returns {Promise<object[]>} — flat list of quizzes
+ * Get current user's quizzes, optionally filtered by activity type
+ * @param {string} [activityType]
+ * @returns {Promise<object[]>}
  */
-export async function getQuizzesByDocuments(documents) {
-    if (!documents?.length) return [];
-    const results = await Promise.all(
-        documents.map(doc => api.get(`/api/Quiz/document/${doc.id}`).catch(() => []))
-    );
-    return results.flat();
+export async function getMyQuizzes(activityType) {
+    const query = activityType
+        ? `?activityType=${encodeURIComponent(toBackendActivityType(activityType))}`
+        : '';
+
+    return api.get(`/api/Quiz/me${query}`);
+}
+
+/**
+ * Backward-compatible alias while old callers are being migrated
+ * @param {Array<{id: number}>} _documents
+ * @param {string} [activityType]
+ * @returns {Promise<object[]>}
+ */
+export async function getQuizzesByDocuments(_documents, activityType) {
+    return getMyQuizzes(activityType);
+}
+
+/**
+ * Get a single quiz detail with ordered questions + options
+ * @param {number} id
+ * @param {object} [options]
+ * @returns {Promise<object>}
+ */
+export async function getQuizDetail(id, options) {
+    return api.get(`/api/Quiz/${id}/detail`, options);
 }
 
 /**
  * Get a single quiz with its full questions + options
  * @param {number} quizId
+ * @param {object} [options]
  * @returns {Promise<{ quiz: object, questions: object[] }>}
  */
-export async function getQuizWithQuestions(quizId) {
-    const [quiz, questions] = await Promise.all([
-        api.get(`/api/Quiz/${quizId}`),
-        api.get(`/api/Question/quiz/${quizId}`),
-    ]);
-    return { quiz, questions };
+export async function getQuizWithQuestions(quizId, options) {
+    const detail = await getQuizDetail(quizId, options);
+    return {
+        quiz: detail,
+        questions: Array.isArray(detail?.questions) ? detail.questions : [],
+    };
+}
+
+/**
+ * Get ordered questions for a quiz from the detail endpoint
+ * @param {number} quizId
+ * @param {object} [options]
+ * @returns {Promise<object[]>}
+ */
+export async function getQuizQuestions(quizId, options) {
+    const detail = await getQuizDetail(quizId, options);
+    return Array.isArray(detail?.questions) ? detail.questions : [];
 }
