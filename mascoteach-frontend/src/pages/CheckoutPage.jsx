@@ -241,7 +241,7 @@ function PageSkeleton() {
 }
 
 export default function CheckoutPage() {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { user } = useAuth();
   const planParam = searchParams.get('plan');
@@ -279,7 +279,6 @@ export default function CheckoutPage() {
   const [retryAfterRemainingMs, setRetryAfterRemainingMs] = useState(0);
   const mountedRef = useRef(true);
   const expiredOrderSyncRef = useRef('');
-  const searchParamsRef = useRef(searchParams);
 
   const handlePaymentExit = useCallback(() => {
     setFrameClosed(true);
@@ -288,10 +287,6 @@ export default function CheckoutPage() {
   useEffect(() => () => {
     mountedRef.current = false;
   }, []);
-
-  useEffect(() => {
-    searchParamsRef.current = searchParams;
-  }, [searchParams]);
 
   useEffect(() => {
     if (!isPayOsReturn) return;
@@ -335,23 +330,13 @@ export default function CheckoutPage() {
     };
   }, []);
 
-  const updateSelectedPlan = useCallback((nextPlanId, options = {}) => {
+  const updateSelectedPlan = useCallback((nextPlanId) => {
     setSelectedPlanId(nextPlanId);
 
     if (!isPayOsReturn) {
       window.sessionStorage.setItem(CHECKOUT_PLAN_STORAGE_KEY, nextPlanId);
     }
-
-    const currentSearchParams = searchParamsRef.current;
-    const currentPlanId = getPlanIdFromPlanCode(getPlanCode(currentSearchParams.get('plan')));
-    if (currentPlanId === nextPlanId) {
-      return;
-    }
-
-    const nextSearchParams = new URLSearchParams(currentSearchParams);
-    nextSearchParams.set('plan', nextPlanId);
-    setSearchParams(nextSearchParams, { replace: options.replace ?? false });
-  }, [isPayOsReturn, setSearchParams]);
+  }, [isPayOsReturn]);
 
   async function openPaymentLinkForPlan(planCode) {
     setPaymentModalOpen(true);
@@ -421,7 +406,7 @@ export default function CheckoutPage() {
 
       if (latestPendingOrder?.planCode && syncSelectedPlanWithPending) {
         const pendingPlanId = getPlanIdFromPlanCode(latestPendingOrder.planCode);
-        updateSelectedPlan(pendingPlanId, { replace: true });
+        updateSelectedPlan(pendingPlanId);
       }
 
       return latestPendingOrder;
@@ -459,7 +444,7 @@ export default function CheckoutPage() {
 
         if (latestPendingOrder?.planCode) {
           const pendingPlanId = getPlanIdFromPlanCode(latestPendingOrder.planCode);
-          updateSelectedPlan(pendingPlanId, { replace: true });
+          updateSelectedPlan(pendingPlanId);
         }
       } catch (err) {
         if (!cancelled && mountedRef.current) {
