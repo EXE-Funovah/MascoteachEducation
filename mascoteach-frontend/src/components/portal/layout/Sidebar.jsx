@@ -37,9 +37,18 @@ export default function Sidebar() {
         >
             <div className="relative min-h-0 w-full rounded-[26px] border border-white/80 bg-white px-5 py-5 shadow-[0_24px_70px_rgba(27,58,107,0.12)]">
                 <div className="mb-7 flex items-start justify-between gap-4">
-                    <NavLink to={basePath} aria-label="Mascoteach" className="block">
-                        <img src="/images/Logo.png" alt="Mascoteach" className="h-12 max-w-[154px] object-contain" />
-                    </NavLink>
+                    <div>
+                        <NavLink to="/" aria-label="Về trang chủ Mascoteach" className="block">
+                            <img src="/images/Logo.png" alt="Mascoteach" className="h-12 max-w-[154px] object-contain" />
+                        </NavLink>
+                        <NavLink
+                            to="/"
+                            className="mt-2 inline-flex items-center gap-1.5 text-[12px] font-extrabold uppercase tracking-[0.08em] text-slate-500 transition hover:text-brand-blue"
+                        >
+                            Trang chủ ngoài
+                            <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={2.6} />
+                        </NavLink>
+                    </div>
                     <button
                         type="button"
                         className="grid h-9 w-9 place-items-center rounded-xl text-slate-500 transition-all duration-200 hover:-translate-y-0.5 hover:bg-brand-light/25 hover:text-brand-blue active:translate-y-0"

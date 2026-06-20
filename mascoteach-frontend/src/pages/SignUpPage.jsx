@@ -28,13 +28,6 @@ export default function SignUpPage() {
     const { register, googleLogin, error, clearError } = useAuth();
     const navigate = useNavigate();
 
-    function getRoleRedirect(profile) {
-        const role = (profile?.role || profile?.roleName || '').toLowerCase();
-        if (role === 'student') return '/student';
-        if (role === 'parent') return '/parent';
-        return '/teacher';
-    }
-
     function update(field) {
         return (e) => {
             setForm((prev) => ({ ...prev, [field]: e.target.value }));
@@ -86,8 +79,8 @@ export default function SignUpPage() {
         setLocalError('');
         setGoogleSubmitting(true);
         try {
-            const profile = await googleLogin(credential, true);
-            navigate(getRoleRedirect(profile), { replace: true });
+            await googleLogin(credential, true);
+            navigate('/', { replace: true });
         } catch (err) {
             setLocalError(err.message || 'Đăng nhập Google thất bại. Vui lòng thử lại.');
         } finally {
