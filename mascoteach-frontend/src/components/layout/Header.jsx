@@ -86,6 +86,7 @@ export default function Header() {
   const isPremiumTeacher = isTeacher && isPremiumActive(user);
   const portalPath = userRole === 'student' ? '/student' : userRole === 'parent' ? '/parent' : '/teacher';
   const profilePath = `${portalPath}/profile`;
+  const checkoutBackState = { checkoutBackTo: `${location.pathname}${location.search}${location.hash}` };
   const displayName = user?.fullName || user?.email || 'Tài khoản';
   const avatarInitial = displayName.trim().charAt(0).toUpperCase() || 'M';
 
@@ -202,7 +203,7 @@ export default function Header() {
                       <HeaderMenuLink to={portalPath} icon={LayoutDashboard} label="Trang quản lý" />
                       <HeaderMenuLink to={profilePath} icon={User} label="Hồ sơ cá nhân" />
                       {isTeacher && <HeaderMenuLink to="/teacher/billing" icon={CreditCard} label="Thanh toán" />}
-                      {isTeacher && !isPremiumTeacher && <HeaderMenuLink to="/checkout?plan=yearly" icon={Crown} label="Nâng cấp Pro" />}
+                      {isTeacher && !isPremiumTeacher && <HeaderMenuLink to="/checkout?plan=yearly" state={checkoutBackState} icon={Crown} label="Nâng cấp Pro" />}
                     </div>
 
                     <div className="border-t border-[#EEF2F6] p-3">
@@ -337,10 +338,11 @@ export default function Header() {
   );
 }
 
-function HeaderMenuLink({ to, icon: Icon, label }) {
+function HeaderMenuLink({ to, state, icon: Icon, label }) {
   return (
     <Link
       to={to}
+      state={state}
       className="group flex min-h-12 items-center gap-3 rounded-[14px] px-4 text-sm font-black text-[#173154] transition duration-200 hover:bg-[#F0F7FF] active:translate-y-px"
     >
       <Icon className="h-5 w-5 text-[#64748B] transition duration-200 group-hover:text-[#173154]" strokeWidth={2.15} />

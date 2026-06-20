@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { usePayOS } from '@payos/payos-checkout';
 import {
   AlertCircle,
@@ -96,6 +96,44 @@ function normalizePayOsCheckoutUrl(value) {
 function getPlanCode(planParam) {
   if (planParam === 'yearly' || planParam === BILLING_PLAN_CODES.yearly) return BILLING_PLAN_CODES.yearly;
   return BILLING_PLAN_CODES.monthly;
+}
+
+function getPathFromNavigationState(value) {
+  if (!value) return '';
+  if (typeof value === 'string') return value;
+
+  const pathname = value.pathname || '';
+  if (!pathname) return '';
+
+  return `${pathname}${value.search || ''}${value.hash || ''}`;
+}
+
+function getCheckoutBackTarget(backSource) {
+  const backPath = getPathFromNavigationState(backSource);
+  if (backPath.startsWith('/teacher') || backPath.startsWith('/student') || backPath.startsWith('/parent') || backPath.startsWith('/dev/teacher')) {
+    return backPath;
+  }
+
+  if (backPath.startsWith('/pricing')) {
+    return backPath;
+  }
+
+  try {
+    const referrer = document.referrer ? new URL(document.referrer) : null;
+    if (referrer?.origin === window.location.origin) {
+      const referrerPath = `${referrer.pathname}${referrer.search}${referrer.hash}`;
+      if (referrerPath.startsWith('/teacher') || referrerPath.startsWith('/student') || referrerPath.startsWith('/parent') || referrerPath.startsWith('/dev/teacher')) {
+        return referrerPath;
+      }
+      if (referrerPath.startsWith('/pricing')) {
+        return referrerPath;
+      }
+    }
+  } catch {
+    // Ignore malformed referrer and use the safe public fallback.
+  }
+
+  return '/pricing';
 }
 
 function getPlanMeta(planCode, billingPlan = null) {
@@ -243,6 +281,7 @@ function PageSkeleton() {
 export default function CheckoutPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const planParam = searchParams.get('plan');
   const payOsOrderCode = searchParams.get('orderCode');
@@ -519,11 +558,19 @@ export default function CheckoutPage() {
   const totalLabel = formatBillingCurrency(payableAmount, selectedPlan.currency);
   const pendingOrderCode = paymentLinkMatchesSelection ? paymentLink?.orderCode : pendingOrder?.orderCode;
   const pendingOrderLabel = pendingOrder?.planCode ? getPlanLabel(pendingOrder.planCode) : null;
+  const checkoutBackTarget = useMemo(
+    () => getCheckoutBackTarget(location.state?.checkoutBackTo ?? location.state?.from),
+    [location.state]
+  );
   const payButtonLabel = paymentLinkExpired
     ? 'Tạo mã mới'
     : hasSamePlanPending
       ? 'Tiếp tục thanh toán'
       : 'Thanh toán';
+
+  const handleBack = useCallback(() => {
+    navigate(checkoutBackTarget);
+  }, [checkoutBackTarget, navigate]);
 
   async function handleCreateOrReusePayment() {
     if (controlsDisabled || retryAfterRemainingMs > 0) return;
@@ -686,12 +733,16 @@ export default function CheckoutPage() {
       <section className="mx-auto max-w-[1180px] overflow-hidden rounded-[28px] border border-white/80 bg-[#F6F9FD] shadow-[0_34px_100px_rgba(27,58,107,0.18)]">
         <div className="grid lg:grid-cols-[1.06fr_0.94fr]">
           <div className="border-b border-white/80 bg-[#F1F5FA] px-7 py-8 sm:px-10 lg:border-b-0 lg:border-r lg:border-r-white/80 lg:px-12 lg:py-12">
-            <Link to="/pricing" className="inline-flex items-center gap-2 text-sm font-semibold text-[#243B5A] transition hover:text-brand-blue">
+            <button
+              type="button"
+              onClick={handleBack}
+              className="inline-flex items-center gap-2 text-sm font-semibold text-[#243B5A] transition hover:text-brand-blue"
+            >
               <span className="grid h-8 w-8 place-items-center rounded-full border border-[#CBD8E7] bg-white text-[#243B5A]">
                 <ArrowLeft className="h-4 w-4" />
               </span>
-              Quay lại bảng giá
-            </Link>
+              Quay lại
+            </button>
 
             <div className="mt-10">
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#6F86A4]">
