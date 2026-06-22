@@ -1016,7 +1016,7 @@ export default function CheckoutPage() {
                 <div className="flex items-start gap-4">
                   <span className="grid h-12 w-12 flex-none place-items-center rounded-[16px] border border-[#DCEFE8] bg-[#F4FBF8]">
                     <img
-                      src="/images/payos_logo.png"
+                    src="/images/payos_logo.webp"
                       alt="PayOS"
                       className="h-8 w-8 object-contain"
                       loading="lazy"

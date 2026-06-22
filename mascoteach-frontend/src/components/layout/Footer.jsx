@@ -17,7 +17,7 @@ export default function Footer() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-10">
           <div className="col-span-2 md:col-span-1">
             <Link to="/" className="inline-block mb-4">
-              <img src="/images/Logo.png" alt={SITE.name} className="h-7 object-contain" />
+              <img src="/images/Logo.webp" alt={SITE.name} className="h-7 object-contain" />
             </Link>
             <p className="max-w-[260px] text-[15px] leading-7 text-ink-muted md:text-base">
               {SITE.description}
