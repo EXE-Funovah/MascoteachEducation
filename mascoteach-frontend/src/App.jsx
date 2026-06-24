@@ -1,4 +1,4 @@
-import { BrowserRouter, Navigate, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import Home from '@/pages/Home';
 import MarketingPlaceholderPage from '@/pages/MarketingPlaceholderPage';
 import PricingPage from '@/pages/PricingPage';
@@ -12,6 +12,8 @@ import SignUpPage from '@/pages/SignUpPage';
 import ForgotPasswordPage from '@/pages/ForgotPasswordPage';
 import ResetPasswordPage from '@/pages/ResetPasswordPage';
 import VerifyEmailPage from '@/pages/VerifyEmailPage';
+import PrivacyPolicyPage from '@/pages/PrivacyPolicyPage';
+import TermsPage from '@/pages/TermsPage';
 
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 
@@ -35,6 +37,8 @@ import AdventureDemoPage from '@/pages/student/games/AdventureGame/DemoPage';
 
 import MascotWidget from '@/components/mascot/MascotWidget';
 
+const LEGAL_ROUTES = new Set(['/privacy', '/terms']);
+
 export default function App() {
   return (
     <BrowserRouter>
@@ -43,6 +47,8 @@ export default function App() {
         <Route path="/product" element={<MarketingPlaceholderPage type="product" />} />
         <Route path="/features" element={<MarketingPlaceholderPage type="features" />} />
         <Route path="/pricing" element={<PricingPage />} />
+        <Route path="/privacy" element={<PrivacyPolicyPage />} />
+        <Route path="/terms" element={<TermsPage />} />
         <Route
           path="/checkout"
           element={
@@ -184,7 +190,17 @@ export default function App() {
         <Route path="/play/legacy" element={<StudentGamePage />} />
       </Routes>
 
-      <MascotWidget />
+      <AppEnhancements />
     </BrowserRouter>
   );
+}
+
+function AppEnhancements() {
+  const location = useLocation();
+
+  if (LEGAL_ROUTES.has(location.pathname)) {
+    return null;
+  }
+
+  return <MascotWidget />;
 }
