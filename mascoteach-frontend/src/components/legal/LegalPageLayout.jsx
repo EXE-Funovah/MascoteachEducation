@@ -2,7 +2,14 @@ import { Link } from 'react-router-dom';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 
-export default function LegalPageLayout({ eyebrow, title, summary, children }) {
+export default function LegalPageLayout({
+  eyebrow,
+  title,
+  summary,
+  actions,
+  backHomeLabel = 'Quay lại trang chủ',
+  children,
+}) {
   return (
     <div className="min-h-screen bg-surface font-sans antialiased">
       <Header />
@@ -14,13 +21,14 @@ export default function LegalPageLayout({ eyebrow, title, summary, children }) {
               <p className="text-sm font-black uppercase tracking-[0.18em] text-[#2B7AB5]">{eyebrow}</p>
               <h1 className="mt-4 text-4xl font-black tracking-tight text-[#173154] md:text-5xl">{title}</h1>
               <p className="mt-5 text-base leading-8 text-slate-600 md:text-lg">{summary}</p>
-              <div className="mt-6">
+              <div className="mt-6 flex flex-wrap items-center gap-3">
                 <Link
                   to="/"
                   className="inline-flex items-center rounded-full border border-[#D8E5F2] bg-[#F7FBFF] px-4 py-2 text-sm font-bold text-[#173154] transition-colors hover:border-[#BFD8FA] hover:bg-white"
                 >
-                  Quay lại trang chủ
+                  {backHomeLabel}
                 </Link>
+                {actions}
               </div>
             </div>
 
