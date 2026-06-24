@@ -8,204 +8,202 @@ import GoogleSignInButton from '@/components/auth/GoogleSignInButton';
 import { useAuth } from '@/contexts/AuthContext';
 
 const roles = [
-    { value: 'Teacher', label: 'Giáo viên', available: true },
-    { value: 'Student', label: 'Học sinh', available: false },
-    { value: 'Parent', label: 'Phụ huynh', available: false },
+  { value: 'Teacher', label: 'Giáo viên', available: true },
+  { value: 'Student', label: 'Học sinh', available: false },
+  { value: 'Parent', label: 'Phụ huynh', available: false },
 ];
 
 export default function SignUpPage() {
-    const [form, setForm] = useState({
-        fullName: '',
-        email: '',
-        password: '',
-        confirmPassword: '',
-    });
-    const [selectedRole, setSelectedRole] = useState('Teacher');
-    const [submitting, setSubmitting] = useState(false);
-    const [googleSubmitting, setGoogleSubmitting] = useState(false);
-    const [localError, setLocalError] = useState('');
+  const [form, setForm] = useState({
+    fullName: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
+  });
+  const [selectedRole, setSelectedRole] = useState('Teacher');
+  const [submitting, setSubmitting] = useState(false);
+  const [googleSubmitting, setGoogleSubmitting] = useState(false);
+  const [localError, setLocalError] = useState('');
 
-    const { register, googleLogin, error, clearError } = useAuth();
-    const navigate = useNavigate();
+  const { register, googleLogin, error, clearError } = useAuth();
+  const navigate = useNavigate();
 
-    function getRoleRedirect(profile) {
-        const role = (profile?.role || profile?.roleName || '').toLowerCase();
-        if (role === 'student') return '/student';
-        if (role === 'parent') return '/parent';
-        return '/teacher';
+  function update(field) {
+    return (event) => {
+      setForm((prev) => ({ ...prev, [field]: event.target.value }));
+      setLocalError('');
+      clearError();
+    };
+  }
+
+  async function handleSubmit(event) {
+    event.preventDefault();
+    clearError();
+    setLocalError('');
+
+    if (!form.fullName || !form.email || !form.password) {
+      setLocalError('Vui lòng điền đầy đủ thông tin.');
+      return;
     }
 
-    function update(field) {
-        return (e) => {
-            setForm((prev) => ({ ...prev, [field]: e.target.value }));
-            setLocalError('');
-            clearError();
-        };
+    if (form.password !== form.confirmPassword) {
+      setLocalError('Mật khẩu xác nhận không khớp.');
+      return;
     }
 
-    async function handleSubmit(e) {
-        e.preventDefault();
-        clearError();
-        setLocalError('');
-
-        if (!form.fullName || !form.email || !form.password) {
-            setLocalError('Vui lòng điền đầy đủ thông tin.');
-            return;
-        }
-
-        if (form.password !== form.confirmPassword) {
-            setLocalError('Mật khẩu xác nhận không khớp.');
-            return;
-        }
-
-        if (form.password.length < 6) {
-            setLocalError('Mật khẩu phải có ít nhất 6 ký tự.');
-            return;
-        }
-
-        setSubmitting(true);
-        try {
-            await register({
-                fullName: form.fullName,
-                email: form.email,
-                password: form.password,
-                role: selectedRole,
-            });
-            navigate('/signin', {
-                state: { message: 'Đăng ký thành công. Vui lòng kiểm tra email để xác thực tài khoản trước khi đăng nhập.' },
-            });
-        } catch {
-            // AuthContext owns the visible error message.
-        } finally {
-            setSubmitting(false);
-        }
+    if (form.password.length < 6) {
+      setLocalError('Mật khẩu phải có ít nhất 6 ký tự.');
+      return;
     }
 
-    const handleGoogleCredential = useCallback(async (credential) => {
-        clearError();
-        setLocalError('');
-        setGoogleSubmitting(true);
-        try {
-            const profile = await googleLogin(credential, true);
-            navigate(getRoleRedirect(profile), { replace: true });
-        } catch (err) {
-            setLocalError(err.message || 'Đăng nhập Google thất bại. Vui lòng thử lại.');
-        } finally {
-            setGoogleSubmitting(false);
-        }
-    }, [clearError, googleLogin, navigate]);
+    setSubmitting(true);
+    try {
+      await register({
+        fullName: form.fullName,
+        email: form.email,
+        password: form.password,
+        role: selectedRole,
+      });
+      navigate('/signin', {
+        state: {
+          message:
+            'Đăng ký thành công. Vui lòng kiểm tra email để xác thực tài khoản trước khi đăng nhập.',
+        },
+      });
+    } catch {
+      // AuthContext owns the visible error message.
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
-    const displayError = localError || error;
+  const handleGoogleCredential = useCallback(async (credential) => {
+    clearError();
+    setLocalError('');
+    setGoogleSubmitting(true);
 
-    return (
-        <AuthLayout>
-            <header className="auth-form-header">
-                <h1>Chào mừng đến Mascoteach</h1>
-                <p>
-                    Đã có tài khoản? <Link to="/signin">Đăng nhập</Link>
-                </p>
-            </header>
+    try {
+      await googleLogin(credential, true);
+      navigate('/', { replace: true });
+    } catch (err) {
+      setLocalError(err.message || 'Đăng nhập Google thất bại. Vui lòng thử lại.');
+    } finally {
+      setGoogleSubmitting(false);
+    }
+  }, [clearError, googleLogin, navigate]);
 
-            {displayError && (
-                <div className="auth-alert auth-alert--error" role="alert">
-                    {displayError}
-                </div>
-            )}
+  const displayError = localError || error;
 
-            <form onSubmit={handleSubmit} className="auth-form">
-                <div className="auth-role-group" role="radiogroup" aria-label="Chọn vai trò">
-                    {roles.map((role) => (
-                        <button
-                            key={role.value}
-                            type="button"
-                            className={selectedRole === role.value ? 'is-active' : ''}
-                            disabled={!role.available}
-                            onClick={() => {
-                                if (!role.available) return;
-                                setSelectedRole(role.value);
-                                setLocalError('');
-                                clearError();
-                            }}
-                        >
-                            <span>{role.label}</span>
-                            {!role.available && <small>Sắp ra mắt</small>}
-                        </button>
-                    ))}
-                </div>
+  return (
+    <AuthLayout>
+      <header className="auth-form-header">
+        <h1>Chào mừng đến Mascoteach</h1>
+        <p>
+          Đã có tài khoản? <Link to="/signin">Đăng nhập</Link>
+        </p>
+      </header>
 
-                <AuthInput
-                    id="signup-fullname"
-                    label="Họ và tên"
-                    placeholder="Nguyễn Minh Anh"
-                    value={form.fullName}
-                    onChange={update('fullName')}
-                    required
-                />
+      {displayError && (
+        <div className="auth-alert auth-alert--error" role="alert">
+          {displayError}
+        </div>
+      )}
 
-                <AuthInput
-                    id="signup-email"
-                    label="Email"
-                    type="email"
-                    placeholder="email@example.com"
-                    value={form.email}
-                    onChange={update('email')}
-                    required
-                />
+      <form onSubmit={handleSubmit} className="auth-form">
+        <div className="auth-role-group" role="radiogroup" aria-label="Chọn vai trò">
+          {roles.map((role) => (
+            <button
+              key={role.value}
+              type="button"
+              className={selectedRole === role.value ? 'is-active' : ''}
+              disabled={!role.available}
+              onClick={() => {
+                if (!role.available) return;
+                setSelectedRole(role.value);
+                setLocalError('');
+                clearError();
+              }}
+            >
+              <span>{role.label}</span>
+              {!role.available && <small>Sắp ra mắt</small>}
+            </button>
+          ))}
+        </div>
 
-                <AuthInput
-                    id="signup-password"
-                    label="Mật khẩu"
-                    type="password"
-                    placeholder="••••••••"
-                    value={form.password}
-                    onChange={update('password')}
-                    required
-                />
+        <AuthInput
+          id="signup-fullname"
+          label="Họ và tên"
+          placeholder="Nguyễn Minh Anh"
+          value={form.fullName}
+          onChange={update('fullName')}
+          required
+        />
 
-                <AuthInput
-                    id="signup-confirm"
-                    label="Xác nhận mật khẩu"
-                    type="password"
-                    placeholder="••••••••"
-                    value={form.confirmPassword}
-                    onChange={update('confirmPassword')}
-                    required
-                />
+        <AuthInput
+          id="signup-email"
+          label="Email"
+          type="email"
+          placeholder="email@example.com"
+          value={form.email}
+          onChange={update('email')}
+          required
+        />
 
-                <motion.button
-                    type="submit"
-                    className="auth-btn auth-btn--primary disabled:opacity-60 disabled:cursor-not-allowed"
-                    whileHover={!submitting ? { y: -1 } : {}}
-                    whileTap={!submitting ? { scale: 0.985 } : {}}
-                    disabled={submitting}
-                >
-                    {submitting ? (
-                        <span className="auth-loading">
-                            <span />
-                            Đang tạo tài khoản
-                        </span>
-                    ) : (
-                        <>
-                            Tạo tài khoản
-                            <ArrowRight size={17} strokeWidth={2.2} />
-                        </>
-                    )}
-                </motion.button>
-            </form>
+        <AuthInput
+          id="signup-password"
+          label="Mật khẩu"
+          type="password"
+          placeholder="••••••••"
+          value={form.password}
+          onChange={update('password')}
+          required
+        />
 
-            <div className="auth-divider">
-                <span>Phương thức khác</span>
-            </div>
+        <AuthInput
+          id="signup-confirm"
+          label="Xác nhận mật khẩu"
+          type="password"
+          placeholder="••••••••"
+          value={form.confirmPassword}
+          onChange={update('confirmPassword')}
+          required
+        />
 
-            <GoogleSignInButton
-                onCredential={handleGoogleCredential}
-                disabled={googleSubmitting}
-                text="signup_with"
-            />
+        <motion.button
+          type="submit"
+          className="auth-btn auth-btn--primary disabled:cursor-not-allowed disabled:opacity-60"
+          whileHover={!submitting ? { y: -1 } : {}}
+          whileTap={!submitting ? { scale: 0.985 } : {}}
+          disabled={submitting}
+        >
+          {submitting ? (
+            <span className="auth-loading">
+              <span />
+              Đang tạo tài khoản
+            </span>
+          ) : (
+            <>
+              Tạo tài khoản
+              <ArrowRight size={17} strokeWidth={2.2} />
+            </>
+          )}
+        </motion.button>
+      </form>
 
-            <p className="auth-legal">
-                Bằng việc đăng ký, bạn đồng ý với điều khoản dịch vụ và chính sách bảo mật của Mascoteach.
-            </p>
-        </AuthLayout>
-    );
+      <div className="auth-divider">
+        <span>Phương thức khác</span>
+      </div>
+
+      <GoogleSignInButton
+        onCredential={handleGoogleCredential}
+        disabled={googleSubmitting}
+        text="signup_with"
+      />
+
+      <p className="auth-legal">
+        Bằng việc đăng ký, bạn đồng ý với <Link to="/terms">điều khoản dịch vụ</Link> và{' '}
+        <Link to="/privacy">chính sách bảo mật</Link> của Mascoteach.
+      </p>
+    </AuthLayout>
+  );
 }

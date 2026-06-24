@@ -14,7 +14,7 @@ import './TreasureHuntGame.css';
  *   2. SOLO MODE (legacy): Player answers questions themselves (original behavior).
  */
 
-const MASCOT_HEAD = '/images/icon_logo.png';
+const MASCOT_HEAD = '/images/icon_logo.webp';
 const MAP_BACKGROUND = '/images/treasure-hunt/island-map.svg';
 const COMPASS_ASSET = '/images/treasure-hunt/compass.svg';
 const CHEST_ASSET = '/images/treasure-hunt/chest.svg';

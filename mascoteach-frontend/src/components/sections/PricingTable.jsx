@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Check, Sparkle, ShieldCheck } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { isPremiumActive } from '@/lib/billingUi';
 import { PRICING_PLANS } from '@/lib/pricingData';
 import {
   BILLING_PLAN_CODES,
@@ -89,7 +90,7 @@ function BillingToggle({ billing, setBilling }) {
   );
 }
 
-function PricingCard({ plan, billing, index, billingPlans, onUpgrade }) {
+function PricingCard({ plan, billing, index, billingPlans, onUpgrade, isCurrentPro }) {
   const tone = cardTone[plan.tone] || cardTone.free;
   const selectedPlanCode = billing === 'yearly' ? BILLING_PLAN_CODES.yearly : BILLING_PLAN_CODES.monthly;
   const selectedBillingPlan = billingPlans[selectedPlanCode];
@@ -164,7 +165,11 @@ function PricingCard({ plan, billing, index, billingPlans, onUpgrade }) {
           ))}
         </ul>
 
-        {plan.id === 'pro' ? (
+        {plan.id === 'pro' && isCurrentPro ? (
+          <div className="mt-auto rounded-[12px] border border-emerald-200 bg-emerald-50 px-4 py-4 text-center text-sm font-black text-emerald-700">
+            Bạn đang ở gói Pro
+          </div>
+        ) : plan.id === 'pro' ? (
           <button
             type="button"
             className={cn('mt-auto inline-flex h-12 w-full items-center justify-center gap-2 rounded-[7px] px-5 text-sm font-extrabold transition duration-300 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-blue/35', tone.cta)}
@@ -191,8 +196,9 @@ export default function PricingTable() {
     PRO_MONTHLY: normalizePlan(BILLING_PLAN_FALLBACKS.PRO_MONTHLY),
     PRO_YEARLY: normalizePlan(BILLING_PLAN_FALLBACKS.PRO_YEARLY),
   }));
-  const { isLoggedIn, loading } = useAuth();
+  const { isLoggedIn, loading, user } = useAuth();
   const navigate = useNavigate();
+  const isCurrentPro = isPremiumActive(user);
 
   useEffect(() => {
     let cancelled = false;
@@ -223,13 +229,14 @@ export default function PricingTable() {
   function handleUpgrade(planCode) {
     const plan = planCode === BILLING_PLAN_CODES.yearly ? 'yearly' : 'monthly';
     const checkoutPath = `/checkout?plan=${plan}`;
+    const checkoutState = { checkoutBackTo: '/pricing' };
 
     if (!loading && !isLoggedIn) {
-      navigate('/signin', { state: { from: { pathname: '/checkout', search: `?plan=${plan}` } } });
+      navigate('/signin', { state: { from: { pathname: '/checkout', search: `?plan=${plan}`, state: checkoutState } } });
       return;
     }
 
-    navigate(checkoutPath);
+    navigate(checkoutPath, { state: checkoutState });
   }
 
   return (
@@ -266,6 +273,7 @@ export default function PricingTable() {
               index={index}
               billingPlans={billingPlans}
               onUpgrade={handleUpgrade}
+              isCurrentPro={isCurrentPro}
             />
           ))}
         </div>

@@ -17,6 +17,7 @@ import {
     FileText,
     Gamepad2,
     HelpCircle,
+    Layers,
     Library,
     Loader2,
     MoreVertical,
@@ -30,8 +31,12 @@ import {
 } from 'lucide-react';
 import CreateFlowModal from '@/components/portal/create/CreateFlowModal';
 import { getMyDocuments, deleteDocument } from '@/services/documentService';
-import { getQuizzesByDocuments, deleteQuiz } from '@/services/quizService';
-import { getQuestionsByQuiz } from '@/services/questionService';
+import {
+    deleteQuiz,
+    getMyQuizzes,
+    getQuizQuestions,
+    toFrontendActivityType,
+} from '@/services/quizService';
 import { getMySessions } from '@/services/liveSessionService';
 
 const ITEMS_PER_PAGE = 10;
@@ -98,6 +103,7 @@ export default function LibraryPage() {
 
     useEffect(() => {
         fetchDocuments();
+        fetchQuizzes();
         fetchRecentSessions();
     }, []);
 
@@ -107,13 +113,6 @@ export default function LibraryPage() {
         setSuccessMessage(location.state?.successMessage || null);
         autoExpandedRef.current = false;
     }, [location.state]);
-
-    useEffect(() => {
-        if (documents.length > 0 && quizzes.length === 0 && !loadingQuizzes) {
-            fetchQuizzes();
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [documents]);
 
     useEffect(() => {
         const targetQuizId = location.state?.targetQuizId;
@@ -142,7 +141,7 @@ export default function LibraryPage() {
         try {
             setLoadingQuizzes(true);
             setQuizError(null);
-            const data = await getQuizzesByDocuments(documents);
+            const data = await getMyQuizzes();
             setQuizzes(Array.isArray(data) ? data : []);
         } catch (err) {
             setQuizError(err.message || 'Không thể tải bộ câu hỏi');
@@ -218,7 +217,7 @@ export default function LibraryPage() {
         setExpandedQuizId(quizId);
         setLoadingQuestions(true);
         try {
-            const questions = await getQuestionsByQuiz(quizId);
+            const questions = await getQuizQuestions(quizId);
             setExpandedQuestions(Array.isArray(questions) ? questions : []);
         } catch {
             setExpandedQuestions([]);
@@ -507,6 +506,9 @@ export default function LibraryPage() {
         const isExpanded = expandedQuizId === quiz.id;
         const statusLabel = quiz.status === 'AI_Drafted' ? 'Bản nháp' : quiz.status === 'Teacher_Approved' || quiz.status === 'Published' ? 'Đã duyệt' : 'Bản nháp';
         const title = quiz.title || `Quiz #${quiz.id}`;
+        const frontendActivityType = toFrontendActivityType(quiz.activityType);
+        const isFlashcards = frontendActivityType === 'flashcards';
+        const QuizIcon = isFlashcards ? Layers : BookOpen;
 
         return (
             <motion.article
@@ -518,11 +520,14 @@ export default function LibraryPage() {
                 <div className="group grid grid-cols-[minmax(0,1fr)] items-center gap-5 px-6 py-4 lg:grid-cols-[minmax(0,1fr)_180px_260px]">
                     <button onClick={() => toggleExpandQuiz(quiz.id)} className="flex min-w-0 items-center gap-4 text-left">
                         <div className={`grid h-12 w-12 flex-none place-items-center rounded-lg border transition-colors duration-200 ${isExpanded ? 'border-brand-mid bg-brand-light/30 text-brand-navy' : 'border-slate-200 bg-slate-50 text-brand-blue'}`}>
-                            <BookOpen className="h-6 w-6" />
+                            <QuizIcon className="h-6 w-6" />
                         </div>
                         <div className="min-w-0">
                             <div className="flex min-w-0 flex-wrap items-center gap-2">
                                 <h3 className="truncate text-[16px] font-extrabold text-slate-900">{title}</h3>
+                                <span className="rounded-md border border-brand-light bg-brand-light/25 px-2 py-0.5 text-[11px] font-extrabold uppercase tracking-wide text-brand-navy">
+                                    {isFlashcards ? 'Flashcard' : 'Quiz'}
+                                </span>
                                 <span className="rounded-md border border-brand-light bg-brand-light/25 px-2 py-0.5 text-[11px] font-extrabold uppercase tracking-wide text-brand-navy">
                                     {statusLabel}
                                 </span>

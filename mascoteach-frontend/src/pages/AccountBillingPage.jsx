@@ -1,43 +1,24 @@
-import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { CalendarDays, Crown, Loader2, ReceiptText, RefreshCw } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
+import { CalendarDays, Crown, CreditCard, Loader2, ReceiptText, RefreshCw } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 import { getMyBilling, getMyBillingOrders } from '@/services/billingService';
+import {
+  billingStatusTone,
+  formatBillingCurrency,
+  formatBillingDate,
+  getBillingStatusLabel,
+  getPendingOrders,
+  getPlanIdFromPlanCode,
+  getPlanLabel,
+  isPremiumActive,
+  sortOrdersByCreatedAtDesc,
+} from '@/lib/billingUi';
 import { cn } from '@/lib/utils';
 
-const statusTone = {
-  Pending: 'bg-amber-50 text-amber-800 border-amber-200',
-  Paid: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-  Cancelled: 'bg-slate-100 text-slate-600 border-slate-200',
-  Failed: 'bg-rose-50 text-rose-700 border-rose-200',
-  Expired: 'bg-zinc-100 text-zinc-600 border-zinc-200',
-};
-
-function formatCurrency(amount, currency = 'VND') {
-  return new Intl.NumberFormat('vi-VN', {
-    style: 'currency',
-    currency,
-    maximumFractionDigits: 0,
-  }).format(amount ?? 0);
-}
-
-function formatDate(value) {
-  if (!value) return 'Chưa có';
-  return new Intl.DateTimeFormat('vi-VN', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(new Date(value));
-}
-
-function planLabel(planCode) {
-  if (planCode === 'PRO_YEARLY') return 'Pro năm';
-  if (planCode === 'PRO_MONTHLY') return 'Pro tháng';
-  return planCode || 'Không rõ';
-}
-
 export default function AccountBillingPage() {
+  const location = useLocation();
+  const { refreshUser } = useAuth();
   const [billing, setBilling] = useState(null);
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -60,6 +41,7 @@ export default function AccountBillingPage() {
         if (!cancelled) {
           setBilling(billingStatus);
           setOrders(orderHistory);
+          refreshUser().catch(() => {});
         }
       } catch (err) {
         if (!cancelled) {
@@ -74,24 +56,26 @@ export default function AccountBillingPage() {
     return () => {
       cancelled = true;
     };
-  }, [reloadKey]);
+  }, [refreshUser, reloadKey]);
 
-  const isPremium = billing?.isPremiumActive;
+  const isPremium = isPremiumActive(billing);
+  const checkoutBackState = { checkoutBackTo: `${location.pathname}${location.search}${location.hash}` };
+  const pendingOrders = useMemo(() => getPendingOrders(orders), [orders]);
+  const historyOrders = useMemo(
+    () => sortOrdersByCreatedAtDesc(orders).filter((order) => order.status !== 'Pending'),
+    [orders]
+  );
 
   return (
     <div className="min-h-full bg-[#fbfdff] text-ink">
       <div className="mx-auto w-full max-w-[1120px] px-5 py-8 md:px-8">
         <div className="flex flex-col justify-between gap-5 md:flex-row md:items-end">
           <div>
-            <div className="inline-flex items-center gap-2 rounded-[7px] border border-brand-light/70 bg-white px-3 py-2 text-xs font-black uppercase tracking-[0.08em] text-brand-blue">
-              <ReceiptText className="h-4 w-4" />
-              Billing
-            </div>
             <h1 className="mt-4 font-display text-[34px] font-black leading-tight tracking-[-0.02em]">
               Tài khoản và thanh toán
             </h1>
             <p className="mt-2 max-w-[620px] text-sm font-semibold leading-6 text-[#64748B]">
-              Theo dõi gói hiện tại, ngày hết hạn và lịch sử thanh toán của bạn.
+              Theo dõi gói hiện tại, đơn đang chờ thanh toán và lịch sử giao dịch của bạn.
             </p>
           </div>
 
@@ -104,9 +88,21 @@ export default function AccountBillingPage() {
               <RefreshCw className="h-4 w-4" />
               Làm mới
             </button>
-            <Link to="/checkout?plan=yearly" className="inline-flex h-11 items-center justify-center rounded-[10px] bg-brand-blue px-5 text-sm font-black text-white hover:bg-brand-navy">
-              Nâng cấp Pro
-            </Link>
+
+            {isPremium ? (
+              <div className="inline-flex h-11 items-center justify-center gap-2 rounded-[10px] border border-emerald-200 bg-emerald-50 px-5 text-sm font-black text-emerald-700">
+                <Crown className="h-4 w-4" />
+                Bạn đang ở gói Pro
+              </div>
+            ) : (
+              <Link
+                to="/checkout?plan=yearly"
+                state={checkoutBackState}
+                className="inline-flex h-11 items-center justify-center rounded-[10px] bg-brand-blue px-5 text-sm font-black text-white hover:bg-brand-navy"
+              >
+                Nâng cấp Pro
+              </Link>
+            )}
           </div>
         </div>
 
@@ -136,7 +132,7 @@ export default function AccountBillingPage() {
               <div className="rounded-[18px] border border-brand-light/60 bg-white p-5 shadow-[0_18px_48px_rgba(43,122,181,0.08)]">
                 <CalendarDays className="h-7 w-7 text-brand-blue" />
                 <p className="mt-4 text-xs font-black uppercase tracking-[0.08em] text-[#64748B]">Ngày hết hạn</p>
-                <p className="mt-1 text-2xl font-black">{formatDate(billing?.premiumExpiresAt)}</p>
+                <p className="mt-1 text-2xl font-black">{formatBillingDate(billing?.premiumExpiresAt)}</p>
               </div>
               <div className="rounded-[18px] border border-brand-light/60 bg-white p-5 shadow-[0_18px_48px_rgba(43,122,181,0.08)]">
                 <CalendarDays className="h-7 w-7 text-[#24A148]" />
@@ -147,12 +143,55 @@ export default function AccountBillingPage() {
 
             <section className="mt-8 overflow-hidden rounded-[18px] border border-brand-light/60 bg-white shadow-[0_18px_48px_rgba(43,122,181,0.08)]">
               <div className="border-b border-[#E4EAF1] px-5 py-4">
-                <h2 className="text-lg font-black">Lịch sử thanh toán</h2>
+                <h2 className="text-lg font-black">Thanh toán đang chờ</h2>
               </div>
 
-              {orders.length === 0 ? (
+              {pendingOrders.length === 0 ? (
                 <div className="px-5 py-10 text-center text-sm font-semibold text-[#64748B]">
-                  Chưa có đơn thanh toán nào.
+                  Không có giao dịch pending nào.
+                </div>
+              ) : (
+                <div className="grid gap-4 px-5 py-5">
+                  {pendingOrders.map((order) => (
+                    <article key={order.id ?? order.orderCode} className="rounded-[16px] border border-amber-200 bg-amber-50/60 p-5">
+                      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                        <div>
+                          <div className="inline-flex rounded-full border border-amber-200 bg-white px-3 py-1 text-xs font-black uppercase tracking-[0.08em] text-amber-700">
+                            {getBillingStatusLabel(order.status)}
+                          </div>
+                          <h3 className="mt-3 text-xl font-black text-[#1E293B]">{getPlanLabel(order.planCode)}</h3>
+                          <div className="mt-3 grid gap-2 text-sm font-semibold text-[#5D6572] sm:grid-cols-2">
+                            <p>Mã đơn: <span className="font-black text-[#1E293B]">{order.orderCode}</span></p>
+                            <p>Số tiền: <span className="font-black text-[#1E293B]">{formatBillingCurrency(order.amount, order.currency)}</span></p>
+                            <p>Ngày tạo: <span className="font-black text-[#1E293B]">{formatBillingDate(order.createdAt, { includeTime: true })}</span></p>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-wrap gap-3">
+                          <Link
+                            to={`/checkout?plan=${getPlanIdFromPlanCode(order.planCode)}`}
+                            state={checkoutBackState}
+                            className="inline-flex h-11 items-center justify-center gap-2 rounded-[10px] bg-brand-blue px-5 text-sm font-black text-white transition hover:bg-brand-navy"
+                          >
+                            <CreditCard className="h-4 w-4" />
+                            Thanh toán
+                          </Link>
+                        </div>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              )}
+            </section>
+
+            <section className="mt-8 overflow-hidden rounded-[18px] border border-brand-light/60 bg-white shadow-[0_18px_48px_rgba(43,122,181,0.08)]">
+              <div className="border-b border-[#E4EAF1] px-5 py-4">
+                <h2 className="text-lg font-black">Lịch sử giao dịch</h2>
+              </div>
+
+              {historyOrders.length === 0 ? (
+                <div className="px-5 py-10 text-center text-sm font-semibold text-[#64748B]">
+                  Chưa có giao dịch đã hoàn tất hoặc đã đóng nào.
                 </div>
               ) : (
                 <div className="overflow-x-auto">
@@ -167,17 +206,17 @@ export default function AccountBillingPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[#E4EAF1]">
-                      {orders.map((order) => (
+                      {historyOrders.map((order) => (
                         <tr key={order.id ?? order.orderCode} className="font-semibold text-[#1E293B]">
                           <td className="whitespace-nowrap px-5 py-4 font-black">{order.orderCode}</td>
-                          <td className="whitespace-nowrap px-5 py-4">{planLabel(order.planCode)}</td>
-                          <td className="whitespace-nowrap px-5 py-4">{formatCurrency(order.amount, order.currency)}</td>
+                          <td className="whitespace-nowrap px-5 py-4">{getPlanLabel(order.planCode)}</td>
+                          <td className="whitespace-nowrap px-5 py-4">{formatBillingCurrency(order.amount, order.currency)}</td>
                           <td className="whitespace-nowrap px-5 py-4">
-                            <span className={cn('inline-flex rounded-full border px-3 py-1 text-xs font-black', statusTone[order.status] || 'bg-slate-100 text-slate-700 border-slate-200')}>
-                              {order.status}
+                            <span className={cn('inline-flex rounded-full border px-3 py-1 text-xs font-black', billingStatusTone[order.status] || 'border-slate-200 bg-slate-100 text-slate-700')}>
+                              {getBillingStatusLabel(order.status)}
                             </span>
                           </td>
-                          <td className="whitespace-nowrap px-5 py-4 text-[#64748B]">{formatDate(order.createdAt)}</td>
+                          <td className="whitespace-nowrap px-5 py-4 text-[#64748B]">{formatBillingDate(order.createdAt, { includeTime: true })}</td>
                         </tr>
                       ))}
                     </tbody>

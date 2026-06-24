@@ -19,7 +19,7 @@ export default function HeroSection() {
         transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
       >
         <img
-          src="/images/herosection/hero.png"
+          src="/images/herosection/hero.webp"
           alt="Sumadi - người bạn đồng hành học tập của Mascoteach."
           className="block h-auto w-full object-contain"
         />

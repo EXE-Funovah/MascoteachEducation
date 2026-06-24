@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { ArrowUpRight, ChevronDown, CreditCard, Crown, LayoutDashboard, LogOut, Menu, X } from 'lucide-react';
+import { ArrowUpRight, ChevronDown, CreditCard, Crown, LayoutDashboard, LogOut, Menu, User, X } from 'lucide-react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { isPremiumActive } from '@/lib/billingUi';
 import { SITE } from '@/lib/constants';
 
 const NAV_ITEMS = [
@@ -82,7 +83,10 @@ export default function Header() {
   const authOpacity = 1 - collapse;
   const userRole = (user?.role || user?.roleName || '').toLowerCase();
   const isTeacher = userRole === 'teacher';
+  const isPremiumTeacher = isTeacher && isPremiumActive(user);
   const portalPath = userRole === 'student' ? '/student' : userRole === 'parent' ? '/parent' : '/teacher';
+  const profilePath = `${portalPath}/profile`;
+  const checkoutBackState = { checkoutBackTo: `${location.pathname}${location.search}${location.hash}` };
   const displayName = user?.fullName || user?.email || 'Tài khoản';
   const avatarInitial = displayName.trim().charAt(0).toUpperCase() || 'M';
 
@@ -120,7 +124,7 @@ export default function Header() {
           style={{ transform: `scale(${logoScale})`, width: logoWidth }}
           aria-label="Mascoteach Home"
         >
-          <img src="/images/Logo.png" alt={SITE.name} className="h-6 w-[190px] max-w-none object-contain md:h-7" />
+          <img src="/images/Logo.webp" alt={SITE.name} className="h-6 w-[190px] max-w-none object-contain md:h-7" />
         </Link>
 
         <nav
@@ -145,8 +149,16 @@ export default function Header() {
                 aria-expanded={accountOpen}
                 onClick={() => setAccountOpen((open) => !open)}
               >
-                <span className="grid h-9 w-9 place-items-center rounded-full bg-[#173154] text-sm font-black text-white shadow-[0_8px_18px_rgba(23,49,84,0.24)]">
-                  {avatarInitial}
+                <span className="grid h-9 w-9 place-items-center overflow-hidden rounded-full bg-[#173154] text-sm font-black text-white shadow-[0_8px_18px_rgba(23,49,84,0.24)]">
+                  {user?.avatarUrl ? (
+                    <img
+                      src={user.avatarUrl}
+                      alt={`${displayName} avatar`}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    avatarInitial
+                  )}
                 </span>
                 <ChevronDown
                   className={`h-4 w-4 text-[#64748B] transition duration-300 group-hover:text-[#173154] ${accountOpen ? 'rotate-180' : ''}`}
@@ -164,20 +176,34 @@ export default function Header() {
                     transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
                   >
                     <div className="flex items-center gap-4 border-b border-[#EEF2F6] bg-[#F8FBFE] px-5 py-5">
-                      <div className="relative grid h-14 w-14 flex-none place-items-center rounded-full bg-[#173154] text-lg font-black text-white shadow-[0_14px_30px_rgba(23,49,84,0.22)]">
-                        {avatarInitial}
+                      <div className="relative grid h-14 w-14 flex-none place-items-center overflow-hidden rounded-full bg-[#173154] text-lg font-black text-white shadow-[0_14px_30px_rgba(23,49,84,0.22)]">
+                        {user?.avatarUrl ? (
+                          <img
+                            src={user.avatarUrl}
+                            alt={`${displayName} avatar`}
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          avatarInitial
+                        )}
                         <span className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-white bg-[#22C55E]" />
                       </div>
                       <div className="min-w-0">
                         <p className="truncate text-lg font-black leading-tight text-[#173154]">{displayName}</p>
                         {user?.email && <p className="mt-1 truncate text-sm font-semibold text-[#64748B]">{user.email}</p>}
+                        {isPremiumTeacher && (
+                          <div className="mt-2 inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-black uppercase tracking-[0.08em] text-emerald-700">
+                            Đang dùng Pro
+                          </div>
+                        )}
                       </div>
                     </div>
 
                     <div className="p-3">
                       <HeaderMenuLink to={portalPath} icon={LayoutDashboard} label="Trang quản lý" />
+                      <HeaderMenuLink to={profilePath} icon={User} label="Hồ sơ cá nhân" />
                       {isTeacher && <HeaderMenuLink to="/teacher/billing" icon={CreditCard} label="Thanh toán" />}
-                      {isTeacher && <HeaderMenuLink to="/checkout?plan=yearly" icon={Crown} label="Nâng cấp Pro" />}
+                      {isTeacher && !isPremiumTeacher && <HeaderMenuLink to="/checkout?plan=yearly" state={checkoutBackState} icon={Crown} label="Nâng cấp Pro" />}
                     </div>
 
                     <div className="border-t border-[#EEF2F6] p-3">
@@ -312,10 +338,11 @@ export default function Header() {
   );
 }
 
-function HeaderMenuLink({ to, icon: Icon, label }) {
+function HeaderMenuLink({ to, state, icon: Icon, label }) {
   return (
     <Link
       to={to}
+      state={state}
       className="group flex min-h-12 items-center gap-3 rounded-[14px] px-4 text-sm font-black text-[#173154] transition duration-200 hover:bg-[#F0F7FF] active:translate-y-px"
     >
       <Icon className="h-5 w-5 text-[#64748B] transition duration-200 group-hover:text-[#173154]" strokeWidth={2.15} />

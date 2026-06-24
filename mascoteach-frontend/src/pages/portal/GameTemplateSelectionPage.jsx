@@ -17,8 +17,8 @@ import {
 } from 'lucide-react';
 import { getAllGameTemplates } from '@/services/gameTemplateService';
 import { createSession } from '@/services/liveSessionService';
-import { getQuestionsByQuiz } from '@/services/questionService';
 import { normalizeQuestion } from '@/services/gameService';
+import { getQuizQuestions } from '@/services/quizService';
 
 const BUILTIN_TEMPLATES = [
     {
@@ -40,8 +40,8 @@ const BUILTIN_TEMPLATES = [
     {
         id: '__adventure__',
         name: 'Mascoteach Adventure',
-        logoUrl: '/images/icon_logo.png',
-        bgImage: '/images/icon_logo.png',
+    logoUrl: '/images/icon_logo.webp',
+    bgImage: '/images/icon_logo.webp',
         description:
             'Chế độ phiêu lưu hiện có. Frontend đang cho chạy local trên người chơi để test nhanh câu hỏi.',
         difficulty: 'Trung bình',
@@ -224,7 +224,7 @@ export default function GameTemplateSelectionPage() {
 
         try {
             if (activeGame.id === '__adventure__') {
-                const rawQuestions = await getQuestionsByQuiz(quizId);
+                const rawQuestions = await getQuizQuestions(quizId);
                 const questions = (Array.isArray(rawQuestions) ? rawQuestions : []).map(normalizeQuestion);
 
                 if (!questions.length) {

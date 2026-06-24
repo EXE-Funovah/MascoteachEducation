@@ -28,7 +28,7 @@ export function resolveApiBaseUrl() {
     }
 
     if (isDevLikeHostname(hostname)) {
-        return 'https://dev-api.mascoteach.com';
+        return 'https://api-dev.mascoteach.com';
     }
 
     return 'https://api.mascoteach.com';

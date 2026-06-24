@@ -145,7 +145,7 @@ export const TARGET_PERSONA = {
       name: 'Cô Nhung',
       role: 'Giáo viên Sinh học THPT',
       initials: 'TN',
-      image: '/images/persona-teacher-nhung.jpg',
+    image: '/images/persona-teacher-nhung.webp',
       quote: '“Một trò chơi hay nhưng vượt quá 45 phút thì rất dễ cháy giáo án.”',
       tags: ['Giáo viên sinh học'],
       painpoints: [
@@ -163,7 +163,7 @@ export const TARGET_PERSONA = {
       id: 'student-minh',
       name: 'Minh, lớp 7',
       role: 'Học sinh cần được kéo lại bài học',
-      image: '/images/persona-vietnamese-student.png',
+    image: '/images/persona-vietnamese-student.webp',
       quote:
         '“Em thích học có tương tác, nhưng nếu chỉ chơi game thì em dễ quên mình đang học gì.”',
       tags: ['Xao nhãng'],

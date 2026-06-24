@@ -18,8 +18,7 @@ import {
     X,
 } from 'lucide-react';
 import { generateFlashcardsFromUrl, generateMCQFromUrl } from '@/services/aiService';
-import { createQuiz, updateQuiz } from '@/services/quizService';
-import { createQuestion } from '@/services/questionService';
+import { publishQuiz } from '@/services/quizService';
 
 const DEMO_QUESTIONS = [
     {
@@ -341,32 +340,38 @@ export default function QuizPreviewPage() {
         setPublishing(true);
         setPublishError(null);
 
+        const payload = {
+            documentId: Number(documentId),
+            title: settingsData?.title || (isFlashcards ? 'Bộ thẻ ôn tập' : 'Bài kiểm tra'),
+            activityType: isFlashcards ? 'flashcards' : 'quiz',
+            questions: questions.map((question, index) => ({
+                questionText: question.question.trim(),
+                questionType: isFlashcards ? 'Flashcard' : 'MultipleChoice',
+                position: index,
+                options: isFlashcards
+                    ? [
+                        {
+                            optionText: (question.back || question.options?.[0]?.text || '').trim(),
+                            isCorrect: true,
+                        },
+                    ]
+                    : question.options.map((option) => ({
+                        optionText: option.text.trim(),
+                        isCorrect: option.isCorrect,
+                    })),
+            })),
+        };
+
         const quizTitle = settingsData?.title || (isFlashcards ? 'Bộ thẻ ôn tập' : 'Bài kiểm tra');
 
         try {
-            const quizResult = await createQuiz({ documentId, title: quizTitle });
-            const quizId = quizResult?.id ?? quizResult?.quizId;
+            const result = await publishQuiz(payload);
+            const quizId = result?.id ?? result?.quizId;
             if (!quizId) {
                 throw new Error(isFlashcards
                     ? 'Không thể tạo bộ thẻ ôn tập - backend không trả về ID.'
                     : 'Không thể tạo bộ câu hỏi - backend không trả về ID.');
             }
-
-            for (const question of questions) {
-                await createQuestion({
-                    quizId,
-                    questionText: question.question,
-                    questionType: isFlashcards ? 'Flashcard' : 'MultipleChoice',
-                    options: isFlashcards
-                        ? [{ optionText: question.back || question.options?.[0]?.text || '', isCorrect: true }]
-                        : question.options.map((option) => ({
-                            optionText: option.text,
-                            isCorrect: option.isCorrect,
-                        })),
-                });
-            }
-
-            await updateQuiz(quizId, { title: quizTitle, status: 'Teacher_Approved' });
 
             navigate(routeFor('/teacher/library'), {
                 state: {

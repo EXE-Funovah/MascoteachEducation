@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { CheckCircle2, Clock3, Loader2, RefreshCw } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 import { getMyBilling } from '@/services/billingService';
 
 const MAX_ATTEMPTS = 8;
@@ -16,6 +17,7 @@ function formatDate(value) {
 }
 
 export default function PaymentSuccessPage() {
+  const { refreshUser } = useAuth();
   const [searchParams] = useSearchParams();
   const orderCode = searchParams.get('orderCode');
   const [billing, setBilling] = useState(null);
@@ -35,6 +37,10 @@ export default function PaymentSuccessPage() {
 
         setBilling(status);
         setAttempts(nextAttempt);
+
+        if (status?.isPremiumActive) {
+          refreshUser().catch(() => {});
+        }
 
         if (!status?.isPremiumActive && nextAttempt < MAX_ATTEMPTS) {
           timerId = window.setTimeout(() => checkBillingStatus(nextAttempt + 1), POLL_DELAY_MS);
@@ -62,7 +68,7 @@ export default function PaymentSuccessPage() {
   return (
     <main className="grid min-h-[100dvh] place-items-center bg-gradient-subtle px-5 py-10 text-ink">
       <section className="w-full max-w-[620px] rounded-[18px] border border-brand-light/60 bg-white p-7 text-center shadow-[0_24px_70px_rgba(27,58,107,0.14)]">
-        <img src="/images/Logo.png" alt="Mascoteach" className="mx-auto h-12 w-auto object-contain" />
+        <img src="/images/Logo.webp" alt="Mascoteach" className="mx-auto h-12 w-auto object-contain" />
 
         <div className="mx-auto mt-8 grid h-14 w-14 place-items-center rounded-full bg-brand-light/25 text-brand-blue">
           {isPremium ? <CheckCircle2 className="h-8 w-8 text-[#24A148]" /> : <Clock3 className="h-7 w-7" />}

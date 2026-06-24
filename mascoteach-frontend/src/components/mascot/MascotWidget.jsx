@@ -7,7 +7,7 @@ import { mascotLiveService } from '@/services/mascotChatService';
 import './MascotWidget.css';
 
 // Mascot sprite images (swap PNGs keeping these names)
-const MASCOT_HEAD = '/images/icon_logo.png';
+const MASCOT_HEAD = '/images/icon_logo.webp';
 const MASCOT_IDLE = MASCOT_HEAD;
 const MASCOT_SPEAKING = MASCOT_HEAD;
 

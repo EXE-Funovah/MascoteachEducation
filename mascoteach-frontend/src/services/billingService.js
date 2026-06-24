@@ -57,6 +57,7 @@ export function normalizePaymentOrder(rawOrder) {
         status: rawOrder.status ?? rawOrder.Status,
         provider: rawOrder.provider ?? rawOrder.Provider,
         checkoutUrl: rawOrder.checkoutUrl ?? rawOrder.CheckoutUrl,
+        expiresAt: rawOrder.expiresAt ?? rawOrder.ExpiresAt ?? null,
         paidAt: rawOrder.paidAt ?? rawOrder.PaidAt ?? null,
         createdAt: rawOrder.createdAt ?? rawOrder.CreatedAt ?? null,
     };
@@ -83,8 +84,8 @@ export async function getBillingPlans() {
     return Array.isArray(plans) ? plans.map(normalizePlan).filter(Boolean) : [];
 }
 
-export async function createPaymentLink(planCode) {
-    return normalizePaymentLink(await api.post('/api/Billing/create-payment-link', { planCode }));
+export async function createPaymentLink(planCode, options = {}) {
+    return normalizePaymentLink(await api.post('/api/Billing/create-payment-link', { planCode }, options));
 }
 
 export async function getMyBilling() {

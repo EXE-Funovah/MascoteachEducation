@@ -8,15 +8,15 @@ export default function AuthLayout({ children }) {
     return (
         <main className="auth-bg relative min-h-dvh overflow-hidden px-5 py-5 font-sans text-ink">
             <picture className="auth-side auth-side--left" aria-hidden="true">
-                <img src="/images/auth/auth-side-left.png" alt="" />
+                <img src="/images/auth/auth-side-left.webp" alt="" />
             </picture>
             <picture className="auth-side auth-side--right" aria-hidden="true">
-                <img src="/images/auth/auth-side-right.png" alt="" />
+                <img src="/images/auth/auth-side-right.webp" alt="" />
             </picture>
 
             <header className="auth-topbar">
                 <Link to="/" className="auth-logo" aria-label="Về trang chủ Mascoteach">
-                    <img src="/images/Logo.png" alt="Mascoteach" />
+                    <img src="/images/Logo.webp" alt="Mascoteach" />
                 </Link>
 
                 <div className="auth-top-actions">

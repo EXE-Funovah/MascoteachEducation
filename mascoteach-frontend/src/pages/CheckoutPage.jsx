@@ -1,57 +1,78 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { usePayOS } from '@payos/payos-checkout';
-import { AlertTriangle, ArrowLeft, Clock3, Loader2, QrCode, RefreshCw, ShieldCheck, XCircle } from 'lucide-react';
+import {
+  AlertCircle,
+  AlertTriangle,
+  ArrowLeft,
+  Clock3,
+  Loader2,
+  QrCode,
+  RefreshCw,
+  ShieldCheck,
+  X,
+  XCircle,
+} from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   BILLING_PLAN_CODES,
   BILLING_PLAN_FALLBACKS,
   cancelPaymentOrder,
   createPaymentLink,
+  getMyBilling,
   getBillingPlans,
+  getMyBillingOrders,
   normalizePlan,
 } from '@/services/billingService';
+import {
+  formatBillingCurrency,
+  getLatestPendingOrder,
+  getPlanCodeFromPlanId,
+  getPlanIdFromPlanCode,
+  getPlanLabel,
+} from '@/lib/billingUi';
 import { cn } from '@/lib/utils';
 
 const PAYOS_ELEMENT_ID = 'payos-embedded-checkout';
 const PAYOS_HOSTED_PAGE_ORIGIN = 'https://pay.payos.vn';
-const PAYMENT_LINK_REFRESH_GRACE_MS = 3000;
-const PAYMENT_LINK_EXPIRED_RETRY_MS = 5000;
-const PAYMENT_LINK_MAX_EXPIRED_REFRESH_ATTEMPTS = 5;
 const CHECKOUT_PLAN_STORAGE_KEY = 'mascoteach_checkout_plan';
+const PAYMENT_LINK_TIMEOUT_MS = 20000;
+const PAYMENT_STATUS_POLL_MS = 3000;
 const paymentLinkRequests = new Map();
 
 function getPaymentLink(planCode) {
   const existingRequest = paymentLinkRequests.get(planCode);
   if (existingRequest) return existingRequest;
 
-  const request = createPaymentLink(planCode).finally(() => {
-    paymentLinkRequests.delete(planCode);
-  });
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => {
+    controller.abort();
+  }, PAYMENT_LINK_TIMEOUT_MS);
+
+  const request = createPaymentLink(planCode, { signal: controller.signal })
+    .catch((error) => {
+      if (error?.status === 408 || error?.name === 'AbortError') {
+        throw new Error('Tạo mã QR mất quá lâu. Vui lòng thử lại.');
+      }
+      throw error;
+    })
+    .finally(() => {
+      window.clearTimeout(timeoutId);
+      paymentLinkRequests.delete(planCode);
+    });
+
   paymentLinkRequests.set(planCode, request);
   return request;
 }
 
 function getPayOsReturnUrl(returnUrl) {
   const backendReturnUrl = returnUrl?.trim();
-  if (backendReturnUrl) {
-    return backendReturnUrl;
-  }
+  if (backendReturnUrl) return backendReturnUrl;
 
   const configuredReturnUrl = import.meta.env.VITE_PAYOS_RETURN_URL?.trim();
-  if (configuredReturnUrl) {
-    return configuredReturnUrl;
-  }
+  if (configuredReturnUrl) return configuredReturnUrl;
 
   return `${window.location.origin}/checkout`;
-}
-
-function formatCurrency(amount, currency = 'VND') {
-  return new Intl.NumberFormat('vi-VN', {
-    style: 'currency',
-    currency,
-    maximumFractionDigits: 0,
-  }).format(amount);
 }
 
 function formatCountdown(milliseconds) {
@@ -93,6 +114,44 @@ function getPlanCode(planParam) {
   return BILLING_PLAN_CODES.monthly;
 }
 
+function getPathFromNavigationState(value) {
+  if (!value) return '';
+  if (typeof value === 'string') return value;
+
+  const pathname = value.pathname || '';
+  if (!pathname) return '';
+
+  return `${pathname}${value.search || ''}${value.hash || ''}`;
+}
+
+function getCheckoutBackTarget(backSource) {
+  const backPath = getPathFromNavigationState(backSource);
+  if (backPath.startsWith('/teacher') || backPath.startsWith('/student') || backPath.startsWith('/parent') || backPath.startsWith('/dev/teacher')) {
+    return backPath;
+  }
+
+  if (backPath.startsWith('/pricing')) {
+    return backPath;
+  }
+
+  try {
+    const referrer = document.referrer ? new URL(document.referrer) : null;
+    if (referrer?.origin === window.location.origin) {
+      const referrerPath = `${referrer.pathname}${referrer.search}${referrer.hash}`;
+      if (referrerPath.startsWith('/teacher') || referrerPath.startsWith('/student') || referrerPath.startsWith('/parent') || referrerPath.startsWith('/dev/teacher')) {
+        return referrerPath;
+      }
+      if (referrerPath.startsWith('/pricing')) {
+        return referrerPath;
+      }
+    }
+  } catch {
+    // Ignore malformed referrer and use the safe public fallback.
+  }
+
+  return '/pricing';
+}
+
 function getPlanMeta(planCode, billingPlan = null) {
   const fallback = billingPlan || normalizePlan(
     planCode === BILLING_PLAN_CODES.yearly
@@ -105,32 +164,116 @@ function getPlanMeta(planCode, billingPlan = null) {
     return {
       ...fallback,
       id: 'yearly',
-      label: 'Gói năm',
-      description: 'Thanh toán một lần, tiết kiệm hơn cho cả năm học.',
-      priceLabel: formatCurrency(yearlyMonthlyEquivalent, fallback.currency),
+      label: 'Mascoteach Pro',
+      eyebrow: 'Gói năm',
+      description: 'Phù hợp nếu bạn muốn dùng Pro ổn định cho cả năm học.',
+      priceLabel: formatBillingCurrency(yearlyMonthlyEquivalent, fallback.currency),
       unit: '/ tháng',
-      totalLabel: formatCurrency(fallback.amount, fallback.currency),
-      totalUnit: '/ năm',
-      note: `Thanh toán ${formatCurrency(fallback.amount, fallback.currency)}/năm`,
-      totalNote: '365 ngày sử dụng Pro',
+      totalLabel: formatBillingCurrency(fallback.amount, fallback.currency),
+      totalUnit: 'Thanh toán / năm',
+      detail: '365 ngày sử dụng Pro',
+      badge: 'Tiết kiệm hơn',
     };
   }
 
   return {
     ...fallback,
     id: 'monthly',
-    label: 'Gói tháng',
-    description: 'Phù hợp khi lớp học cần dùng linh hoạt.',
-    priceLabel: formatCurrency(fallback.amount, fallback.currency),
+    label: 'Mascoteach Pro',
+    eyebrow: 'Gói tháng',
+    description: 'Linh hoạt nếu bạn muốn bắt đầu Pro theo từng tháng.',
+    priceLabel: formatBillingCurrency(fallback.amount, fallback.currency),
     unit: '/ tháng',
-    totalLabel: formatCurrency(fallback.amount, fallback.currency),
-    totalUnit: '/ tháng',
-    note: 'Gia hạn theo tháng',
-    totalNote: '30 ngày sử dụng Pro',
+    totalLabel: formatBillingCurrency(fallback.amount, fallback.currency),
+    totalUnit: 'Thanh toán / tháng',
+    detail: '30 ngày sử dụng Pro',
+    badge: 'Linh hoạt',
   };
 }
 
-function PayOsEmbeddedCheckout({ checkoutUrl, orderCode, planId, returnUrl, onExit }) {
+function extractRetryAfterSeconds(error) {
+  const value = error?.data?.retryAfterSeconds ?? error?.data?.RetryAfterSeconds;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+}
+
+function isPaidOrderStatus(status) {
+  return ['paid', 'success', 'succeeded', 'completed'].includes(String(status || '').trim().toLowerCase());
+}
+
+function getOrderCodeValue(orderCode) {
+  return orderCode == null ? '' : String(orderCode);
+}
+
+function findOrderByCode(orders, orderCode) {
+  const targetOrderCode = getOrderCodeValue(orderCode);
+  if (!targetOrderCode) return null;
+  return (orders || []).find((order) => getOrderCodeValue(order?.orderCode) === targetOrderCode) ?? null;
+}
+
+function getFriendlyPaymentLinkError(error) {
+  const message = error?.message || '';
+  if (!message) return 'Không thể tạo mã QR. Vui lòng thử lại.';
+  if (message.includes(' at ') || message.includes('/src/') || message.length > 220) {
+    return 'Không thể tạo mã QR cho giao dịch này. Vui lòng làm mới trang hoặc kiểm tra lại trong mục Thanh toán.';
+  }
+  return message;
+}
+
+function getPaymentSuccessPath(orderCode) {
+  return `/payment/success${orderCode ? `?orderCode=${orderCode}` : ''}`;
+}
+
+function normalizePaymentLinkResponse(response, fallbackPlanCode) {
+  const checkoutUrl = normalizePayOsCheckoutUrl(response?.checkoutUrl);
+  const orderCode = response?.orderCode;
+
+  if (!checkoutUrl || !orderCode) {
+    throw new Error('Không thể tạo đơn thanh toán. Vui lòng thử lại.');
+  }
+
+  return {
+    ...response,
+    checkoutUrl,
+    orderCode,
+    planCode: response?.planCode || fallbackPlanCode,
+    amount: response?.amount ?? null,
+    expiresAt: response?.expiresAt ?? null,
+  };
+}
+
+function buildPendingOrderFromPaymentLink(paymentLink, previousOrder) {
+  return {
+    id: previousOrder?.id ?? paymentLink.orderCode,
+    orderCode: paymentLink.orderCode,
+    planCode: paymentLink.planCode,
+    amount: paymentLink.amount ?? previousOrder?.amount ?? 0,
+    currency: previousOrder?.currency ?? 'VND',
+    status: 'Pending',
+    provider: previousOrder?.provider ?? 'PayOS',
+    checkoutUrl: paymentLink.checkoutUrl,
+    expiresAt: paymentLink.expiresAt ?? previousOrder?.expiresAt ?? null,
+    createdAt: previousOrder?.createdAt ?? new Date().toISOString(),
+  };
+}
+
+function buildPaymentLinkFromPendingOrder(order, fallbackPlanCode) {
+  return normalizePaymentLinkResponse({
+    orderCode: order?.orderCode,
+    planCode: order?.planCode || fallbackPlanCode,
+    amount: order?.amount,
+    checkoutUrl: order?.checkoutUrl,
+    expiresAt: order?.expiresAt,
+  }, fallbackPlanCode);
+}
+
+const PayOsEmbeddedCheckout = memo(function PayOsEmbeddedCheckout({
+  checkoutUrl,
+  orderCode,
+  planId,
+  returnUrl,
+  onExit,
+}) {
   const navigate = useNavigate();
   const payOsReturnUrl = getPayOsReturnUrl(returnUrl);
   const { open, exit } = usePayOS({
@@ -139,7 +282,7 @@ function PayOsEmbeddedCheckout({ checkoutUrl, orderCode, planId, returnUrl, onEx
     CHECKOUT_URL: checkoutUrl,
     embedded: true,
     onSuccess: () => {
-      navigate(`/payment/success?orderCode=${orderCode}`, { replace: true });
+      navigate(getPaymentSuccessPath(orderCode), { replace: true });
     },
     onCancel: () => {
       navigate(`/checkout/cancel?cancel=true&status=CANCELLED&orderCode=${orderCode}&plan=${planId}`, { replace: true });
@@ -158,31 +301,54 @@ function PayOsEmbeddedCheckout({ checkoutUrl, orderCode, planId, returnUrl, onEx
         exit();
       }
     };
-  }, [checkoutUrl]);
+  }, [checkoutUrl, exit, open]);
 
   return (
     <div
       id={PAYOS_ELEMENT_ID}
-      className="mx-auto h-[460px] w-full max-w-[520px] overflow-hidden rounded-[14px] border border-[#D7E0EA] bg-white shadow-[0_16px_36px_rgba(27,58,107,0.07)] [&_iframe]:block [&_iframe]:h-full [&_iframe]:w-full [&_iframe]:border-0"
+      className="mx-auto h-[500px] w-full overflow-hidden rounded-[22px] bg-white [&_iframe]:block [&_iframe]:h-full [&_iframe]:w-full [&_iframe]:border-0"
     />
+  );
+});
+
+function PageSkeleton() {
+  return (
+    <main className="min-h-[100dvh] bg-gradient-subtle px-4 py-7 text-[#24282E] sm:px-6 lg:px-10">
+      <section className="mx-auto max-w-[1180px] rounded-[28px] border border-white/80 bg-[#F9FCFF] p-8 shadow-[0_34px_100px_rgba(27,58,107,0.18)] sm:p-12">
+        <div className="grid gap-8 lg:grid-cols-[1.08fr_0.92fr]">
+          <div className="space-y-4">
+            <div className="h-5 w-28 rounded-full bg-brand-light/35" />
+            <div className="h-14 w-full max-w-[520px] rounded-[18px] bg-brand-light/30" />
+            <div className="h-6 w-full max-w-[430px] rounded-full bg-brand-light/20" />
+            <div className="mt-8 grid gap-4">
+              <div className="h-[170px] rounded-[22px] bg-white shadow-[0_12px_24px_rgba(27,58,107,0.05)]" />
+              <div className="h-[170px] rounded-[22px] bg-white shadow-[0_12px_24px_rgba(27,58,107,0.05)]" />
+            </div>
+          </div>
+          <div className="h-[560px] rounded-[24px] bg-white shadow-[0_12px_24px_rgba(27,58,107,0.05)]" />
+        </div>
+      </section>
+    </main>
   );
 }
 
 export default function CheckoutPage() {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const planParam = searchParams.get('plan');
   const payOsOrderCode = searchParams.get('orderCode');
   const payOsStatus = searchParams.get('status');
   const payOsCancel = searchParams.get('cancel');
   const isPayOsReturn = Boolean(payOsOrderCode && !planParam);
-  const planCode = useMemo(() => getPlanCode(planParam), [planParam]);
+  const [selectedPlanId, setSelectedPlanId] = useState(() => getPlanIdFromPlanCode(getPlanCode(planParam)));
+  const selectedPlanCode = useMemo(() => getPlanCodeFromPlanId(selectedPlanId), [selectedPlanId]);
   const [billingPlans, setBillingPlans] = useState(() => ({
     [BILLING_PLAN_CODES.monthly]: normalizePlan(BILLING_PLAN_FALLBACKS.PRO_MONTHLY),
     [BILLING_PLAN_CODES.yearly]: normalizePlan(BILLING_PLAN_FALLBACKS.PRO_YEARLY),
   }));
-  const selectedPlan = useMemo(() => getPlanMeta(planCode, billingPlans[planCode]), [billingPlans, planCode]);
+  const selectedPlan = useMemo(() => getPlanMeta(selectedPlanCode, billingPlans[selectedPlanCode]), [billingPlans, selectedPlanCode]);
   const plans = useMemo(
     () => [
       getPlanMeta(BILLING_PLAN_CODES.monthly, billingPlans[BILLING_PLAN_CODES.monthly]),
@@ -190,16 +356,30 @@ export default function CheckoutPage() {
     ],
     [billingPlans]
   );
+  const [pendingOrder, setPendingOrder] = useState(null);
   const [paymentLink, setPaymentLink] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [paymentLinkLoading, setPaymentLinkLoading] = useState(false);
+  const [cancelLoading, setCancelLoading] = useState(false);
+  const [refreshingOrders, setRefreshingOrders] = useState(false);
   const [error, setError] = useState('');
   const [frameClosed, setFrameClosed] = useState(false);
-  const [reloadKey, setReloadKey] = useState(0);
   const [paymentLinkRemainingMs, setPaymentLinkRemainingMs] = useState(0);
-  const [cancelLoading, setCancelLoading] = useState(false);
-  const [cancelError, setCancelError] = useState('');
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [confirmCancelOpen, setConfirmCancelOpen] = useState(false);
-  const expiredRefreshRef = useRef({ key: '', attempts: 0 });
+  const [confirmSwitchPlanOpen, setConfirmSwitchPlanOpen] = useState(false);
+  const [retryAfterUntilMs, setRetryAfterUntilMs] = useState(0);
+  const [retryAfterRemainingMs, setRetryAfterRemainingMs] = useState(0);
+  const mountedRef = useRef(true);
+  const expiredOrderSyncRef = useRef('');
+
+  const handlePaymentExit = useCallback(() => {
+    setFrameClosed(true);
+  }, []);
+
+  useEffect(() => () => {
+    mountedRef.current = false;
+  }, []);
 
   useEffect(() => {
     if (!isPayOsReturn) return;
@@ -214,26 +394,26 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     if (isPayOsReturn) return;
-    window.sessionStorage.setItem(CHECKOUT_PLAN_STORAGE_KEY, selectedPlan.id);
-  }, [isPayOsReturn, selectedPlan.id]);
+    window.sessionStorage.setItem(CHECKOUT_PLAN_STORAGE_KEY, selectedPlanId);
+  }, [isPayOsReturn, selectedPlanId]);
 
   useEffect(() => {
     let cancelled = false;
 
     async function loadPlans() {
       try {
-        const plans = await getBillingPlans();
-        if (cancelled || plans.length === 0) return;
+        const plansResponse = await getBillingPlans();
+        if (cancelled || plansResponse.length === 0) return;
 
         setBillingPlans((current) => {
           const next = { ...current };
-          plans.forEach((plan) => {
+          plansResponse.forEach((plan) => {
             if (plan.planCode) next[plan.planCode] = plan;
           });
           return next;
         });
       } catch {
-        // Keep local fallback prices if plan lookup is unavailable.
+        // Keep fallback pricing if plan lookup is unavailable.
       }
     }
 
@@ -243,152 +423,486 @@ export default function CheckoutPage() {
     };
   }, []);
 
+  const updateSelectedPlan = useCallback((nextPlanId) => {
+    setSelectedPlanId(nextPlanId);
+
+    if (!isPayOsReturn) {
+      window.sessionStorage.setItem(CHECKOUT_PLAN_STORAGE_KEY, nextPlanId);
+    }
+  }, [isPayOsReturn]);
+
+  async function openPaymentLinkForPlan(planCode, reusableOrder = pendingOrder) {
+    setPaymentModalOpen(true);
+    setPaymentLinkLoading(true);
+    setError('');
+    setFrameClosed(false);
+    setConfirmSwitchPlanOpen(false);
+
+    try {
+      if (reusableOrder?.planCode === planCode && reusableOrder?.checkoutUrl) {
+        const reusedPaymentLink = buildPaymentLinkFromPendingOrder(reusableOrder, planCode);
+        if (!mountedRef.current) return null;
+
+        const expiresAtMs = reusedPaymentLink.expiresAt ? new Date(reusedPaymentLink.expiresAt).getTime() : NaN;
+        expiredOrderSyncRef.current = '';
+        setPaymentLink(reusedPaymentLink);
+        setPendingOrder(reusableOrder);
+        setPaymentLinkRemainingMs(Number.isNaN(expiresAtMs) ? 0 : Math.max(0, expiresAtMs - Date.now()));
+        setRetryAfterUntilMs(0);
+        setRetryAfterRemainingMs(0);
+        return reusedPaymentLink;
+      }
+
+      const nextPaymentLink = normalizePaymentLinkResponse(await getPaymentLink(planCode), planCode);
+      if (!mountedRef.current) return null;
+
+      const expiresAtMs = nextPaymentLink.expiresAt ? new Date(nextPaymentLink.expiresAt).getTime() : NaN;
+      expiredOrderSyncRef.current = '';
+      setPaymentLink(nextPaymentLink);
+      setPendingOrder((current) => buildPendingOrderFromPaymentLink(nextPaymentLink, current));
+      setPaymentLinkRemainingMs(Number.isNaN(expiresAtMs) ? 0 : Math.max(0, expiresAtMs - Date.now()));
+      setRetryAfterUntilMs(0);
+      setRetryAfterRemainingMs(0);
+      return nextPaymentLink;
+    } catch (err) {
+      if (!mountedRef.current) return null;
+
+      const retryAfterSeconds = extractRetryAfterSeconds(err);
+      if (retryAfterSeconds > 0) {
+        const nextRetryUntilMs = Date.now() + (retryAfterSeconds * 1000);
+        setRetryAfterUntilMs(nextRetryUntilMs);
+        setRetryAfterRemainingMs(retryAfterSeconds * 1000);
+      }
+
+      setError(getFriendlyPaymentLinkError(err));
+      return null;
+    } finally {
+      if (mountedRef.current) {
+        setPaymentLinkLoading(false);
+      }
+    }
+  }
+
+  async function refreshOrdersState(options = {}) {
+    const {
+      showMainLoader = false,
+      clearError = false,
+      syncSelectedPlanWithPending = false,
+    } = options;
+
+    if (showMainLoader) {
+      setLoading(true);
+    } else {
+      setRefreshingOrders(true);
+    }
+
+    if (clearError) {
+      setError('');
+    }
+
+    try {
+      const orders = await getMyBillingOrders();
+      if (!mountedRef.current) return null;
+
+      const latestPendingOrder = getLatestPendingOrder(orders);
+      setPendingOrder(latestPendingOrder);
+
+      if (!latestPendingOrder && paymentLink?.orderCode === expiredOrderSyncRef.current) {
+        setPaymentLink(null);
+      }
+
+      if (latestPendingOrder?.planCode && syncSelectedPlanWithPending) {
+        const pendingPlanId = getPlanIdFromPlanCode(latestPendingOrder.planCode);
+        updateSelectedPlan(pendingPlanId);
+      }
+
+      return latestPendingOrder;
+    } catch (err) {
+      if (mountedRef.current) {
+        setError(err.message || 'Không thể tải thông tin thanh toán. Vui lòng thử lại.');
+      }
+      return null;
+    } finally {
+      if (!mountedRef.current) return;
+
+      if (showMainLoader) {
+        setLoading(false);
+      } else {
+        setRefreshingOrders(false);
+      }
+    }
+  }
+
   useEffect(() => {
     if (isPayOsReturn) return undefined;
 
     let cancelled = false;
 
-    async function loadPaymentLink() {
+    async function bootstrapCheckout() {
       setLoading(true);
       setError('');
-      setFrameClosed(false);
-      setPaymentLink((current) => (current?.planCode === planCode ? current : null));
 
       try {
-        const response = await getPaymentLink(planCode);
-        const checkoutUrl = normalizePayOsCheckoutUrl(response?.checkoutUrl);
-        const orderCode = response?.orderCode;
-        const amount = response?.amount;
-        const responsePlanCode = response?.planCode;
-        const returnUrl = response?.returnUrl;
-        const cancelUrl = response?.cancelUrl;
-        const expiresAt = response?.expiresAt;
+        const orders = await getMyBillingOrders();
+        if (cancelled || !mountedRef.current) return;
 
-        if (!checkoutUrl || !orderCode) {
-          throw new Error('Không thể tạo đơn thanh toán. Vui lòng thử lại.');
-        }
+        const latestPendingOrder = getLatestPendingOrder(orders);
+        setPendingOrder(latestPendingOrder);
 
-        if (!cancelled) {
-          setPaymentLink({
-            ...response,
-            checkoutUrl,
-            orderCode,
-            amount,
-            planCode: responsePlanCode || planCode,
-            returnUrl,
-            cancelUrl,
-            expiresAt,
-          });
+        if (latestPendingOrder?.planCode) {
+          const pendingPlanId = getPlanIdFromPlanCode(latestPendingOrder.planCode);
+          updateSelectedPlan(pendingPlanId);
         }
       } catch (err) {
-        if (!cancelled) {
-          setError(err.message || 'Không thể tạo link thanh toán. Vui lòng thử lại.');
+        if (!cancelled && mountedRef.current) {
+          setError(err.message || 'Không thể tải thông tin thanh toán. Vui lòng thử lại.');
         }
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled && mountedRef.current) {
+          setLoading(false);
+        }
       }
     }
 
-    loadPaymentLink();
+    bootstrapCheckout();
     return () => {
       cancelled = true;
     };
-  }, [isPayOsReturn, planCode, reloadKey]);
+  }, [isPayOsReturn, updateSelectedPlan]);
 
   useEffect(() => {
-    const expiresAt = paymentLink?.expiresAt ? new Date(paymentLink.expiresAt).getTime() : null;
-    if (!expiresAt || Number.isNaN(expiresAt) || loading || error || cancelLoading) {
-      setPaymentLinkRemainingMs(0);
+    if (!retryAfterUntilMs || retryAfterUntilMs <= Date.now()) {
+      setRetryAfterRemainingMs(0);
       return undefined;
     }
 
-    let refreshTimerId;
-    const autoRefreshKey = `${paymentLink.orderCode}-${paymentLink.expiresAt}`;
-
-    if (expiredRefreshRef.current.key !== autoRefreshKey) {
-      expiredRefreshRef.current = { key: autoRefreshKey, attempts: 0 };
-    }
-
     function tick() {
-      const nextRemainingMs = Math.max(0, expiresAt - Date.now());
-      setPaymentLinkRemainingMs(nextRemainingMs);
-
-      if (
-        nextRemainingMs === 0
-        && !refreshTimerId
-        && expiredRefreshRef.current.attempts < PAYMENT_LINK_MAX_EXPIRED_REFRESH_ATTEMPTS
-      ) {
-        const delay = expiredRefreshRef.current.attempts === 0
-          ? PAYMENT_LINK_REFRESH_GRACE_MS
-          : PAYMENT_LINK_EXPIRED_RETRY_MS;
-        expiredRefreshRef.current.attempts += 1;
-        refreshTimerId = window.setTimeout(() => {
-          setReloadKey((key) => key + 1);
-        }, delay);
+      const nextRemainingMs = Math.max(0, retryAfterUntilMs - Date.now());
+      setRetryAfterRemainingMs(nextRemainingMs);
+      if (nextRemainingMs === 0) {
+        setRetryAfterUntilMs(0);
       }
     }
 
     tick();
     const timerId = window.setInterval(tick, 1000);
-    return () => {
-      window.clearInterval(timerId);
-      if (refreshTimerId) window.clearTimeout(refreshTimerId);
-    };
-  }, [cancelLoading, error, loading, paymentLink?.expiresAt, paymentLink?.orderCode]);
+    return () => window.clearInterval(timerId);
+  }, [retryAfterUntilMs]);
 
-  function selectPlan(planId) {
-    setSearchParams({ plan: planId });
+  useEffect(() => {
+    const expiresAtMs = paymentLink?.expiresAt ? new Date(paymentLink.expiresAt).getTime() : NaN;
+    if (!paymentLink?.orderCode || Number.isNaN(expiresAtMs)) {
+      setPaymentLinkRemainingMs(0);
+      expiredOrderSyncRef.current = '';
+      return undefined;
+    }
+
+    function tick() {
+      const nextRemainingMs = Math.max(0, expiresAtMs - Date.now());
+      setPaymentLinkRemainingMs(nextRemainingMs);
+
+      if (nextRemainingMs === 0 && expiredOrderSyncRef.current !== paymentLink.orderCode) {
+        expiredOrderSyncRef.current = paymentLink.orderCode;
+        refreshOrdersState();
+      }
+    }
+
+    tick();
+    const timerId = window.setInterval(tick, 1000);
+    return () => window.clearInterval(timerId);
+  }, [paymentLink?.expiresAt, paymentLink?.orderCode]);
+
+  useEffect(() => {
+    const watchedOrderCode = paymentLink?.orderCode || pendingOrder?.orderCode;
+    if (!paymentModalOpen || !watchedOrderCode) return undefined;
+
+    let cancelled = false;
+    let timerId;
+
+    async function checkPaymentStatus() {
+      try {
+        const orders = await getMyBillingOrders();
+        if (cancelled || !mountedRef.current) return;
+
+        const latestPendingOrder = getLatestPendingOrder(orders);
+        setPendingOrder(latestPendingOrder);
+
+        const watchedOrder = findOrderByCode(orders, watchedOrderCode);
+        if (isPaidOrderStatus(watchedOrder?.status)) {
+          navigate(getPaymentSuccessPath(watchedOrderCode), { replace: true });
+          return;
+        }
+
+        const billingStatus = await getMyBilling();
+        if (cancelled || !mountedRef.current) return;
+
+        if (billingStatus?.isPremiumActive) {
+          navigate(getPaymentSuccessPath(watchedOrderCode), { replace: true });
+          return;
+        }
+      } catch {
+        // Keep the modal usable; the success page and manual refresh can verify later.
+      }
+
+      if (!cancelled) {
+        timerId = window.setTimeout(checkPaymentStatus, PAYMENT_STATUS_POLL_MS);
+      }
+    }
+
+    timerId = window.setTimeout(checkPaymentStatus, PAYMENT_STATUS_POLL_MS);
+
+    return () => {
+      cancelled = true;
+      if (timerId) window.clearTimeout(timerId);
+    };
+  }, [navigate, paymentLink?.orderCode, paymentModalOpen, pendingOrder?.orderCode]);
+
+  const hasPendingOrder = Boolean(pendingOrder?.orderCode);
+  const hasDifferentPlanPending = hasPendingOrder && pendingOrder.planCode !== selectedPlanCode;
+  const hasSamePlanPending = hasPendingOrder && pendingOrder.planCode === selectedPlanCode;
+  const paymentLinkMatchesSelection = paymentLink?.planCode === selectedPlanCode;
+  const paymentLinkExpired = paymentLinkMatchesSelection && Boolean(paymentLink?.expiresAt) && paymentLinkRemainingMs === 0;
+  const hasVisiblePaymentLink = Boolean(paymentLink?.checkoutUrl) && paymentLinkMatchesSelection;
+  const showPaymentFrame = hasVisiblePaymentLink && !frameClosed && !paymentLinkExpired;
+  const controlsDisabled = loading || paymentLinkLoading || cancelLoading || refreshingOrders;
+  const payableAmount = paymentLinkMatchesSelection && paymentLink?.amount
+    ? paymentLink.amount
+    : selectedPlan.amount;
+  const totalLabel = formatBillingCurrency(payableAmount, selectedPlan.currency);
+  const pendingOrderCode = paymentLinkMatchesSelection ? paymentLink?.orderCode : pendingOrder?.orderCode;
+  const pendingOrderLabel = pendingOrder?.planCode ? getPlanLabel(pendingOrder.planCode) : null;
+  const checkoutBackTarget = useMemo(
+    () => getCheckoutBackTarget(location.state?.checkoutBackTo ?? location.state?.from),
+    [location.state]
+  );
+  const payButtonLabel = paymentLinkExpired
+    ? 'Tạo mã mới'
+    : hasSamePlanPending
+      ? 'Tiếp tục thanh toán'
+      : 'Thanh toán';
+
+  const handleBack = useCallback(() => {
+    navigate(checkoutBackTarget);
+  }, [checkoutBackTarget, navigate]);
+
+  async function handleCreateOrReusePayment() {
+    if (controlsDisabled || retryAfterRemainingMs > 0) return;
+
+    setRefreshingOrders(true);
+    setError('');
+
+    try {
+      const [orders, billingStatus] = await Promise.all([
+        getMyBillingOrders(),
+        getMyBilling(),
+      ]);
+      if (!mountedRef.current) return;
+
+      const latestPendingOrder = getLatestPendingOrder(orders);
+      const paidOrderForPlan = (orders || []).find(
+        (order) => order?.planCode === selectedPlanCode && isPaidOrderStatus(order?.status)
+      );
+
+      setPendingOrder(latestPendingOrder);
+
+      if (paidOrderForPlan || billingStatus?.isPremiumActive) {
+        navigate(getPaymentSuccessPath(paidOrderForPlan?.orderCode || pendingOrder?.orderCode), { replace: true });
+        return;
+      }
+
+      if (latestPendingOrder?.orderCode && latestPendingOrder.planCode !== selectedPlanCode) {
+        setConfirmSwitchPlanOpen(true);
+        return;
+      }
+
+      if (latestPendingOrder?.orderCode && latestPendingOrder.planCode === selectedPlanCode) {
+        await openPaymentLinkForPlan(selectedPlanCode, latestPendingOrder);
+        return;
+      }
+    } catch (err) {
+      if (mountedRef.current) {
+        setError(err.message || 'Không thể kiểm tra trạng thái thanh toán. Vui lòng thử lại.');
+      }
+      return;
+    } finally {
+      if (mountedRef.current) {
+        setRefreshingOrders(false);
+      }
+    }
+
+    await openPaymentLinkForPlan(selectedPlanCode);
+  }
+
+  async function handleConfirmSwitchPlan() {
+    if (!pendingOrder?.orderCode || controlsDisabled) return;
+
+    setCancelLoading(true);
+    setError('');
+    setConfirmSwitchPlanOpen(false);
+    setPaymentModalOpen(true);
+
+    try {
+      await cancelPaymentOrder(pendingOrder.orderCode);
+      if (!mountedRef.current) return;
+
+      setPendingOrder(null);
+      if (paymentLink?.orderCode === pendingOrder.orderCode) {
+        setPaymentLink(null);
+      }
+
+      await openPaymentLinkForPlan(selectedPlanCode);
+    } catch (err) {
+      if (mountedRef.current) {
+        setError(err.message || 'Không thể huỷ thanh toán cũ. Vui lòng thử lại.');
+      }
+    } finally {
+      if (mountedRef.current) {
+        setCancelLoading(false);
+      }
+    }
   }
 
   async function cancelCurrentPayment() {
-    if (!paymentLink?.orderCode || cancelLoading) return;
+    const orderCode = paymentLink?.orderCode || pendingOrder?.orderCode;
+    if (!orderCode || cancelLoading) return;
 
     setCancelLoading(true);
-    setCancelError('');
+    setError('');
     setConfirmCancelOpen(false);
 
     try {
-      await cancelPaymentOrder(paymentLink.orderCode);
-      navigate(`/checkout/cancel?cancel=handled&status=CANCELLED&orderCode=${paymentLink.orderCode}&plan=${selectedPlan.id}`, { replace: true });
+      await cancelPaymentOrder(orderCode);
+      navigate(`/checkout/cancel?cancel=handled&status=CANCELLED&orderCode=${orderCode}&plan=${selectedPlan.id}`, { replace: true });
     } catch (err) {
-      setCancelError(err.message || 'Không thể hủy đơn thanh toán. Vui lòng thử lại.');
+      if (mountedRef.current) {
+        setError(err.message || 'Không thể huỷ đơn thanh toán. Vui lòng thử lại.');
+      }
       setCancelLoading(false);
     }
   }
 
-  const payableAmount = paymentLink?.planCode === planCode && paymentLink?.amount
-    ? paymentLink.amount
-    : selectedPlan.amount;
-  const totalLabel = formatCurrency(payableAmount, selectedPlan.currency);
-  const paymentExpiryLabel = paymentLink?.expiresAt
-    ? `Mã QR còn hiệu lực ${formatCountdown(paymentLinkRemainingMs)}`
-    : selectedPlan.totalNote;
-  const hasVisiblePaymentLink = Boolean(paymentLink?.checkoutUrl);
+  function closePaymentModal() {
+    if (paymentLinkLoading || cancelLoading) return;
+    setPaymentModalOpen(false);
+  }
 
-  return (
-    <main className="min-h-[100dvh] bg-gradient-subtle px-4 py-7 text-[#24282E] sm:px-6 lg:px-10">
-      <section className="mx-auto grid min-h-[calc(100dvh-56px)] w-full max-w-[1540px] grid-cols-1 overflow-hidden bg-[#F9FCFF] shadow-[0_34px_100px_rgba(27,58,107,0.18)] lg:grid-cols-[1fr_0.92fr]">
-        <div className="flex flex-col px-7 py-8 sm:px-12 lg:px-24 lg:py-20">
-          <Link to="/" className="inline-flex w-fit items-center gap-3" aria-label="Về trang chủ Mascoteach">
-            <img src="/images/Logo.png" alt="Mascoteach" className="h-9 w-auto object-contain" />
-          </Link>
-
-          <div className="mt-12 lg:mt-16">
-            <Link to="/pricing" className="inline-flex items-center gap-2 text-sm font-bold text-[#64748B] transition hover:text-brand-blue">
-              <ArrowLeft className="h-4 w-4" />
-              Quay lại bảng giá
-            </Link>
-
-            <h1 className="mt-7 max-w-[620px] font-display text-[36px] font-black leading-[1.03] tracking-[-0.02em] text-brand-navy sm:text-[48px] lg:text-[56px]">
-              Kích hoạt Mascoteach Pro
-            </h1>
-            <p className="mt-4 max-w-[520px] text-base font-medium leading-7 text-[#5D6572]">
-              Mở khóa công cụ tạo câu hỏi, trò chơi lớp học và báo cáo tiến độ chỉ trong vài phút.
+  function renderPaymentModalBody() {
+    if (paymentLinkLoading || cancelLoading) {
+      return (
+        <div className="grid h-[500px] place-items-center rounded-[22px] bg-[#F6F9FD]">
+          <div className="text-center">
+            <Loader2 className="mx-auto h-10 w-10 animate-spin text-brand-blue" />
+            <p className="mt-4 text-[18px] font-semibold text-brand-navy">
+              {cancelLoading ? 'Đang cập nhật thanh toán' : 'Đang chuẩn bị mã QR'}
+            </p>
+            <p className="mt-2 text-[15px] font-medium leading-6 text-[#61748D]">
+              Vui lòng chờ trong giây lát.
             </p>
           </div>
+        </div>
+      );
+    }
 
-          <div className="mt-14">
-            <h2 className="text-2xl font-black tracking-[-0.01em] text-[#22272E]">Chọn gói Pro</h2>
+    if (showPaymentFrame) {
+      return (
+        <PayOsEmbeddedCheckout
+          key={`${paymentLink.orderCode}-${paymentLink.checkoutUrl}`}
+          checkoutUrl={paymentLink.checkoutUrl}
+          orderCode={paymentLink.orderCode}
+          planId={selectedPlan.id}
+          returnUrl={paymentLink.returnUrl}
+          onExit={handlePaymentExit}
+        />
+      );
+    }
+
+    if (frameClosed && hasVisiblePaymentLink && !paymentLinkExpired) {
+      return (
+        <div className="grid h-[500px] place-items-center rounded-[22px] bg-[#F2F8FD] px-6 text-center">
+          <div>
+            <QrCode className="mx-auto h-10 w-10 text-brand-blue" />
+            <p className="mt-4 text-[20px] font-semibold text-brand-navy">Khung thanh toán đã đóng</p>
+            <p className="mt-2 text-[16px] font-medium leading-7 text-[#64748B]">
+              QR vẫn còn hiệu lực, bạn có thể mở lại để tiếp tục thanh toán.
+            </p>
+            <button
+              type="button"
+              className="mt-5 inline-flex h-11 items-center justify-center gap-2 rounded-[999px] bg-brand-blue px-5 text-sm font-medium text-white transition hover:bg-brand-navy"
+              onClick={() => setFrameClosed(false)}
+            >
+              <RefreshCw className="h-4 w-4" />
+              Mở lại QR
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    if (paymentLinkExpired) {
+      return (
+        <div className="grid h-[500px] place-items-center rounded-[22px] bg-rose-50 px-6 text-center">
+          <div>
+            <Clock3 className="mx-auto h-10 w-10 text-rose-600" />
+            <p className="mt-4 text-[20px] font-semibold text-rose-700">Mã QR đã hết hạn</p>
+            <p className="mt-2 text-[16px] font-medium leading-7 text-rose-700">
+              Bấm tạo mã mới nếu bạn muốn thanh toán lại cho đơn này.
+            </p>
+            <button
+              type="button"
+              className="mt-5 inline-flex h-11 items-center justify-center gap-2 rounded-[999px] bg-brand-blue px-5 text-sm font-medium text-white transition hover:bg-brand-navy disabled:cursor-not-allowed disabled:opacity-60"
+              onClick={handleCreateOrReusePayment}
+              disabled={retryAfterRemainingMs > 0}
+            >
+              <RefreshCw className="h-4 w-4" />
+              {retryAfterRemainingMs > 0 ? `Chờ ${formatCountdown(retryAfterRemainingMs)}` : 'Tạo mã mới'}
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="grid h-[500px] place-items-center rounded-[22px] bg-[#F6F9FD] px-6 text-center">
+        <div>
+          <AlertCircle className="mx-auto h-10 w-10 text-brand-blue" />
+          <p className="mt-4 text-[20px] font-semibold text-brand-navy">Chưa có mã thanh toán</p>
+          <p className="mt-2 text-[16px] font-medium leading-7 text-[#64748B]">
+            Bấm thanh toán để Mascoteach tạo mã QR PayOS cho bạn.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return <PageSkeleton />;
+  }
+
+  return (
+    <main className="min-h-[100dvh] bg-[#E9EDF5] px-4 py-7 text-[#24282E] sm:px-6 lg:px-10">
+      <section className="mx-auto max-w-[1180px] overflow-hidden rounded-[28px] border border-white/80 bg-[#F6F9FD] shadow-[0_34px_100px_rgba(27,58,107,0.18)]">
+        <div className="grid lg:grid-cols-[1.06fr_0.94fr]">
+          <div className="border-b border-white/80 bg-[#F1F5FA] px-7 py-8 sm:px-10 lg:border-b-0 lg:border-r lg:border-r-white/80 lg:px-12 lg:py-12">
+            <button
+              type="button"
+              onClick={handleBack}
+              className="inline-flex items-center gap-2 text-sm font-semibold text-[#243B5A] transition hover:text-brand-blue"
+            >
+              <span className="grid h-8 w-8 place-items-center rounded-full border border-[#CBD8E7] bg-white text-[#243B5A]">
+                <ArrowLeft className="h-4 w-4" />
+              </span>
+              Quay lại
+            </button>
+
+            <div className="mt-10">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#6F86A4]">
+                Chọn gói Pro
+              </p>
+              <p className="mt-3 max-w-[540px] text-[17px] font-medium leading-8 text-[#61748D]">
+                Chọn gói Pro phù hợp. Bạn sẽ quét QR PayOS ở bước tiếp theo.
+              </p>
+            </div>
+
             <div className="mt-7 grid gap-4">
               {plans.map((plan) => {
                 const active = plan.id === selectedPlan.id;
@@ -398,198 +912,343 @@ export default function CheckoutPage() {
                     key={plan.id}
                     type="button"
                     className={cn(
-                      'grid min-h-[126px] grid-cols-[42px_1fr] items-center gap-4 rounded-[16px] border bg-white px-5 text-left transition duration-200 active:translate-y-px sm:grid-cols-[48px_1fr_auto] sm:px-7',
+                      'relative overflow-hidden rounded-[22px] border bg-white px-6 py-5 text-left transition duration-200',
                       active
-                        ? 'border-brand-blue shadow-[0_18px_45px_rgba(43,122,181,0.14)]'
-                        : 'border-[#CAD2DC] hover:border-brand-mid'
+                        ? 'border-brand-mid/75 shadow-[0_18px_42px_rgba(27,58,107,0.08)]'
+                        : 'border-white/90 hover:border-brand-light/80 hover:shadow-[0_14px_30px_rgba(27,58,107,0.05)]'
                     )}
-                    onClick={() => selectPlan(plan.id)}
-                    aria-pressed={active}
+                    onClick={() => updateSelectedPlan(plan.id)}
+                    disabled={paymentLinkLoading || cancelLoading}
                   >
-                    <span className={cn('grid h-9 w-9 place-items-center rounded-full border-2', active ? 'border-brand-blue bg-brand-blue' : 'border-[#CAD2DC] bg-white')}>
-                      {active && <span className="h-3.5 w-3.5 rounded-full bg-white" />}
-                    </span>
+                    {active && <span className="absolute inset-y-5 left-0 w-1 rounded-r-full bg-brand-blue" aria-hidden="true" />}
 
-                    <span>
-                      <span className="block text-lg font-black text-[#24282E]">{plan.label}</span>
-                      <span className="mt-1 block text-sm font-semibold leading-6 text-[#5D6572]">{plan.description}</span>
-                      <span className="mt-1 block text-xs font-black uppercase tracking-[0.08em] text-brand-blue">{plan.note}</span>
-                    </span>
+                    <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2.5">
+                          <span
+                            className={cn(
+                              'grid h-4 w-4 place-items-center rounded-full border transition',
+                              active ? 'border-brand-blue bg-brand-blue shadow-[0_0_0_4px_rgba(47,132,196,0.12)]' : 'border-[#C8D6E7] bg-white'
+                            )}
+                            aria-hidden="true"
+                          >
+                            {active && <span className="h-1.5 w-1.5 rounded-full bg-white" />}
+                          </span>
+                          <p className="text-[28px] font-semibold leading-tight text-[#1F2A37]">{plan.eyebrow}</p>
+                          <span className="rounded-full bg-brand-light/20 px-2.5 py-1 text-[12px] font-semibold uppercase tracking-[0.12em] text-brand-blue">
+                            {plan.badge}
+                          </span>
+                        </div>
+                        <p className="mt-2 text-[17px] font-medium leading-8 text-[#61748D]">
+                          {plan.description}
+                        </p>
+                        <p className="mt-3 text-[13px] font-semibold uppercase tracking-[0.14em] text-[#7F97B6]">
+                          {plan.detail}
+                        </p>
+                      </div>
 
-                    <span className="col-start-2 text-left sm:col-start-auto sm:text-right">
-                      <span className="block text-2xl font-black text-[#24282E]">{plan.priceLabel}</span>
-                      <span className="block text-sm font-semibold text-[#5D6572]">{plan.unit}</span>
-                    </span>
+                      <div className="sm:text-right">
+                        <p className="text-[22px] font-semibold text-[#1F2A37]">{plan.priceLabel}</p>
+                        <p className="mt-1 text-[15px] font-medium text-[#748499]">{plan.unit}</p>
+                      </div>
+                    </div>
                   </button>
                 );
               })}
             </div>
-          </div>
-        </div>
 
-        <div className="flex flex-col border-t border-[#E4EAF1] px-7 py-8 sm:px-12 lg:border-l lg:border-t-0 lg:px-16 lg:py-20">
-          <div className="rounded-[14px] bg-[#E8EBEF] p-1">
-            <div className="grid h-14 place-items-center rounded-[11px] bg-white text-base font-black text-[#22272E] shadow-[0_8px_18px_rgba(15,23,42,0.10)]">
-              QR PayOS
-            </div>
-          </div>
-
-          <div className="mt-9">
-            <label className="text-base font-black text-[#3F4650]" htmlFor="billed-to">
-              Người thanh toán
-            </label>
-            <input
-              id="billed-to"
-              value={user?.fullName || user?.email || 'Giáo viên Mascoteach'}
-              readOnly
-              className="mt-3 h-14 w-full rounded-[13px] border border-[#CAD2DC] bg-[#F9FCFF] px-5 text-base font-bold text-[#24282E] outline-none"
-            />
-          </div>
-
-          <div className="mt-8">
-            <h2 className="text-2xl font-black tracking-[-0.01em] text-[#22272E]">Thanh toán bằng QR</h2>
-
-            <div className="mt-6 rounded-[18px] border border-[#CAD2DC] bg-white p-4 sm:p-5">
-              {loading && !hasVisiblePaymentLink && (
-                <div className="mx-auto grid h-[460px] w-full max-w-[520px] place-items-center rounded-[14px] border border-dashed border-brand-light bg-white">
-                  <div className="text-center">
-                    <Loader2 className="mx-auto h-9 w-9 animate-spin text-brand-blue" />
-                    <p className="mt-4 text-sm font-black text-brand-navy">Đang tạo mã thanh toán PayOS</p>
+            {hasDifferentPlanPending && (
+              <div className="mt-6 rounded-[20px] border border-amber-200 bg-amber-50 px-5 py-4">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="mt-0.5 h-5 w-5 flex-none text-amber-600" />
+                  <div>
+                    <p className="text-base font-semibold text-amber-900">Bạn có một thanh toán đang chờ.</p>
+                    <p className="mt-1 text-[16px] font-medium leading-7 text-amber-800">
+                      Nếu tiếp tục với <span className="font-medium">{selectedPlan.eyebrow}</span>, thanh toán cũ
+                      {pendingOrderLabel ? ` (${pendingOrderLabel})` : ''} sẽ được huỷ trước.
+                    </p>
                   </div>
+                </div>
+              </div>
+            )}
+
+            {hasSamePlanPending && (
+              <div className="mt-6 rounded-[20px] border border-brand-light/70 bg-brand-light/15 px-5 py-4">
+                <div className="flex items-start gap-3">
+                  <Clock3 className="mt-0.5 h-5 w-5 flex-none text-brand-blue" />
+                  <div>
+                    <p className="text-base font-semibold text-brand-navy">Bạn đang có một giao dịch chờ thanh toán cho gói này.</p>
+                    <p className="mt-1 text-[16px] font-medium leading-7 text-[#52657D]">
+                      Bấm thanh toán để mở lại mã QR cho giao dịch <span className="font-medium">{pendingOrderCode}</span>.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="bg-white px-7 py-8 sm:px-10 lg:px-12 lg:py-12">
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#344A67]">
+              Thông tin thanh toán
+            </p>
+            <p className="mt-3 max-w-[440px] text-[17px] font-medium leading-8 text-[#61748D]">
+              Kiểm tra lại gói và thông tin người mua trước khi thanh toán qua PayOS.
+            </p>
+
+            <div className="mt-8">
+              <label className="text-[17px] font-semibold text-[#1F2A37]">Gói đã chọn</label>
+              <div className="mt-3 rounded-[18px] border border-[#E6EDF5] bg-[#FAFCFE] px-4 py-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-[19px] font-semibold text-[#1F2A37]">{selectedPlan.eyebrow}</p>
+                    <p className="mt-1 text-[16px] font-medium leading-7 text-[#61748D]">
+                      {selectedPlan.description}
+                    </p>
+                  </div>
+                  <span className="text-[19px] font-semibold text-[#1F2A37]">{selectedPlan.totalLabel}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6">
+              <label className="text-[17px] font-semibold text-[#1F2A37]">Phương thức thanh toán</label>
+              <div className="mt-3 rounded-[18px] border border-[#1F2A37] bg-white px-4 py-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
+                <div className="flex items-start gap-4">
+                  <span className="grid h-12 w-12 flex-none place-items-center rounded-[16px] border border-[#DCEFE8] bg-[#F4FBF8]">
+                    <img
+                    src="/images/payos_logo.webp"
+                      alt="PayOS"
+                      className="h-8 w-8 object-contain"
+                      loading="lazy"
+                    />
+                  </span>
+                  <div className="pt-0.5">
+                    <p className="text-[18px] font-semibold text-[#1F2A37]">PayOS</p>
+                    <p className="mt-1 text-[16px] font-medium leading-7 text-[#61748D]">
+                      Quét QR bằng ứng dụng ngân hàng hoặc ví điện tử hỗ trợ PayOS.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6">
+              <label className="text-[17px] font-semibold text-[#1F2A37]">Thông tin người mua</label>
+              <div className="mt-3 grid gap-3">
+                <div className="rounded-[18px] border border-[#E6EDF5] bg-[#FAFCFE] px-4 py-4">
+                  <p className="text-[12px] font-semibold uppercase tracking-[0.14em] text-[#7F97B6]">Họ và tên</p>
+                  <p className="mt-2 text-[20px] font-semibold text-[#1F2A37]">
+                    {user?.fullName || 'Giáo viên Mascoteach'}
+                  </p>
+                </div>
+                <div className="rounded-[18px] border border-[#E6EDF5] bg-[#FAFCFE] px-4 py-4">
+                  <p className="text-[12px] font-semibold uppercase tracking-[0.14em] text-[#7F97B6]">Email</p>
+                  <p className="mt-2 text-[20px] font-semibold text-[#1F2A37]">
+                    {user?.email || 'Không có email'}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-8 border-t border-[#EEF3F8] pt-6">
+              <div className="space-y-3 text-[16px]">
+                <div className="flex items-center justify-between gap-4 text-[#52657D]">
+                  <span className="font-medium">Tạm tính</span>
+                  <span className="font-semibold text-[#1F2A37]">{selectedPlan.totalLabel}</span>
+                </div>
+                <div className="flex items-center justify-between gap-4 text-[#52657D]">
+                  <span className="font-medium">Phương thức thanh toán</span>
+                  <span className="font-semibold text-[#1F2A37]">PayOS</span>
+                </div>
+                <div className="flex items-center justify-between gap-4 text-[#1F2A37]">
+                  <span className="text-[20px] font-semibold">Tổng cộng</span>
+                  <span className="text-[20px] font-semibold">{totalLabel}</span>
+                </div>
+              </div>
+
+              {retryAfterRemainingMs > 0 && (
+                <div className="mt-5 rounded-[18px] border border-rose-200 bg-rose-50 px-4 py-4 text-sm font-medium leading-6 text-rose-700">
+                  Bạn đã chạm giới hạn tạo QR. Vui lòng chờ {formatCountdown(retryAfterRemainingMs)} rồi thử lại.
                 </div>
               )}
 
-              {!loading && error && (
-                <div className="mx-auto grid h-[460px] w-full max-w-[520px] place-items-center rounded-[14px] border border-rose-200 bg-rose-50 px-6 text-center">
-                  <div>
-                    <p className="text-lg font-black text-rose-700">{error}</p>
+              {error && !paymentModalOpen && (
+                <div className="mt-5 rounded-[18px] border border-rose-200 bg-rose-50 px-4 py-4 text-sm font-medium leading-6 text-rose-700">
+                  {error}
+                </div>
+              )}
+
+              {pendingOrderCode && (
+                <div className="mt-5 rounded-[18px] border border-brand-light/70 bg-brand-light/15 px-4 py-4">
+                  <p className="text-base font-semibold text-brand-navy">Mã giao dịch hiện tại</p>
+                  <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-[16px] font-medium text-[#52657D]">{pendingOrderCode}</p>
                     <button
                       type="button"
-                      className="mt-5 inline-flex h-11 items-center justify-center gap-2 rounded-[10px] bg-brand-blue px-5 text-sm font-black text-white transition hover:bg-brand-navy"
-                      onClick={() => setReloadKey((key) => key + 1)}
+                      className="inline-flex h-10 items-center justify-center gap-2 rounded-[999px] border border-rose-200 bg-white px-4 text-sm font-medium text-rose-600 transition hover:border-rose-300 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
+                      onClick={() => setConfirmCancelOpen(true)}
+                      disabled={cancelLoading}
                     >
-                      <RefreshCw className="h-4 w-4" />
-                      Tạo lại mã
+                      {cancelLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />}
+                      {cancelLoading ? 'Đang huỷ' : 'Huỷ thanh toán'}
                     </button>
                   </div>
                 </div>
               )}
 
-              {!error && hasVisiblePaymentLink && (
-                <>
-                  {frameClosed ? (
-                    <div className="mx-auto grid h-[460px] w-full max-w-[520px] place-items-center rounded-[14px] border border-brand-light bg-surface-blue px-6 text-center">
-                      <div>
-                        <QrCode className="mx-auto h-10 w-10 text-brand-blue" />
-                        <p className="mt-4 text-base font-black text-brand-navy">Khung thanh toán đã đóng</p>
-                        <p className="mt-2 text-sm font-semibold leading-6 text-[#64748B]">
-                          Bạn có thể tạo lại mã thanh toán để tiếp tục.
-                        </p>
-                        <button
-                          type="button"
-                          className="mt-5 inline-flex h-11 items-center justify-center gap-2 rounded-[10px] bg-brand-blue px-5 text-sm font-black text-white transition hover:bg-brand-navy"
-                          onClick={() => setReloadKey((key) => key + 1)}
-                        >
-                          <RefreshCw className="h-4 w-4" />
-                          Tạo lại mã
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <PayOsEmbeddedCheckout
-                      key={`${paymentLink.orderCode}-${paymentLink.checkoutUrl}`}
-                      checkoutUrl={paymentLink.checkoutUrl}
-                      orderCode={paymentLink.orderCode}
-                      planId={selectedPlan.id}
-                      returnUrl={paymentLink.returnUrl}
-                      onExit={() => setFrameClosed(true)}
-                    />
-                  )}
-                </>
-              )}
-            </div>
-          </div>
+              <button
+                type="button"
+                className="mt-6 inline-flex h-14 w-full items-center justify-center gap-2 rounded-[999px] bg-[#1E293B] px-5 text-[17px] font-semibold text-white transition hover:bg-[#0F172A] disabled:cursor-not-allowed disabled:opacity-60"
+                onClick={handleCreateOrReusePayment}
+                disabled={controlsDisabled || retryAfterRemainingMs > 0}
+              >
+                {(paymentLinkLoading || cancelLoading || refreshingOrders) && <Loader2 className="h-4 w-4 animate-spin" />}
+                {payButtonLabel}
+              </button>
 
-          <div className="mt-auto pt-10">
-            <div className="flex items-end justify-between gap-5">
-              <div>
-                <p className="text-2xl font-black text-[#22272E]">Tổng cộng</p>
-                <p className="mt-1 flex items-center gap-2 text-sm font-semibold text-[#64748B]" aria-live="polite">
-                  <Clock3 className="h-4 w-4" />
-                  {loading && paymentLink?.expiresAt ? 'Đang làm mới mã QR...' : paymentExpiryLabel}
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="text-3xl font-black text-[#24282E]">{totalLabel}</p>
-                <p className="text-sm font-semibold text-[#64748B]">{selectedPlan.totalUnit}</p>
-              </div>
-            </div>
-
-            {paymentLink?.orderCode && (
-              <div className="mt-4 flex flex-col gap-3 rounded-[11px] bg-brand-light/20 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-sm font-bold text-brand-blue">
-                  Mã đơn hàng: {paymentLink.orderCode}
-                </p>
-                <button
-                  type="button"
-                  className="inline-flex h-9 items-center justify-center gap-2 rounded-[9px] border border-rose-200 bg-white px-3 text-sm font-black text-rose-600 transition hover:border-rose-300 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
-                  onClick={() => setConfirmCancelOpen(true)}
-                  disabled={cancelLoading}
-                >
-                  {cancelLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />}
-                  {cancelLoading ? 'Đang hủy' : 'Hủy thanh toán'}
-                </button>
-              </div>
-            )}
-
-            {cancelError && (
-              <p className="mt-3 rounded-[10px] border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">
-                {cancelError}
+              <p className="mt-5 flex items-start gap-3 text-[16px] font-medium leading-7 text-[#61748D]">
+                <ShieldCheck className="mt-0.5 h-5 w-5 flex-none text-brand-blue" />
+                Gói Pro sẽ tự kích hoạt sau khi giao dịch được xác nhận.
               </p>
-            )}
-
-            <p className="mt-5 flex items-start gap-3 text-sm font-semibold leading-6 text-[#5D6572]">
-              <ShieldCheck className="mt-0.5 h-5 w-5 flex-none text-brand-blue" />
-              Giao dịch được xử lý bảo mật qua PayOS. Gói Pro sẽ được cập nhật tự động sau khi thanh toán được xác nhận.
-            </p>
+            </div>
           </div>
         </div>
       </section>
 
-      {confirmCancelOpen && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-[#101828]/45 px-4 backdrop-blur-[6px]" role="dialog" aria-modal="true" aria-labelledby="cancel-payment-title">
-          <div className="w-full max-w-[480px] rounded-[18px] border border-[#E5D1D7] bg-white shadow-[0_26px_80px_rgba(27,58,107,0.22)]">
+      {paymentModalOpen && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-[#101828]/52 px-4 py-6 backdrop-blur-[6px]" role="dialog" aria-modal="true" aria-labelledby="payment-modal-title">
+          <div className="w-full max-w-[1060px] overflow-hidden rounded-[30px] border border-white/80 bg-white shadow-[0_34px_100px_rgba(27,58,107,0.24)]">
+            <div className="flex items-start justify-between gap-4 border-b border-[#EAF0F7] px-6 py-6 sm:px-8">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#6F86A4]">
+                  Thanh toán PayOS
+                </p>
+                <h2 id="payment-modal-title" className="mt-2 text-[32px] font-semibold leading-tight text-[#1F2A37]">
+                  Quét QR để thanh toán
+                </h2>
+                <p className="mt-3 max-w-[560px] text-[17px] font-medium leading-8 text-[#61748D]">
+                  Giữ màn hình này mở trong lúc hoàn tất giao dịch. Mascoteach sẽ cập nhật Pro sau khi thanh toán được xác nhận.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-[#D7E0EA] bg-white text-[#52657D] transition hover:bg-[#F8FBFE] disabled:cursor-not-allowed disabled:opacity-60"
+                onClick={closePaymentModal}
+                disabled={paymentLinkLoading || cancelLoading}
+                aria-label="Đóng modal thanh toán"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="grid bg-[#F8FBFE] lg:grid-cols-[330px_1fr]">
+              <aside className="border-b border-[#EAF0F7] px-6 py-6 sm:px-8 lg:border-b-0 lg:border-r lg:px-7">
+                <div>
+                  <p className="text-[13px] font-semibold uppercase tracking-[0.14em] text-[#7F97B6]">Tóm tắt</p>
+                  <div className="mt-5 divide-y divide-[#E3EBF4]">
+                    <div className="flex items-start justify-between gap-4 py-4 first:pt-0">
+                      <span className="text-[15px] font-medium text-[#61748D]">Gói</span>
+                      <span className="text-right text-[17px] font-semibold text-[#1F2A37]">{selectedPlan.eyebrow}</span>
+                    </div>
+
+                    <div className="py-4">
+                      <div className="flex items-start justify-between gap-4">
+                        <span className="text-[15px] font-medium text-[#61748D]">Người mua</span>
+                        <span className="text-right text-[17px] font-semibold text-[#1F2A37]">{user?.fullName || 'Giáo viên Mascoteach'}</span>
+                      </div>
+                      <p className="mt-1 break-all text-right text-[15px] font-medium text-[#748499]">{user?.email || 'Không có email'}</p>
+                    </div>
+
+                    <div className="flex items-start justify-between gap-4 py-4">
+                      <span className="text-[15px] font-medium text-[#61748D]">Mã giao dịch</span>
+                      <span className="break-all text-right text-[16px] font-semibold text-[#1F2A37]">{pendingOrderCode || 'Đang tạo'}</span>
+                    </div>
+
+                    <div className="flex items-start justify-between gap-4 py-4">
+                      <span className="text-[15px] font-medium text-[#61748D]">Tổng tiền</span>
+                      <span className="text-right text-[20px] font-semibold text-[#1F2A37]">{totalLabel}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-5 rounded-[18px] bg-brand-light/15 px-4 py-4">
+                  <p className="text-[16px] font-semibold text-brand-navy">
+                    {paymentLinkExpired
+                      ? 'Mã QR đã hết hạn'
+                      : showPaymentFrame && paymentLink?.expiresAt
+                        ? `QR còn hiệu lực ${formatCountdown(paymentLinkRemainingMs)}`
+                        : retryAfterRemainingMs > 0
+                          ? `Có thể tạo lại sau ${formatCountdown(retryAfterRemainingMs)}`
+                          : 'Mã QR đang được chuẩn bị'}
+                  </p>
+                  <p className="mt-2 text-[15px] font-medium leading-7 text-[#52657D]">
+                    Sau khi thanh toán xong, gói Pro sẽ được kích hoạt tự động.
+                  </p>
+                </div>
+
+                {error && (
+                  <div className="mt-4 rounded-[18px] bg-rose-50 px-4 py-4 text-[15px] font-medium leading-6 text-rose-700">
+                    {error}
+                  </div>
+                )}
+
+                {pendingOrderCode && (
+                  <button
+                    type="button"
+                    className="mt-5 inline-flex h-12 w-full items-center justify-center gap-2 rounded-[999px] border border-rose-200 bg-white px-5 text-[15px] font-semibold text-rose-600 transition hover:border-rose-300 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
+                    onClick={() => setConfirmCancelOpen(true)}
+                    disabled={cancelLoading}
+                  >
+                    {cancelLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />}
+                    {cancelLoading ? 'Đang huỷ' : 'Huỷ thanh toán'}
+                  </button>
+                )}
+              </aside>
+
+              <div className="bg-white px-5 py-6 sm:px-7">
+                {renderPaymentModalBody()}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {confirmSwitchPlanOpen && (
+        <div className="fixed inset-0 z-[60] grid place-items-center bg-[#101828]/45 px-4 backdrop-blur-[6px]" role="dialog" aria-modal="true" aria-labelledby="switch-plan-title">
+          <div className="w-full max-w-[520px] rounded-[22px] border border-[#E5D9C7] bg-white shadow-[0_26px_80px_rgba(27,58,107,0.22)]">
             <div className="border-b border-[#EEF2F6] px-6 py-5">
               <div className="flex items-start gap-4">
-                <div className="grid h-10 w-10 flex-none place-items-center rounded-[12px] bg-[#FFF1F3] text-rose-600">
+                <div className="grid h-10 w-10 flex-none place-items-center rounded-[12px] bg-amber-100 text-amber-700">
                   <AlertTriangle className="h-5 w-5" />
                 </div>
                 <div>
-                  <p className="text-xs font-black uppercase tracking-[0.08em] text-[#8A94A6]">
-                    Đơn đang chờ thanh toán
+                  <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-[#8A94A6]">
+                    Thanh toán đang chờ
                   </p>
-                  <h2 id="cancel-payment-title" className="mt-1 text-xl font-black text-[#22272E]">
-                    Hủy mã thanh toán này?
+                  <h2 id="switch-plan-title" className="mt-2 text-xl font-medium text-[#22272E]">
+                    Tạo thanh toán mới cho gói này?
                   </h2>
                 </div>
               </div>
             </div>
 
             <div className="px-6 py-5">
-              <p className="text-sm font-semibold leading-6 text-[#5D6572]">
-                Mã QR hiện tại sẽ không còn dùng được. Gói Pro chưa được kích hoạt, và bạn có thể tạo mã mới nếu muốn thanh toán lại.
+              <p className="text-sm font-medium leading-6 text-[#5D6572]">
+                Bạn có một giao dịch chưa hoàn tất. Nếu tiếp tục với <span className="font-medium">{selectedPlan.eyebrow}</span>, giao dịch cũ
+                {pendingOrderLabel ? ` (${pendingOrderLabel})` : ''} sẽ được huỷ trước.
               </p>
 
-              <div className="mt-4 grid gap-2 rounded-[13px] border border-[#E5EAF1] bg-[#F8FBFE] px-4 py-3 text-sm">
-                {paymentLink?.orderCode && (
+              <div className="mt-4 grid gap-2 rounded-[16px] border border-[#E5EAF1] bg-[#F8FBFE] px-4 py-3 text-sm">
+                {pendingOrder?.orderCode && (
                   <div className="flex items-center justify-between gap-4">
-                    <span className="font-semibold text-[#64748B]">Mã đơn</span>
-                    <span className="font-black text-[#24282E]">{paymentLink.orderCode}</span>
+                    <span className="font-medium text-[#64748B]">Mã giao dịch cũ</span>
+                    <span className="font-medium text-[#24282E]">{pendingOrder.orderCode}</span>
                   </div>
                 )}
                 <div className="flex items-center justify-between gap-4">
-                  <span className="font-semibold text-[#64748B]">Số tiền</span>
-                  <span className="font-black text-[#24282E]">{totalLabel}</span>
+                  <span className="font-medium text-[#64748B]">Gói mới</span>
+                  <span className="font-medium text-[#24282E]">{selectedPlan.eyebrow}</span>
                 </div>
               </div>
             </div>
@@ -597,7 +1256,68 @@ export default function CheckoutPage() {
             <div className="flex flex-col-reverse gap-3 border-t border-[#EEF2F6] px-6 py-5 sm:flex-row sm:justify-end">
               <button
                 type="button"
-                className="inline-flex h-11 items-center justify-center rounded-[10px] border border-[#CAD2DC] bg-white px-5 text-sm font-black text-[#1E293B] transition hover:bg-[#F5F8FC] active:translate-y-px"
+                className="inline-flex h-11 items-center justify-center rounded-[999px] border border-[#CAD2DC] bg-white px-5 text-sm font-medium text-[#1E293B] transition hover:bg-[#F5F8FC]"
+                onClick={() => setConfirmSwitchPlanOpen(false)}
+                disabled={cancelLoading || paymentLinkLoading}
+              >
+                Giữ giao dịch cũ
+              </button>
+              <button
+                type="button"
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-[999px] bg-[#D97706] px-5 text-sm font-medium text-white transition hover:bg-[#B45309] disabled:cursor-not-allowed disabled:opacity-70"
+                onClick={handleConfirmSwitchPlan}
+                disabled={cancelLoading || paymentLinkLoading}
+              >
+                {(cancelLoading || paymentLinkLoading) && <Loader2 className="h-4 w-4 animate-spin" />}
+                Huỷ giao dịch cũ và tạo mới
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {confirmCancelOpen && (
+        <div className="fixed inset-0 z-[60] grid place-items-center bg-[#101828]/45 px-4 backdrop-blur-[6px]" role="dialog" aria-modal="true" aria-labelledby="cancel-payment-title">
+          <div className="w-full max-w-[480px] rounded-[22px] border border-[#E5D1D7] bg-white shadow-[0_26px_80px_rgba(27,58,107,0.22)]">
+            <div className="border-b border-[#EEF2F6] px-6 py-5">
+              <div className="flex items-start gap-4">
+                <div className="grid h-10 w-10 flex-none place-items-center rounded-[12px] bg-[#FFF1F3] text-rose-600">
+                  <AlertTriangle className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-[#8A94A6]">
+                    Thanh toán đang chờ
+                  </p>
+                  <h2 id="cancel-payment-title" className="mt-2 text-xl font-medium text-[#22272E]">
+                    Huỷ mã thanh toán này?
+                  </h2>
+                </div>
+              </div>
+            </div>
+
+            <div className="px-6 py-5">
+              <p className="text-sm font-medium leading-6 text-[#5D6572]">
+                Mã QR hiện tại sẽ không còn dùng được. Bạn có thể tạo lại mã mới bất cứ lúc nào nếu muốn thanh toán lại.
+              </p>
+
+              <div className="mt-4 grid gap-2 rounded-[16px] border border-[#E5EAF1] bg-[#F8FBFE] px-4 py-3 text-sm">
+                {pendingOrderCode && (
+                  <div className="flex items-center justify-between gap-4">
+                    <span className="font-medium text-[#64748B]">Mã giao dịch</span>
+                    <span className="font-medium text-[#24282E]">{pendingOrderCode}</span>
+                  </div>
+                )}
+                <div className="flex items-center justify-between gap-4">
+                  <span className="font-medium text-[#64748B]">Số tiền</span>
+                  <span className="font-medium text-[#24282E]">{totalLabel}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-col-reverse gap-3 border-t border-[#EEF2F6] px-6 py-5 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                className="inline-flex h-11 items-center justify-center rounded-[999px] border border-[#CAD2DC] bg-white px-5 text-sm font-medium text-[#1E293B] transition hover:bg-[#F5F8FC]"
                 onClick={() => setConfirmCancelOpen(false)}
                 disabled={cancelLoading}
               >
@@ -605,12 +1325,12 @@ export default function CheckoutPage() {
               </button>
               <button
                 type="button"
-                className="inline-flex h-11 items-center justify-center gap-2 rounded-[10px] bg-[#D92D4B] px-5 text-sm font-black text-white transition hover:bg-[#BE2440] active:translate-y-px disabled:cursor-not-allowed disabled:opacity-70"
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-[999px] bg-[#D92D4B] px-5 text-sm font-medium text-white transition hover:bg-[#BE2440] disabled:cursor-not-allowed disabled:opacity-70"
                 onClick={cancelCurrentPayment}
                 disabled={cancelLoading}
               >
                 {cancelLoading && <Loader2 className="h-4 w-4 animate-spin" />}
-                Hủy thanh toán
+                Huỷ thanh toán
               </button>
             </div>
           </div>

@@ -5,17 +5,17 @@ import { Link } from 'react-router-dom';
 const RIGHT_PREVIEWS = [
   {
     title: 'Nhắc lại đúng lúc',
-    image: '/references/mascoteach/right_underhero1.png',
+    image: '/references/mascoteach/right_underhero1.webp',
     alt: 'Sumadi nhắc học sinh quay lại phần kiến thức vừa bỏ lỡ',
   },
   {
     title: 'Phản hồi theo tiến độ',
-    image: '/references/mascoteach/right_underhero2.png',
+    image: '/references/mascoteach/right_underhero2.webp',
     alt: 'Sumadi hiển thị tiến độ học tập và câu cần xem lại',
   },
   {
     title: 'Học như đang chơi',
-    image: '/references/mascoteach/right_underhero3.png',
+    image: '/references/mascoteach/right_underhero3.webp',
     alt: 'Sumadi tạo cảm giác học như đang chơi với điểm số và huy hiệu',
   },
 ];
@@ -89,7 +89,7 @@ export default function UnderHeroImage() {
             >
               <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-[18px] bg-[#EAF4FF] md:h-28 md:w-28">
                 <img
-                  src="/references/mascoteach/Mascot_front.png"
+              src="/references/mascoteach/Mascot_front.webp"
                   alt="Sumadi, mascot học tập của Mascoteach."
                   className="h-full w-full object-contain object-center"
                   draggable="false"
