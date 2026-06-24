@@ -1,6 +1,6 @@
 # Mascoteach Privacy Policy / Chính Sách Bảo Mật Mascoteach
 
-*Effective Date / Ngày hiệu lực: June 23, 2026*
+*Effective Date / Ngày hiệu lực: June 24, 2026*
 
 Welcome to **Mascoteach**, a learning platform developed by **Funovah** ("we", "us", "our"), including our website, web application, and mobile application. We are committed to protecting your privacy and ensuring a secure experience for our users (students, teachers, and parents). This Privacy Policy explains how we collect, use, store, and share information when you use Mascoteach across these services.
 
@@ -78,19 +78,21 @@ Chúng tôi không bán dữ liệu cá nhân của bạn. Chúng tôi chỉ chi
 
 ## 5. Data Retention & Account Deletion / Lưu trữ & Xóa tài khoản
 
-We retain your personal data for as long as your account is active. 
+We retain your personal data while your account remains active or for a reasonable period needed to provide the service, resolve disputes, enforce agreements, and meet legal obligations.
 
 **Account Deletion (Xóa tài khoản)**:
 - Users have the right to delete their accounts at any time.
-- You can request account deletion directly in the mobile app settings where this feature is available, or by contacting us at **support@mascoteach.com**.
-- Upon deletion, your profile information, uploaded documents, generated quizzes, and progress history will be permanently deleted from our databases within 30 days, in compliance with Google Play Store policies.
+- You can request account deletion by contacting us at **support@mascoteach.com**.
+- If the app provides an in-app account deletion control, you may also use that feature directly.
+- After we verify a valid request, we will delete or deactivate your relevant profile information, uploaded documents, generated quizzes, and progress history within a reasonable period unless some data must be retained for legal, security, or fraud-prevention reasons.
 
-Chúng tôi lưu trữ dữ liệu cá nhân của bạn chừng nào tài khoản của bạn còn hoạt động.
+Chúng tôi lưu trữ dữ liệu cá nhân của bạn trong thời gian tài khoản còn hoạt động hoặc trong khoảng thời gian hợp lý cần thiết để cung cấp dịch vụ, giải quyết tranh chấp, thực thi thỏa thuận và đáp ứng nghĩa vụ pháp lý.
 
 **Yêu cầu xóa tài khoản**:
 - Người dùng có quyền xóa tài khoản của mình bất kỳ lúc nào.
-- Bạn có thể gửi yêu cầu xóa tài khoản trực tiếp trong phần Cài đặt của ứng dụng di động khi tính năng này khả dụng, hoặc liên hệ qua email **support@mascoteach.com**.
-- Sau khi nhận yêu cầu, thông tin hồ sơ, tài liệu tải lên, câu hỏi đã tạo và lịch sử tiến trình học của bạn sẽ bị xóa vĩnh viễn khỏi cơ sở dữ liệu của chúng tôi trong vòng 30 ngày, tuân thủ theo đúng chính sách của Google Play Store.
+- Bạn có thể gửi yêu cầu xóa tài khoản qua email **support@mascoteach.com**.
+- Nếu ứng dụng có cung cấp chức năng yêu cầu xóa tài khoản trong app, bạn cũng có thể sử dụng trực tiếp tính năng đó.
+- Sau khi xác minh yêu cầu hợp lệ, chúng tôi sẽ xóa hoặc vô hiệu hóa dữ liệu liên quan trong thời gian hợp lý, trừ khi một phần dữ liệu cần được lưu lại vì lý do pháp lý, bảo mật hoặc chống gian lận.
 
 ---
 

@@ -17,6 +17,7 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import {
   generateAvatarUploadUrl,
+  deleteUser,
   updateMyAvatar,
   updateUser,
   uploadAvatarToS3,
@@ -78,7 +79,7 @@ function getInfoItems(profile) {
 }
 
 export default function ProfilePage() {
-  const { user, loading: authLoading, refreshUser } = useAuth();
+  const { user, loading: authLoading, refreshUser, logout } = useAuth();
   const [profile, setProfile] = useState(user);
   const [formData, setFormData] = useState({
     fullName: user?.fullName || '',
@@ -89,6 +90,7 @@ export default function ProfilePage() {
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [reloadKey, setReloadKey] = useState(0);
@@ -259,6 +261,28 @@ export default function ProfilePage() {
     }
   }
 
+  async function handleDeleteAccount() {
+    if (!profile?.id || isDeleting) return;
+
+    const confirmed = window.confirm(
+      'Tài khoản, tài liệu, quiz và dữ liệu liên quan sẽ bị xóa vĩnh viễn. Hành động này không thể hoàn tác. Bạn có chắc chắn muốn tiếp tục?',
+    );
+
+    if (!confirmed) return;
+
+    setError('');
+    setSuccessMessage('');
+    setIsDeleting(true);
+
+    try {
+      await deleteUser(profile.id);
+      logout();
+    } catch (err) {
+      setError(err.message || 'Không thể xóa tài khoản.');
+      setIsDeleting(false);
+    }
+  }
+
   return (
     <div className="min-h-full bg-[#fbfdff] text-ink">
       <div className="mx-auto w-full max-w-[1120px] px-5 py-8 md:px-8">
@@ -410,7 +434,7 @@ export default function ProfilePage() {
                   </article>
                 </section>
 
-                <section className="rounded-[18px] border border-brand-light/60 bg-white p-6 shadow-[0_18px_48px_rgba(43,122,181,0.08)]">
+            <section className="rounded-[18px] border border-brand-light/60 bg-white p-6 shadow-[0_18px_48px_rgba(43,122,181,0.08)]">
                   <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                     <h2 className="text-lg font-black text-[#173154]">Thông tin tài khoản</h2>
                     {!isEditing ? (
@@ -507,6 +531,27 @@ export default function ProfilePage() {
                       ))}
                     </div>
                   )}
+                </section>
+
+                <section className="rounded-[18px] border border-rose-200 bg-white p-6 shadow-[0_18px_48px_rgba(43,122,181,0.08)]">
+                  <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                    <div>
+                      <h2 className="text-lg font-black text-rose-700">Vùng nguy hiểm</h2>
+                      <p className="mt-2 max-w-[680px] text-sm font-semibold leading-6 text-[#64748B]">
+                        Xóa tài khoản sẽ xóa vĩnh viễn hồ sơ, tài liệu và dữ liệu học tập liên quan khỏi hệ thống.
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[12px] bg-rose-600 px-4 text-sm font-black text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+                      onClick={handleDeleteAccount}
+                      disabled={isDeleting || isSaving || isUploading || pageLoading}
+                    >
+                      {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                      {isDeleting ? 'Đang xóa tài khoản' : 'Xóa tài khoản'}
+                    </button>
+                  </div>
                 </section>
               </div>
             </section>

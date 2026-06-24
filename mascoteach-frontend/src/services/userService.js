@@ -33,6 +33,15 @@ export async function updateUser(id, data) {
 }
 
 /**
+ * Permanently delete the current user's account.
+ * @param {number} id
+ * @returns {Promise<void>}
+ */
+export async function deleteUser(id) {
+    return api.delete(`/api/User/${id}`);
+}
+
+/**
  * Get all users (admin)
  * @returns {Promise<object[]>}
  */
