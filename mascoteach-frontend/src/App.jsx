@@ -14,6 +14,7 @@ import ResetPasswordPage from '@/pages/ResetPasswordPage';
 import VerifyEmailPage from '@/pages/VerifyEmailPage';
 import PrivacyPolicyPage from '@/pages/PrivacyPolicyPage';
 import TermsPage from '@/pages/TermsPage';
+import SumadiLiveTestPage from '@/pages/SumadiLiveTestPage';
 
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 
@@ -96,6 +97,14 @@ export default function App() {
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/verify-email" element={<VerifyEmailPage />} />
+        <Route
+          path="/sumadi-live-test"
+          element={(
+            <ProtectedRoute>
+              <SumadiLiveTestPage />
+            </ProtectedRoute>
+          )}
+        />
 
         <Route
           path="/teacher"
