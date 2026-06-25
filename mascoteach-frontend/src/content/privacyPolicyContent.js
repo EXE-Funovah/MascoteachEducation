@@ -90,6 +90,12 @@ export const privacyPolicyContent = {
           'Khi chúng tôi xử lý yêu cầu xóa hợp lệ, dữ liệu tài khoản và dữ liệu liên quan trong cơ sở dữ liệu sẽ bị xóa trong phạm vi áp dụng. Với các tệp liên quan như avatar hoặc tài liệu đã tải lên, hệ thống cũng thực hiện dọn dẹp lưu trữ đám mây ở mức best-effort sau khi xóa dữ liệu chính.',
           'Nếu một phần dữ liệu cần được giữ lại vì lý do pháp lý, bảo mật, chống gian lận hoặc xử lý tranh chấp, chúng tôi sẽ giữ lại phần dữ liệu đó trong phạm vi cần thiết.',
         ],
+        bullets: [
+          'Cách yêu cầu xóa qua email: gửi email tới support@mascoteach.com với tiêu đề như "Delete my Mascoteach account" hoặc "Yêu cầu xóa tài khoản Mascoteach".',
+          'Vui lòng gửi yêu cầu từ chính email đã dùng để đăng ký tài khoản Mascoteach, hoặc ghi rõ email tài khoản cần xóa trong nội dung thư.',
+          'Bạn cũng nên ghi thêm thông tin nhận diện cơ bản như họ tên hoặc vai trò tài khoản để chúng tôi xác minh yêu cầu nhanh hơn.',
+          'Sau khi xác minh yêu cầu hợp lệ, chúng tôi sẽ tiến hành xóa tài khoản và dữ liệu liên quan trong phạm vi áp dụng trong thời gian hợp lý.',
+        ],
       },
       {
         title: '9. Quyền và lựa chọn của bạn',
@@ -216,6 +222,12 @@ export const privacyPolicyContent = {
           'Depending on the platform and currently available features, you may delete your account in the app, in your signed-in web profile, or by contacting support@mascoteach.com.',
           'When we process a valid deletion request, account data and associated database records are deleted within the applicable scope. For related files such as avatars or uploaded learning documents, the system also performs best-effort cloud storage cleanup after the primary account deletion completes.',
           'If certain data must be retained for legal, security, fraud-prevention, or dispute-resolution reasons, we may keep that limited data only as necessary.',
+        ],
+        bullets: [
+          'How to request deletion by email: send an email to support@mascoteach.com with a subject such as "Delete my Mascoteach account".',
+          'Please send the request from the same email address used for your Mascoteach account, or clearly state the account email that should be deleted.',
+          'You may also include basic identifying details such as your full name or account role so we can verify the request more quickly.',
+          'After we verify a valid request, we will delete the account and associated data within the applicable scope in a reasonable period.',
         ],
       },
       {

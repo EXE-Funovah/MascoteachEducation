@@ -131,6 +131,18 @@ If certain data must be retained for legal, security, fraud-prevention, or dispu
 
 Nếu một phần dữ liệu cần được giữ lại vì lý do pháp lý, bảo mật, chống gian lận hoặc xử lý tranh chấp, chúng tôi có thể giữ lại phần dữ liệu đó trong phạm vi cần thiết.
 
+**How to request deletion by email / Cách yêu cầu xóa qua email**:
+
+- Send an email to **support@mascoteach.com** with a subject such as **"Delete my Mascoteach account"**.
+- Please send the request from the same email address used for your Mascoteach account, or clearly state the account email that should be deleted.
+- You may also include basic identifying details such as your full name or account role so we can verify the request more quickly.
+- After we verify a valid request, we will delete the account and associated data within the applicable scope in a reasonable period.
+
+- Gửi email tới **support@mascoteach.com** với tiêu đề như **"Delete my Mascoteach account"** hoặc **"Yêu cầu xóa tài khoản Mascoteach"**.
+- Vui lòng gửi yêu cầu từ chính email đã dùng để đăng ký tài khoản Mascoteach, hoặc ghi rõ email tài khoản cần xóa trong nội dung thư.
+- Bạn cũng có thể ghi thêm thông tin nhận diện cơ bản như họ tên hoặc vai trò tài khoản để chúng tôi xác minh yêu cầu nhanh hơn.
+- Sau khi xác minh yêu cầu hợp lệ, chúng tôi sẽ tiến hành xóa tài khoản và dữ liệu liên quan trong phạm vi áp dụng trong thời gian hợp lý.
+
 ---
 
 ## 9. Your choices and controls / Quyền và lựa chọn của bạn
