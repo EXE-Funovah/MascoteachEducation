@@ -33,7 +33,7 @@ export default function HowMascoteachWorks() {
   return (
     <section
       id="how-it-works"
-      className="relative overflow-hidden bg-[linear-gradient(180deg,#F7FAFF_0%,#FFFFFF_48%,#F6FAFF_100%)] px-4 py-20 text-[#173154] md:py-24 lg:py-28"
+      className="relative overflow-hidden bg-[linear-gradient(180deg,#F7FAFF_0%,#FFFFFF_48%,#F6FAFF_100%)] px-4 py-20 text-ink md:py-24 lg:py-28"
       aria-labelledby="how-mascoteach-works-title"
     >
       <div className="pointer-events-none absolute inset-x-0 bottom-0 h-52 bg-[linear-gradient(180deg,rgba(255,255,255,0)_0%,rgba(219,236,255,0.52)_100%)]" />
@@ -46,7 +46,7 @@ export default function HowMascoteachWorks() {
           viewport={{ once: true, amount: 0.35 }}
           transition={{ duration: shouldReduceMotion ? 0 : 0.62, ease: [0.22, 1, 0.36, 1] }}
         >
-          <div className="inline-flex items-center gap-3 rounded-full border border-[#BBDCFB] bg-white/82 px-5 py-3 text-base font-extrabold text-[#2F72E8] shadow-[0_12px_34px_rgba(30,60,120,0.06)]">
+          <div className="inline-flex items-center gap-3 rounded-full border border-sky-100 bg-white/82 px-5 py-3 text-base font-semibold text-sky-400 shadow-[0_12px_34px_rgba(30,60,120,0.06)] md:text-lg">
             <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#EAF4FF]">
               <Sprout className="h-5 w-5" aria-hidden="true" />
             </span>
@@ -55,12 +55,12 @@ export default function HowMascoteachWorks() {
 
           <h2
             id="how-mascoteach-works-title"
-            className="mt-8 text-[clamp(2.4rem,5.2vw,5.4rem)] font-black leading-[1.05] tracking-normal text-[#173154]"
+            className="mt-5 text-4xl font-bold leading-tight text-ink md:text-[42px] lg:text-5xl"
           >
-            Cách <span className="text-[#2F72E8]">Mascoteach</span> hoạt động
+            Cách <span className="text-sky-500">Mascoteach</span> hoạt động
           </h2>
 
-          <p className="mx-auto mt-6 max-w-4xl text-lg font-medium leading-8 text-[#2F3D52]/78 md:text-[22px] md:leading-9">
+          <p className="mx-auto mt-6 max-w-3xl text-base font-medium leading-8 text-ink/70 md:text-lg">
             Chỉ với 3 bước, giáo viên có thể biến tài liệu học tập thành hoạt động tương tác cùng Sumadi.
           </p>
         </motion.div>
@@ -93,10 +93,10 @@ export default function HowMascoteachWorks() {
                   {step.number}
                 </div>
                 <div>
-                  <h3 className="text-2xl font-black leading-tight text-[#10284A] md:text-[28px]">
+                  <h3 className="text-2xl font-bold leading-tight text-ink md:text-3xl">
                     {step.title}
                   </h3>
-                  <p className="mt-3 text-base font-medium leading-7 text-[#2F3D52] md:text-lg">
+                  <p className="mt-3 text-base font-medium leading-8 text-ink/72 md:text-lg">
                     {step.description}
                   </p>
                 </div>

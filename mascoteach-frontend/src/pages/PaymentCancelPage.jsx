@@ -61,7 +61,7 @@ export default function PaymentCancelPage() {
       <section className="mx-auto flex min-h-[calc(100dvh-80px)] w-full max-w-[760px] items-center">
         <article className="w-full overflow-hidden rounded-[20px] border border-brand-light/60 bg-white shadow-[0_24px_70px_rgba(27,58,107,0.14)]">
           <header className="flex flex-col gap-4 border-b border-[#E8EEF5] px-6 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-8">
-            <img src="/images/Logo.webp" alt="Mascoteach" className="h-10 w-fit object-contain" />
+            <img src="/images/Logo_Redesign_Text.webp" alt="Mascoteach" className="h-10 w-fit object-contain" />
             <span className="w-fit rounded-full border border-[#CAD2DC] bg-[#F8FBFE] px-3 py-1 text-xs font-black uppercase tracking-[0.08em] text-[#64748B]">
               Thanh toán PayOS
             </span>

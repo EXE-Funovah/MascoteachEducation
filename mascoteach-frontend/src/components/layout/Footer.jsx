@@ -1,70 +1,146 @@
 import { motion, useReducedMotion } from 'framer-motion';
+import { Mail, MapPin, Phone } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { SITE, FOOTER } from '@/lib/constants';
+import { SITE } from '@/lib/constants';
 
-export default function Footer() {
+const FOOTER_COLUMNS = [
+  {
+    title: 'Công ty',
+    links: [
+      { label: 'Về Mascoteach', href: '/product' },
+      { label: 'Sản phẩm', href: '/product' },
+      { label: 'Cộng đồng', href: '/features' },
+      { label: 'Bảng giá', href: '/pricing' },
+    ],
+  },
+  {
+    title: 'Hỗ trợ',
+    links: [
+      { label: 'Trung tâm trợ giúp', href: '/features' },
+      { label: 'Tài liệu hướng dẫn', href: '/features' },
+      { label: 'Webinars', href: '/product' },
+      { label: 'Góp ý', href: '/product' },
+    ],
+  },
+  {
+    title: 'Liên kết',
+    links: [
+      { label: 'Tính năng', href: '/features' },
+      { label: 'Trở thành giáo viên', href: '/register' },
+      { label: 'Dịch vụ', href: '/product' },
+      { label: 'Tất cả trong một', href: '/product' },
+    ],
+  },
+];
+
+const SOCIAL_LINKS = [
+  {
+    label: 'Facebook',
+    href: 'https://www.facebook.com/profile.php?id=61589751325252',
+    icon: '/images/facebook_logo.webp',
+  },
+  {
+    label: 'TikTok',
+    href: 'https://www.tiktok.com/@mascoteach',
+    icon: '/images/tiktok_logo.webp',
+  },
+];
+
+export default function Footer({ withOverlappingCta = false }) {
   const shouldReduceMotion = useReducedMotion();
 
   return (
     <motion.footer
-      className="border-t border-slate-100/80 bg-surface"
+      className={`bg-[#EAF4FF] ${withOverlappingCta ? 'pt-36 md:pt-44' : 'pt-12 md:pt-16'}`}
       initial={shouldReduceMotion ? false : { opacity: 0, y: 12 }}
       whileInView={shouldReduceMotion ? undefined : { opacity: 1, y: 0 }}
       viewport={{ once: true, amount: 0.16 }}
       transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
     >
-      <div className="mx-auto max-w-7xl px-6 py-16">
-        <div className="grid grid-cols-2 gap-10 md:grid-cols-4">
-          <div className="col-span-2 md:col-span-1">
-            <Link to="/" className="inline-block mb-4">
-              <img src="/images/Logo.webp" alt={SITE.name} className="h-7 object-contain" />
+      <div className="w-full overflow-hidden bg-white shadow-[0_-18px_70px_rgba(27,58,107,0.10)]">
+        <div className={`mx-auto grid max-w-7xl gap-10 px-6 pb-14 sm:px-10 md:grid-cols-[1.35fr_1fr_1fr] lg:grid-cols-[1.7fr_1fr_1fr_1fr_1.4fr] lg:px-16 ${withOverlappingCta ? 'pt-24 md:pt-28' : 'pt-14'}`}>
+          <div className="md:col-span-3 lg:col-span-1">
+            <Link to="/" className="mb-5 inline-block">
+              <img src="/images/Logo_Redesign.webp" alt={SITE.name} className="h-14 w-auto max-w-[240px] object-contain" />
             </Link>
-            <p className="max-w-[260px] text-[15px] leading-7 text-ink-muted md:text-base">
+            <p className="max-w-[340px] text-base font-medium leading-8 text-ink/70 md:text-lg">
               {SITE.description}
             </p>
-            <div className="mt-6 flex gap-3">
-              {['Facebook', 'YouTube', 'LinkedIn'].map((social) => (
+            <div className="mt-7 flex gap-3">
+              {SOCIAL_LINKS.map((social) => (
                 <a
-                  key={social}
-                  href="#"
-                  className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-100 bg-white text-xs font-medium text-ink-muted shadow-sm transition-all duration-300 hover:border-blue-200 hover:bg-blue-50 hover:text-brand-blue"
-                  aria-label={social}
+                  key={social.label}
+                  href={social.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex h-10 w-10 items-center justify-center rounded-full transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_10px_24px_rgba(43,122,181,0.16)]"
+                  aria-label={social.label}
                 >
-                  {social[0]}
+                  <img src={social.icon} alt="" className="h-full w-full rounded-full object-cover" />
                 </a>
               ))}
             </div>
           </div>
 
-          {FOOTER.columns.map((col) => (
+          {FOOTER_COLUMNS.map((col) => (
             <nav key={col.title} aria-label={col.title}>
-              <h4 className="mb-4 text-base font-semibold tracking-wide text-ink">
+              <h4 className="mb-5 text-base font-semibold text-ink md:text-lg">
                 {col.title}
               </h4>
               <ul className="space-y-3">
                 {col.links.map((link) => (
                   <li key={link.label}>
-                    <a
-                      href={link.href}
-                      className="text-[15px] text-ink-muted transition-colors hover:text-brand-blue md:text-base"
+                    <Link
+                      to={link.href}
+                      className="text-base font-medium text-ink/72 transition-colors hover:text-brand-blue md:text-lg"
                     >
                       {link.label}
-                    </a>
+                    </Link>
                   </li>
                 ))}
               </ul>
             </nav>
           ))}
+
+          <div>
+            <h4 className="mb-5 text-base font-semibold text-ink md:text-lg">Liên hệ</h4>
+            <ul className="space-y-4 text-base font-medium text-ink/72 md:text-lg">
+              <li className="flex items-start gap-3">
+                <Phone className="mt-0.5 h-5 w-5 flex-none text-[#4E79E6]" strokeWidth={2.4} />
+                <a href="tel:+84987654321" className="transition-colors hover:text-brand-blue">
+                  (+84) 987 654 321
+                </a>
+              </li>
+              <li className="flex items-start gap-3">
+                <Mail className="mt-0.5 h-5 w-5 flex-none text-[#4E79E6]" strokeWidth={2.4} />
+                <a href="mailto:support@mascoteach.com" className="transition-colors hover:text-brand-blue">
+                  support@mascoteach.com
+                </a>
+              </li>
+              <li className="flex items-start gap-3">
+                <MapPin className="mt-0.5 h-5 w-5 flex-none text-[#4E79E6]" strokeWidth={2.4} />
+                <span>FPT University, TP. Hồ Chí Minh</span>
+              </li>
+            </ul>
+          </div>
         </div>
 
-        <div className="mt-16 flex flex-col items-center justify-between gap-4 border-t border-slate-100/80 pt-8 md:flex-row">
-          <p className="text-[15px] text-ink-muted md:text-base">{FOOTER.copyright}</p>
-          <div className="flex gap-6 text-[15px] text-ink-muted md:text-base">
+        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-5 border-t border-[#E5EAF1] px-6 py-7 text-center sm:px-10 md:flex-row md:text-left lg:px-16">
+          <p className="text-[15px] font-medium text-ink/66 md:text-base">
+            © Copyright by Mascoteach. All rights reserved.
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-[15px] font-medium text-ink/66 md:text-base">
             <Link to="/privacy" className="transition-colors hover:text-brand-blue">
               Chính sách bảo mật
             </Link>
             <Link to="/terms" className="transition-colors hover:text-brand-blue">
               Điều khoản sử dụng
+            </Link>
+            <Link to="/product" className="transition-colors hover:text-brand-blue">
+              Pháp lý
+            </Link>
+            <Link to="/features" className="transition-colors hover:text-brand-blue">
+              Sơ đồ trang
             </Link>
           </div>
         </div>
