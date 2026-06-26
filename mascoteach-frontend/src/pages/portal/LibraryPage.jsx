@@ -459,11 +459,12 @@ export default function LibraryPage() {
         );
     }
 
-    function DocumentRow({ doc, index }) {
+    function renderDocumentRow(doc, index) {
         const fileName = getDocumentFileName(doc);
         const title = doc.title || fileName || `Tài liệu #${doc.id}`;
         return (
             <motion.article
+                key={doc.id}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.22, delay: Math.min(index * 0.035, 0.18) }}
@@ -502,7 +503,7 @@ export default function LibraryPage() {
         );
     }
 
-    function QuizRow({ quiz, index }) {
+    function renderQuizRow(quiz, index) {
         const isExpanded = expandedQuizId === quiz.id;
         const statusLabel = quiz.status === 'AI_Drafted' ? 'Bản nháp' : quiz.status === 'Teacher_Approved' || quiz.status === 'Published' ? 'Đã duyệt' : 'Bản nháp';
         const title = quiz.title || `Quiz #${quiz.id}`;
@@ -512,6 +513,7 @@ export default function LibraryPage() {
 
         return (
             <motion.article
+                key={quiz.id}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.22, delay: Math.min(index * 0.035, 0.18) }}
@@ -823,13 +825,9 @@ export default function LibraryPage() {
                                 <ErrorState message={quizError} onRetry={fetchQuizzes} />
                             )}
 
-                            {isDocuments && !loadingDocs && !docError && paginatedDocs.map((doc, index) => (
-                                <DocumentRow key={doc.id} doc={doc} index={index} />
-                            ))}
+                            {isDocuments && !loadingDocs && !docError && paginatedDocs.map((doc, index) => renderDocumentRow(doc, index))}
 
-                            {!isDocuments && !loadingDocs && !loadingQuizzes && !quizError && paginatedQuizzes.map((quiz, index) => (
-                                <QuizRow key={quiz.id} quiz={quiz} index={index} />
-                            ))}
+                            {!isDocuments && !loadingDocs && !loadingQuizzes && !quizError && paginatedQuizzes.map((quiz, index) => renderQuizRow(quiz, index))}
                         </div>
 
                         {isDocuments && !loadingDocs && !docError && filteredDocuments.length === 0 && (
@@ -869,7 +867,7 @@ export default function LibraryPage() {
                 </main>
             </div>
 
-            {showCreateModal && <CreateFlowModal onClose={() => { setShowCreateModal(false); fetchDocuments(); }} />}
+            {showCreateModal && <CreateFlowModal onClose={() => setShowCreateModal(false)} />}
         </>
     );
 }
