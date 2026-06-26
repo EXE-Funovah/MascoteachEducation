@@ -5,6 +5,7 @@ import UnderHeroImage from '@/components/sections/UnderHeroImage';
 import InteractiveShowcase from '@/components/sections/InteractiveShowcase';
 import HowMascoteachWorks from '@/components/sections/HowMascoteachWorks';
 import TargetPersona from '@/components/sections/TargetPersona';
+import CTASection from '@/components/sections/CTASection';
 
 export default function Home() {
   return (
@@ -16,8 +17,9 @@ export default function Home() {
         <HowMascoteachWorks />
         <InteractiveShowcase />
         <TargetPersona />
+        <CTASection />
       </main>
-      <Footer />
+      <Footer withOverlappingCta />
     </div>
   );
 }

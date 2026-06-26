@@ -16,7 +16,7 @@ export default function AuthLayout({ children }) {
 
             <header className="auth-topbar">
                 <Link to="/" className="auth-logo" aria-label="Về trang chủ Mascoteach">
-                    <img src="/images/Logo.webp" alt="Mascoteach" />
+                    <img src="/images/Logo_Redesign_Text.webp" alt="Mascoteach" />
                 </Link>
 
                 <div className="auth-top-actions">

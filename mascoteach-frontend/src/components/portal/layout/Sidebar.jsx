@@ -41,7 +41,7 @@ export default function Sidebar() {
                 <div className="mb-7 flex items-start justify-between gap-4">
                     <div>
                         <NavLink to="/" aria-label="Về trang chủ Mascoteach" className="block">
-                        <img src="/images/Logo.webp" alt="Mascoteach" className="h-12 max-w-[154px] object-contain" />
+                        <img src="/images/Logo_Redesign_Text.webp" alt="Mascoteach" className="h-12 max-w-[154px] object-contain" />
                         </NavLink>
                         <NavLink
                             to="/"

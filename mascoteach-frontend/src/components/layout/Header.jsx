@@ -124,7 +124,7 @@ export default function Header() {
           style={{ transform: `scale(${logoScale})`, width: logoWidth }}
           aria-label="Mascoteach Home"
         >
-          <img src="/images/Logo.webp" alt={SITE.name} className="h-6 w-[190px] max-w-none object-contain md:h-7" />
+          <img src="/images/Logo_Redesign_Text.webp" alt={SITE.name} className="h-6 w-[190px] max-w-none object-contain md:h-7" />
         </Link>
 
         <nav

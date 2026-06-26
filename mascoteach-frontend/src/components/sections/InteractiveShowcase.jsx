@@ -35,7 +35,7 @@ function SurveyMetric({ label, value }) {
       transition={{ duration: 0.2 }}
     >
       <p className="text-2xl font-black leading-none text-sky-500 tabular-nums">{value}</p>
-      <p className="mt-2 text-xs font-semibold leading-snug text-ink/60 md:text-[13px]">{label}</p>
+      <p className="mt-2 text-sm font-semibold leading-snug text-ink/60 md:text-base">{label}</p>
     </motion.div>
   );
 }
@@ -48,7 +48,7 @@ function QuoteChip({ children, index }) {
       initial={shouldReduceMotion ? false : { opacity: 0, y: 14 }}
       animate={shouldReduceMotion ? undefined : { opacity: 1, y: 0 }}
       transition={{ delay: shouldReduceMotion ? 0 : 0.16 + index * 0.08, duration: 0.45 }}
-      className="rounded-full bg-white px-4 py-2 text-xs font-medium leading-relaxed text-ink/66 shadow-[0_10px_30px_rgba(43,88,118,0.06)] md:text-[13px]"
+      className="rounded-full bg-white px-4 py-2 text-sm font-medium leading-relaxed text-ink/66 shadow-[0_10px_30px_rgba(43,88,118,0.06)] md:text-base"
     >
       {children}
     </motion.li>
@@ -62,7 +62,7 @@ function QuestionSlide({ question }) {
       <h3 className="mt-4 max-w-3xl text-2xl font-bold leading-tight text-ink md:text-3xl">
         {question.title}
       </h3>
-      <p className="mt-3 max-w-4xl text-[15px] font-medium leading-7 text-ink/62 md:text-base">
+      <p className="mt-3 max-w-4xl text-base font-medium leading-8 text-ink/66 md:text-lg">
         {question.subtitle}
       </p>
 
@@ -75,7 +75,7 @@ function QuestionSlide({ question }) {
       </ul>
 
       {question.note && (
-        <p className="mt-5 max-w-4xl text-[15px] font-semibold leading-7 text-sky-600/90 md:text-base">
+        <p className="mt-5 max-w-4xl text-base font-semibold leading-8 text-sky-600/90 md:text-lg">
           {question.note}
         </p>
       )}
@@ -98,10 +98,10 @@ function InsightPillar({ pillar, index }) {
         {pillar.label}
       </p>
       <h4 className="mt-2.5 text-base font-bold text-sky-500 md:text-lg">{pillar.title}</h4>
-      <p className="mt-2 text-sm font-medium leading-6 text-ink/72 md:text-[15px]">
+      <p className="mt-2 text-base font-medium leading-7 text-ink/72 md:text-lg">
         {pillar.description}
       </p>
-      <p className="mt-2.5 text-xs font-semibold leading-5 text-ink/50 md:text-[13px]">
+      <p className="mt-2.5 text-sm font-semibold leading-6 text-ink/50 md:text-base">
         {pillar.evidence}
       </p>
     </motion.article>
@@ -115,7 +115,7 @@ function ValuesSlide({ insight }) {
       <h3 className="mt-4 max-w-5xl text-2xl font-bold leading-snug text-sky-500 md:text-3xl">
         {insight.title}
       </h3>
-      <p className="mt-3 max-w-4xl text-[15px] font-medium leading-7 text-ink/62 md:text-base">
+      <p className="mt-3 max-w-4xl text-base font-medium leading-8 text-ink/66 md:text-lg">
         {insight.body}
       </p>
 
@@ -165,13 +165,13 @@ export default function InteractiveShowcase() {
       <div className="relative z-10 mx-auto max-w-6xl px-6">
         <FadeInUp>
           <div className="mx-auto max-w-5xl">
-            <p className="text-[15px] font-semibold text-sky-400 md:text-base">{eyebrow}</p>
+            <p className="text-base font-semibold text-sky-400 md:text-lg">{eyebrow}</p>
             <div className="mt-5 grid gap-8 md:grid-cols-[1fr_auto] md:items-end">
               <div>
-                <h2 className="max-w-4xl text-3xl font-bold leading-tight text-ink md:text-4xl lg:text-5xl">
+                <h2 className="max-w-4xl text-4xl font-bold leading-tight text-ink md:text-[42px] lg:text-5xl">
                   {title}
                 </h2>
-                <p className="mt-4 max-w-3xl text-[15px] font-medium leading-7 text-ink/66 md:text-base">
+                <p className="mt-5 max-w-3xl text-base font-medium leading-8 text-ink/70 md:text-lg">
                   {subtitle}
                 </p>
               </div>

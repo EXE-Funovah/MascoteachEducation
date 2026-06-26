@@ -30,10 +30,10 @@ function PersonaPortrait({ persona }) {
 function MiniList({ title, items }) {
   return (
     <div>
-      <p className="text-[15px] font-semibold text-sky-500 md:text-base">{title}</p>
+      <p className="text-base font-semibold text-sky-500 md:text-lg">{title}</p>
       <ul className="mt-2.5 space-y-2">
         {items.slice(0, 2).map((item) => (
-          <li key={item} className="flex gap-2 text-[15px] font-medium leading-7 text-ink/72 md:text-base">
+          <li key={item} className="flex gap-2 text-base font-medium leading-8 text-ink/72 md:text-lg">
             <span className="mt-2 h-1.5 w-1.5 flex-none rounded-full bg-sky-300" />
             <span>{item}</span>
           </li>
@@ -62,7 +62,7 @@ function PersonaCard({ persona, index }) {
       <PersonaPortrait persona={persona} />
 
       <div className="grid min-w-0 content-between gap-5 py-1">
-        <p className="rounded-[1.5rem] bg-white px-5 py-3.5 text-[15px] font-semibold leading-7 text-ink/82 shadow-[0_14px_38px_rgba(63,133,181,0.08)] md:text-base">
+        <p className="rounded-[1.5rem] bg-white px-5 py-3.5 text-base font-semibold leading-8 text-ink/82 shadow-[0_14px_38px_rgba(63,133,181,0.08)] md:text-lg">
           {persona.quote}
         </p>
 
@@ -72,8 +72,8 @@ function PersonaCard({ persona, index }) {
         </div>
 
         <div className="border-t border-sky-200/70 pt-4">
-          <p className="text-[15px] font-semibold text-sky-500 md:text-base">Tình huống sử dụng</p>
-          <p className="mt-2 text-[15px] font-medium leading-7 text-ink/72 md:text-base">
+          <p className="text-base font-semibold text-sky-500 md:text-lg">Tình huống sử dụng</p>
+          <p className="mt-2 text-base font-medium leading-8 text-ink/72 md:text-lg">
             {persona.scenario}
           </p>
         </div>
@@ -92,11 +92,11 @@ export default function TargetPersona() {
       <div className="relative z-10 mx-auto max-w-6xl px-6">
         <FadeInUp>
           <div className="max-w-[820px]">
-            <p className="text-[15px] font-semibold text-sky-400 md:text-base">{eyebrow}</p>
-            <h2 className="mt-5 max-w-[820px] text-3xl font-bold leading-tight text-ink md:text-4xl lg:text-[44px]">
+            <p className="text-base font-semibold text-sky-400 md:text-lg">{eyebrow}</p>
+            <h2 className="mt-5 max-w-[900px] text-4xl font-bold leading-tight text-ink md:text-[42px] lg:text-5xl">
               {title}
             </h2>
-            <p className="mt-5 max-w-3xl text-[15px] font-medium leading-7 text-ink/66 md:text-base">
+            <p className="mt-6 max-w-3xl text-base font-medium leading-8 text-ink/70 md:text-lg">
               {subtitle}
             </p>
           </div>
