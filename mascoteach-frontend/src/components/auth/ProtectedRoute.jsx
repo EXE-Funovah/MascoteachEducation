@@ -35,6 +35,7 @@ export default function ProtectedRoute({ children, allowedRoles }) {
         if (!hasAccess) {
             // Redirect to appropriate dashboard based on actual role
             const roleRedirects = {
+                admin: '/admin',
                 teacher: '/teacher',
                 student: '/student',
                 parent: '/parent',

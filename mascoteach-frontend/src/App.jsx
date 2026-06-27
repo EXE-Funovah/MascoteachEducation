@@ -1,4 +1,4 @@
-import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import Home from '@/pages/Home';
 import MarketingPlaceholderPage from '@/pages/MarketingPlaceholderPage';
 import PricingPage from '@/pages/PricingPage';
@@ -14,9 +14,23 @@ import ResetPasswordPage from '@/pages/ResetPasswordPage';
 import VerifyEmailPage from '@/pages/VerifyEmailPage';
 import PrivacyPolicyPage from '@/pages/PrivacyPolicyPage';
 import TermsPage from '@/pages/TermsPage';
-import SumadiLiveTestPage from '@/pages/SumadiLiveTestPage';
 
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
+import AdminLayout from '@/components/admin/AdminLayout';
+import {
+  AdminAiUsagePage,
+  AdminAuditLogsPage,
+  AdminBillingPage,
+  AdminContentDetailPage,
+  AdminContentPage,
+  AdminOverviewPage,
+  AdminSessionDetailPage,
+  AdminSessionsPage,
+  AdminSettingsPage,
+  AdminSupportPage,
+  AdminUserDetailPage,
+  AdminUsersPage,
+} from '@/pages/admin/AdminPages';
 
 import PortalLayout from '@/components/portal/layout/PortalLayout';
 import HomePage from '@/pages/portal/HomePage';
@@ -35,10 +49,6 @@ import LiveSessionWaitingPage from '@/pages/student/LiveSessionWaitingPage';
 import StudentLiveGamePage from '@/pages/student/StudentLiveGamePage';
 import AdventureGamePage from '@/pages/student/games/AdventureGame';
 import AdventureDemoPage from '@/pages/student/games/AdventureGame/DemoPage';
-
-import MascotWidget from '@/components/mascot/MascotWidget';
-
-const LEGAL_ROUTES = new Set(['/privacy', '/terms']);
 
 export default function App() {
   return (
@@ -98,14 +108,26 @@ export default function App() {
         <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/verify-email" element={<VerifyEmailPage />} />
         <Route
-          path="/sumadi-live-test"
-          element={(
-            <ProtectedRoute>
-              <SumadiLiveTestPage />
+          path="/admin"
+          element={
+            <ProtectedRoute allowedRoles={['Admin']}>
+              <AdminLayout />
             </ProtectedRoute>
-          )}
-        />
-
+          }
+        >
+          <Route index element={<AdminOverviewPage />} />
+          <Route path="users" element={<AdminUsersPage />} />
+          <Route path="users/:userId" element={<AdminUserDetailPage />} />
+          <Route path="content" element={<AdminContentPage />} />
+          <Route path="content/:contentId" element={<AdminContentDetailPage />} />
+          <Route path="sessions" element={<AdminSessionsPage />} />
+          <Route path="sessions/:sessionId" element={<AdminSessionDetailPage />} />
+          <Route path="billing" element={<AdminBillingPage />} />
+          <Route path="ai-usage" element={<AdminAiUsagePage />} />
+          <Route path="support" element={<AdminSupportPage />} />
+          <Route path="audit-logs" element={<AdminAuditLogsPage />} />
+          <Route path="settings" element={<AdminSettingsPage />} />
+        </Route>
         <Route
           path="/teacher"
           element={
@@ -135,6 +157,20 @@ export default function App() {
               <Route path="quiz-preview" element={<QuizPreviewPage />} />
             </Route>
             <Route path="/dev/teacher/select-game-template" element={<GameTemplateSelectionPage />} />
+            <Route path="/dev/admin" element={<AdminLayout />}>
+              <Route index element={<AdminOverviewPage />} />
+              <Route path="users" element={<AdminUsersPage />} />
+              <Route path="users/:userId" element={<AdminUserDetailPage />} />
+              <Route path="content" element={<AdminContentPage />} />
+              <Route path="content/:contentId" element={<AdminContentDetailPage />} />
+              <Route path="sessions" element={<AdminSessionsPage />} />
+              <Route path="sessions/:sessionId" element={<AdminSessionDetailPage />} />
+              <Route path="billing" element={<AdminBillingPage />} />
+              <Route path="ai-usage" element={<AdminAiUsagePage />} />
+              <Route path="support" element={<AdminSupportPage />} />
+              <Route path="audit-logs" element={<AdminAuditLogsPage />} />
+              <Route path="settings" element={<AdminSettingsPage />} />
+            </Route>
           </>
         )}
 
@@ -199,17 +235,6 @@ export default function App() {
         <Route path="/play/legacy" element={<StudentGamePage />} />
       </Routes>
 
-      <AppEnhancements />
     </BrowserRouter>
   );
-}
-
-function AppEnhancements() {
-  const location = useLocation();
-
-  if (LEGAL_ROUTES.has(location.pathname)) {
-    return null;
-  }
-
-  return <MascotWidget />;
 }
