@@ -1,8 +1,6 @@
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import {
-    Activity,
     Bell,
-    CalendarClock,
     CreditCard,
     FileSearch,
     LayoutDashboard,
@@ -10,7 +8,6 @@ import {
     ListChecks,
     Search,
     Settings,
-    ShieldCheck,
     Sparkles,
     UsersRound,
 } from 'lucide-react';
@@ -162,19 +159,7 @@ export default function AdminLayout() {
                             })}
                         </div>
 
-                        <div className="mt-auto rounded-[24px] bg-[#173154] p-5 text-white">
-                            <div className="grid h-12 w-12 place-items-center rounded-full bg-white/12">
-                                <ShieldCheck className="h-6 w-6" />
-                            </div>
-                            <p className="mt-4 text-base font-black">Sẵn sàng nối API</p>
-                            <p className="mt-2 text-sm font-semibold leading-6 text-white/72">
-                                Các trang đang dùng dữ liệu mẫu đúng cấu trúc để đội kỹ thuật nối API sau.
-                            </p>
-                            <button className="mt-4 inline-flex h-10 items-center gap-2 rounded-full bg-white px-4 text-sm font-black text-[#102744]">
-                                <Activity className="h-4 w-4" />
-                                Xem đặc tả
-                            </button>
-                        </div>
+                        <div className="mt-auto" />
                     </div>
                 </aside>
 

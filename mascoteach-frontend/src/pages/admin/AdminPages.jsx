@@ -4,9 +4,7 @@ import {
     AlertTriangle,
     BarChart3,
     BookOpenCheck,
-    CalendarClock,
     CheckCircle2,
-    ChevronRight,
     CircleDollarSign,
     Clock3,
     CreditCard,
@@ -65,7 +63,6 @@ import {
     revenueSeries,
     supportTimeline,
     topTeachers,
-    upcomingOps,
     usageSeries,
 } from '@/data/adminMockData';
 import {
@@ -91,14 +88,6 @@ function useAdminBase() {
 
 function PageGrid({ children, className = '' }) {
     return <div className={`grid gap-6 ${className}`}>{children}</div>;
-}
-
-function ApiTag({ children }) {
-    return (
-        <span className="inline-flex rounded-full bg-[#EEF7FD] px-3 py-1 text-xs font-black text-[#2B7AB5]">
-            {children}
-        </span>
-    );
 }
 
 function FilterBar({ placeholder = 'Tìm kiếm', filters = [] }) {
@@ -231,11 +220,11 @@ function useAdminResource(fetcher, fallback, deps = []) {
     return state;
 }
 
-function DataStateNotice({ state, fallbackLabel = 'Đang hiển thị dữ liệu mẫu vì chưa có phiên Admin hoặc API chưa sẵn sàng.' }) {
+function DataStateNotice({ state, fallbackLabel = 'Đang hiển thị dữ liệu mẫu vì chưa có phiên quản trị.' }) {
     if (state?.isLoading) {
         return (
             <div className="rounded-[18px] border border-[#D8E9F5] bg-white px-4 py-3 text-sm font-bold text-[#52677F]">
-                Đang tải dữ liệu từ backend...
+                Đang tải dữ liệu...
             </div>
         );
     }
@@ -243,7 +232,7 @@ function DataStateNotice({ state, fallbackLabel = 'Đang hiển thị dữ liệ
     if (state?.error) {
         return (
             <div className="rounded-[18px] border border-[#FFE2B8] bg-[#FFF8EC] px-4 py-3 text-sm font-bold text-[#9B5A00]">
-                {state.error} {fallbackLabel}
+                Chưa thể tải dữ liệu mới nhất. {fallbackLabel}
             </div>
         );
     }
@@ -490,47 +479,6 @@ function StatCard({ stat }) {
                     <span className="rounded-full bg-[#102744] px-3 py-1.5 text-xs font-black text-white">{stat.delta}</span>
                 </div>
                 <p className="mt-3 text-sm font-bold text-[#6C8098]">{stat.note}</p>
-                <div className="mt-4">
-                    <ApiTag>{stat.api}</ApiTag>
-                </div>
-            </div>
-        </AdminCard>
-    );
-}
-
-function CalendarCard() {
-    const days = Array.from({ length: 30 }, (_, index) => index + 1);
-    return (
-        <AdminCard className="p-6">
-            <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-black text-[#071D35]">Lịch vận hành</h2>
-                <CalendarClock className="h-6 w-6 text-[#2B7AB5]" />
-            </div>
-            <div className="mt-5 grid grid-cols-7 gap-2 text-center text-xs font-black text-[#60758D]">
-                {['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'].map((day) => <span key={day}>{day}</span>)}
-                {days.map((day) => (
-                    <span
-                        key={day}
-                        className={[
-                            'grid h-9 place-items-center rounded-full text-sm font-black',
-                            day === 27 ? 'bg-[#2B7AB5] text-white shadow-[0_10px_24px_rgba(43,122,181,0.28)]' : '',
-                            [6, 13, 20].includes(day) ? 'bg-[#EFF8FE] text-[#2B7AB5]' : '',
-                        ].join(' ')}
-                    >
-                        {day}
-                    </span>
-                ))}
-            </div>
-            <div className="mt-6 space-y-3">
-                {upcomingOps.map((item) => (
-                    <div key={item.id} className="flex items-center gap-3 rounded-[18px] bg-[#F7FBFE] p-3">
-                        <span className="grid h-11 w-11 place-items-center rounded-2xl bg-white text-sm font-black text-[#2B7AB5]">{item.time}</span>
-                        <div className="min-w-0">
-                            <p className="truncate text-sm font-black text-[#102744]">{item.title}</p>
-                            <p className="text-xs font-bold text-[#7C91A8]">{item.meta}</p>
-                        </div>
-                    </div>
-                ))}
             </div>
         </AdminCard>
     );
@@ -554,102 +502,82 @@ export function AdminOverviewPage() {
                 {overviewStats.map((stat) => <StatCard key={stat.id} stat={stat} />)}
             </div>
 
-            <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px] 2xl:grid-cols-[minmax(0,1fr)_400px]">
-                <PageGrid>
-                    <AdminCard className="p-6">
-                        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                            <div>
-                                <h2 className="text-2xl font-black text-[#071D35]">Doanh thu đã thu</h2>
-                                <p className="mt-1 text-sm font-semibold text-[#6C8098]">Dữ liệu doanh thu Paid theo kỳ từ API Overview. Chi phí AI sẽ nối sau khi backend có telemetry.</p>
-                            </div>
-                            <div className="rounded-full bg-[#102744] px-4 py-2 text-sm font-black text-white">
-                                Đã thu: {formatCompactVnd(collectedTotal * 1000000)}
-                            </div>
+            <PageGrid>
+                <AdminCard className="p-6">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                        <div>
+                            <h2 className="text-2xl font-black text-[#071D35]">Doanh thu đã thu</h2>
+                            <p className="mt-1 text-sm font-semibold text-[#6C8098]">Theo dõi doanh thu đã thanh toán theo tháng.</p>
                         </div>
-                        <div className="mt-6 h-[330px]">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <AreaChart data={chartSeries}>
-                                    <defs>
-                                        <linearGradient id="adminRevenue" x1="0" x2="0" y1="0" y2="1">
-                                            <stop offset="5%" stopColor="#2B7AB5" stopOpacity={0.28} />
-                                            <stop offset="95%" stopColor="#2B7AB5" stopOpacity={0} />
-                                        </linearGradient>
-                                        <linearGradient id="adminCost" x1="0" x2="0" y1="0" y2="1">
-                                            <stop offset="5%" stopColor="#FB923C" stopOpacity={0.24} />
-                                            <stop offset="95%" stopColor="#FB923C" stopOpacity={0} />
-                                        </linearGradient>
-                                    </defs>
-                                    <CartesianGrid stroke="#E5F0F8" vertical={false} />
-                                    <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: '#7C91A8', fontSize: 12, fontWeight: 700 }} />
-                                    <YAxis axisLine={false} tickLine={false} tick={{ fill: '#7C91A8', fontSize: 12, fontWeight: 700 }} />
-                                    <Tooltip contentStyle={{ borderRadius: 18, border: '1px solid #D8E9F5', boxShadow: '0 18px 50px rgba(43,122,181,.16)' }} />
-                                    <Area type="monotone" dataKey="revenue" stroke="#2B7AB5" strokeWidth={4} fill="url(#adminRevenue)" />
-                                    <Line type="monotone" dataKey="collected" stroke="#1B3A6B" strokeWidth={3} dot={false} />
-                                    <Area type="monotone" dataKey="aiCost" stroke="#FB923C" strokeWidth={3} fill="url(#adminCost)" />
-                                </AreaChart>
-                            </ResponsiveContainer>
+                        <div className="rounded-full bg-[#102744] px-4 py-2 text-sm font-black text-white">
+                            Đã thu: {formatCompactVnd(collectedTotal * 1000000)}
+                        </div>
+                    </div>
+                    <div className="mt-6 h-[330px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart data={chartSeries}>
+                                <defs>
+                                    <linearGradient id="adminRevenue" x1="0" x2="0" y1="0" y2="1">
+                                        <stop offset="5%" stopColor="#2B7AB5" stopOpacity={0.28} />
+                                        <stop offset="95%" stopColor="#2B7AB5" stopOpacity={0} />
+                                    </linearGradient>
+                                    <linearGradient id="adminCost" x1="0" x2="0" y1="0" y2="1">
+                                        <stop offset="5%" stopColor="#FB923C" stopOpacity={0.24} />
+                                        <stop offset="95%" stopColor="#FB923C" stopOpacity={0} />
+                                    </linearGradient>
+                                </defs>
+                                <CartesianGrid stroke="#E5F0F8" vertical={false} />
+                                <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: '#7C91A8', fontSize: 12, fontWeight: 700 }} />
+                                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#7C91A8', fontSize: 12, fontWeight: 700 }} />
+                                <Tooltip contentStyle={{ borderRadius: 18, border: '1px solid #D8E9F5', boxShadow: '0 18px 50px rgba(43,122,181,.16)' }} />
+                                <Area type="monotone" dataKey="revenue" stroke="#2B7AB5" strokeWidth={4} fill="url(#adminRevenue)" />
+                                <Line type="monotone" dataKey="collected" stroke="#1B3A6B" strokeWidth={3} dot={false} />
+                                <Area type="monotone" dataKey="aiCost" stroke="#FB923C" strokeWidth={3} fill="url(#adminCost)" />
+                            </AreaChart>
+                        </ResponsiveContainer>
+                    </div>
+                </AdminCard>
+
+                <div className="grid gap-6 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+                    <AdminCard className="p-6">
+                        <AdminSectionHeader title="Giáo viên nổi bật" description="Xếp theo mức độ sử dụng lành mạnh, trạng thái Pro và phiên học đã hoàn tất." />
+                        <div className="space-y-3">
+                            {topTeachers.map((teacher) => (
+                                <Link key={teacher.id} to={`${base}/users/${teacher.id}`} className="flex items-center gap-3 rounded-[18px] bg-[#F7FBFE] p-3 transition hover:-translate-y-0.5 hover:bg-[#EEF7FD]">
+                                    <span className="grid h-11 w-11 place-items-center rounded-full bg-[#DDF2FF] text-sm font-black text-[#2B7AB5]">{teacher.avatar}</span>
+                                    <span className="min-w-0 flex-1">
+                                        <span className="block truncate text-sm font-black text-[#102744]">{teacher.name}</span>
+                                        <span className="block truncate text-xs font-bold text-[#7C91A8]">{teacher.email}</span>
+                                    </span>
+                                    <span className="text-sm font-black text-[#102744]">{teacher.score}</span>
+                                </Link>
+                            ))}
                         </div>
                     </AdminCard>
 
-                    <div className="grid gap-6 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-                        <AdminCard className="p-6">
-                            <AdminSectionHeader title="Giáo viên nổi bật" description="Xếp theo mức độ sử dụng lành mạnh, trạng thái Pro và phiên học đã hoàn tất." />
-                            <div className="space-y-3">
-                                {topTeachers.map((teacher) => (
-                                    <Link key={teacher.id} to={`${base}/users/${teacher.id}`} className="flex items-center gap-3 rounded-[18px] bg-[#F7FBFE] p-3 transition hover:-translate-y-0.5 hover:bg-[#EEF7FD]">
-                                        <span className="grid h-11 w-11 place-items-center rounded-full bg-[#DDF2FF] text-sm font-black text-[#2B7AB5]">{teacher.avatar}</span>
-                                        <span className="min-w-0 flex-1">
-                                            <span className="block truncate text-sm font-black text-[#102744]">{teacher.name}</span>
-                                            <span className="block truncate text-xs font-bold text-[#7C91A8]">{teacher.email}</span>
-                                        </span>
-                                        <span className="text-sm font-black text-[#102744]">{teacher.score}</span>
-                                    </Link>
-                                ))}
-                            </div>
-                        </AdminCard>
-
-                        <AdminCard className="p-6">
-                            <AdminSectionHeader title="Việc cần xử lý" description="Các cảnh báo vận hành ưu tiên trong ngày." />
-                            <div className="space-y-3">
-                                {adminAlerts.map((alert) => (
-                                    <div key={alert.id} className="rounded-[20px] border border-[#D8E9F5] bg-white p-4">
-                                        <div className="flex items-start gap-3">
-                                            <div className="grid h-10 w-10 place-items-center rounded-2xl bg-[#FFF4EA] text-[#CF5B1B]">
-                                                <AlertTriangle className="h-5 w-5" />
-                                            </div>
-                                            <div className="min-w-0 flex-1">
-                                                <p className="text-sm font-black text-[#102744]">{alert.title}</p>
-                                                <p className="mt-1 text-sm font-semibold leading-6 text-[#6C8098]">{alert.description}</p>
-                                                <div className="mt-3 flex flex-wrap items-center gap-2">
-                                                    <StatusBadge value={alert.severity} />
-                                                    <ApiTag>{alert.api}</ApiTag>
-                                                </div>
+                    <AdminCard className="p-6">
+                        <AdminSectionHeader title="Việc cần xử lý" description="Các cảnh báo vận hành ưu tiên trong ngày." />
+                        <div className="space-y-3">
+                            {adminAlerts.map((alert) => (
+                                <div key={alert.id} className="rounded-[20px] border border-[#D8E9F5] bg-white p-4">
+                                    <div className="flex items-start gap-3">
+                                        <div className="grid h-10 w-10 place-items-center rounded-2xl bg-[#FFF4EA] text-[#CF5B1B]">
+                                            <AlertTriangle className="h-5 w-5" />
+                                        </div>
+                                        <div className="min-w-0 flex-1">
+                                            <p className="text-sm font-black text-[#102744]">{alert.title}</p>
+                                            <p className="mt-1 text-sm font-semibold leading-6 text-[#6C8098]">{alert.description}</p>
+                                            <div className="mt-3">
+                                                <StatusBadge value={alert.severity} />
                                             </div>
                                         </div>
                                     </div>
-                                ))}
-                            </div>
-                        </AdminCard>
-                    </div>
-                </PageGrid>
-
-                <PageGrid>
-                    <CalendarCard />
-                        <AdminCard className="self-start overflow-hidden !bg-[#173154] p-6 text-white">
-                        <div className="grid h-14 w-14 place-items-center rounded-full bg-white/12">
-                            <Sparkles className="h-7 w-7 text-[#A8D8EA]" />
+                                </div>
+                            ))}
                         </div>
-                        <h2 className="mt-6 text-2xl font-black">Đã nối API read-only</h2>
-                        <p className="mt-2 text-sm font-semibold leading-6 text-white/72">
-                            Overview, người dùng, nội dung và phiên trực tiếp dùng API backend khi có token Admin.
-                        </p>
-                        <Link to={`${base}/settings`} className="mt-6 inline-flex h-11 items-center gap-2 rounded-full bg-white px-5 text-sm font-black text-[#071D35]">
-                            Xem cấu hình
-                            <ChevronRight className="h-4 w-4" />
-                        </Link>
                     </AdminCard>
-                </PageGrid>
-            </div>
+                </div>
+            </PageGrid>
         </PageGrid>
     );
 }
@@ -689,7 +617,7 @@ export function AdminUsersPage() {
             </div>
             <FilterBar placeholder="Tìm theo tên, email, vai trò..." filters={['Vai trò', 'Gói Pro', 'Trạng thái', 'Ngày tạo']} />
             <AdminCard className="p-5">
-                <AdminSectionHeader title="Danh sách người dùng" description="Dữ liệu lấy từ Admin Users API, hỗ trợ search, role, subscription và pagination." action={<ApiTag>GET /api/Admin/users</ApiTag>} />
+                <AdminSectionHeader title="Danh sách người dùng" description="Theo dõi tài khoản, vai trò, gói đăng ký và hoạt động gần đây." />
                 <AdminTable columns={columns} rows={users} rowHref={(row) => `${base}/users/${row.id}`} />
             </AdminCard>
         </PageGrid>
@@ -755,7 +683,7 @@ export function AdminUserDetailPage() {
                 subtitle={user.email}
                 status={user.status}
                 icon={UsersRound}
-                actions={<><ActionButton tone="ghost">Chờ API audit để chỉnh gói</ActionButton><ActionButton tone="ghost">Gửi email</ActionButton></>}
+                actions={<><ActionButton tone="ghost">Chưa hỗ trợ chỉnh gói</ActionButton><ActionButton tone="ghost">Gửi email</ActionButton></>}
             />
 
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
@@ -768,7 +696,7 @@ export function AdminUserDetailPage() {
 
             <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
                 <AdminCard className="p-5">
-                    <AdminSectionHeader title="Nội dung của giáo viên" description="Nối bằng documents/quizzes API có ownerId. Backend chưa có endpoint timeline riêng cho user." action={<ApiTag>GET /api/Admin/documents + quizzes?ownerId={userId}</ApiTag>} />
+                    <AdminSectionHeader title="Nội dung của giáo viên" description="Theo dõi tài liệu, bộ câu hỏi và thẻ ghi nhớ thuộc giáo viên này." />
                     <AdminTable
                         columns={[
                             { key: 'title', label: 'Nội dung' },
@@ -783,7 +711,7 @@ export function AdminUserDetailPage() {
                 </AdminCard>
 
                 <AdminCard className="p-6">
-                    <AdminSectionHeader title="Hồ sơ vận hành" description="Các trường API cần trả về cho đội hỗ trợ." />
+                    <AdminSectionHeader title="Hồ sơ vận hành" description="Thông tin hỗ trợ nhanh cho đội quản trị." />
                     <InfoList items={[
                         ['Vai trò', user.role],
                         ['Gói', user.plan],
@@ -795,15 +723,15 @@ export function AdminUserDetailPage() {
                         ['Streak hiện tại', `${user.currentStreak || 0} ngày`],
                     ]} />
                     <div className="mt-6 grid gap-3">
-                        <ActionButton tone="ghost">Chờ API quota</ActionButton>
-                        <ActionButton tone="ghost">Chờ API khóa tài khoản</ActionButton>
+                        <ActionButton tone="ghost">Chưa hỗ trợ chỉnh hạn mức</ActionButton>
+                        <ActionButton tone="ghost">Chưa hỗ trợ khóa tài khoản</ActionButton>
                         <ActionButton tone="danger">Chờ audit log để xóa mềm</ActionButton>
                     </div>
                 </AdminCard>
             </div>
 
             <AdminCard className="p-5">
-                <AdminSectionHeader title="Phiên gần đây" action={<ApiTag>GET /api/Admin/sessions?teacherId={userId}</ApiTag>} />
+                <AdminSectionHeader title="Phiên gần đây" />
                 <AdminTable
                     columns={[
                         { key: 'pin', label: 'PIN' },
@@ -854,7 +782,7 @@ export function AdminContentPage() {
             </div>
             <FilterBar placeholder="Tìm tài liệu, bộ câu hỏi, thẻ ghi nhớ, giáo viên..." filters={['Loại nội dung', 'Trạng thái', 'Chủ sở hữu', 'Ngày tạo']} />
             <AdminCard className="p-5">
-                <AdminSectionHeader title="Theo dõi nội dung" description="Trang này gộp dữ liệu từ Documents API và Quizzes API. Backend không có endpoint /content tổng hợp." action={<ApiTag>GET /api/Admin/documents + quizzes</ApiTag>} />
+                <AdminSectionHeader title="Theo dõi nội dung" description="Trang này phục vụ vận hành và kiểm duyệt, không phải nơi chỉnh nội dung học tập của giáo viên." />
                 <AdminTable
                     columns={[
                         { key: 'title', label: 'Tên nội dung' },
@@ -893,10 +821,6 @@ export function AdminContentDetailPage() {
         if (routeTarget.type === 'quiz') return adaptQuiz(contentState.data);
         return fallbackContent;
     }, [contentState.data, fallbackContent, routeTarget.type]);
-    const detailEndpoint = content.detailType === 'document'
-        ? 'GET /api/Admin/documents/{id}'
-        : 'GET /api/Admin/quizzes/{id}';
-
     return (
         <PageGrid>
             <DataStateNotice state={contentState} />
@@ -906,11 +830,11 @@ export function AdminContentDetailPage() {
                 subtitle={`${formatAdminValue(content.type)} của ${content.owner}`}
                 status={content.status}
                 icon={FileSearch}
-                actions={<><ActionButton tone="ghost"><RotateCw className="mr-2 h-4 w-4" />Chờ API retry</ActionButton><ActionButton tone="danger">Chờ audit log để ẩn</ActionButton></>}
+                actions={<><ActionButton tone="ghost"><RotateCw className="mr-2 h-4 w-4" />Chưa hỗ trợ xử lý lại</ActionButton><ActionButton tone="danger">Chưa hỗ trợ ẩn nội dung</ActionButton></>}
             />
             <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
                 <AdminCard className="p-6">
-                    <AdminSectionHeader title="Siêu dữ liệu" action={<ApiTag>{detailEndpoint}</ApiTag>} />
+                    <AdminSectionHeader title="Siêu dữ liệu" />
                     <div className="grid gap-4 md:grid-cols-2">
                         <InfoBlock label="Chủ sở hữu" value={content.owner} />
                         <InfoBlock label="Loại" value={content.type} />
@@ -927,13 +851,12 @@ export function AdminContentDetailPage() {
                     )}
                 </AdminCard>
                 <AdminCard className="p-6">
-                    <AdminSectionHeader title="Trạng thái API" />
-                    <div className="space-y-3">
-                        <ApiTag>{detailEndpoint}</ApiTag>
-                        <ApiTag>Chưa có retry/hide/restore</ApiTag>
-                        <ApiTag>Chờ Admin_Audit_Logs</ApiTag>
-                        <ApiTag>Chưa có processing logs</ApiTag>
-                    </div>
+                    <AdminSectionHeader title="Quyền thao tác" description="Phiên bản hiện tại chỉ cho phép xem siêu dữ liệu an toàn." />
+                    <Timeline items={[
+                        ['Xem metadata', 'Có thể xem chủ sở hữu, loại nội dung, ngày tạo và số lượng nội dung đã sinh.', 'Hoàn tất'],
+                        ['Xử lý lại hoặc ẩn nội dung', 'Chưa hỗ trợ thao tác trực tiếp từ trang quản trị.', 'Đang chờ'],
+                        ['Nhật ký xử lý chi tiết', 'Sẽ hiển thị khi hệ thống có lịch sử xử lý nội dung đầy đủ.', 'Đang chờ'],
+                    ]} />
                 </AdminCard>
             </div>
             <AdminCard className="p-5">
@@ -972,7 +895,7 @@ export function AdminSessionsPage() {
             </div>
             <FilterBar placeholder="Tìm theo PIN, giáo viên, bộ câu hỏi..." filters={['Trạng thái', 'Chế độ chơi', 'Ngày', 'Giáo viên']} />
             <AdminCard className="p-5">
-                <AdminSectionHeader title="Phiên trực tiếp" action={<ApiTag>GET /api/Admin/sessions</ApiTag>} />
+                <AdminSectionHeader title="Phiên trực tiếp" />
                 <AdminTable
                     columns={[
                         { key: 'pin', label: 'PIN' },
@@ -1040,7 +963,7 @@ export function AdminSessionDetailPage() {
             </div>
             <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
                 <AdminCard className="p-5">
-                    <AdminSectionHeader title="Tổng quan người tham gia" action={<ApiTag>GET /api/Admin/sessions/{'{id}'}/participants</ApiTag>} />
+                    <AdminSectionHeader title="Tổng quan người tham gia" />
                     <AdminTable
                         columns={[
                             { key: 'name', label: 'Học sinh' },
@@ -1052,12 +975,13 @@ export function AdminSessionDetailPage() {
                     />
                 </AdminCard>
                 <AdminCard className="p-6">
-                    <AdminSectionHeader title="API phiên học" />
-                    <div className="space-y-3">
-                        <ApiTag>GET /api/Admin/sessions/{'{id}'}</ApiTag>
-                        <ApiTag>GET /api/Admin/sessions/{'{id}'}/participants</ApiTag>
-                        <ApiTag>Chưa có POST end/events</ApiTag>
-                    </div>
+                    <AdminSectionHeader title="Trạng thái theo dõi" />
+                    <InfoList items={[
+                        ['Giáo viên', session.teacher],
+                        ['Chế độ', session.mode],
+                        ['Người tham gia', session.participants],
+                        ['Thao tác kết thúc phiên', 'Chưa hỗ trợ'],
+                    ]} />
                 </AdminCard>
             </div>
         </PageGrid>
@@ -1095,16 +1019,16 @@ export function AdminBillingPage() {
     return (
         <PageGrid>
             <DataStateNotice state={overviewState} />
-            <DataStateNotice state={ordersState} fallbackLabel="Đang hiển thị dữ liệu đơn hàng mẫu vì chưa có phiên Admin hoặc API billing chưa sẵn sàng." />
+            <DataStateNotice state={ordersState} fallbackLabel="Đang hiển thị dữ liệu đơn hàng mẫu vì chưa có phiên quản trị." />
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                <MiniMetric icon={CircleDollarSign} label="Doanh thu từ Overview" value={formatCompactVnd(collectedTotal * 1000000)} />
+                <MiniMetric icon={CircleDollarSign} label="Doanh thu đã thu" value={formatCompactVnd(collectedTotal * 1000000)} />
                 <MiniMetric icon={CreditCard} label="Đơn đã thanh toán" value={formatNumber(paidOrders)} tone="green" />
                 <MiniMetric icon={ReceiptText} label="Đang chờ" value={formatNumber(pendingOrders)} tone="orange" />
                 <MiniMetric icon={AlertTriangle} label="Webhook lỗi" value={formatNumber(webhookErrors)} tone="red" />
             </div>
             <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
                 <AdminCard className="p-6">
-                    <AdminSectionHeader title="Xu hướng doanh thu" description="Doanh thu Paid theo kỳ nằm trong Overview; danh sách đơn và webhook đã có Admin Billing API riêng." action={<ApiTag>GET /api/Admin/overview</ApiTag>} />
+                    <AdminSectionHeader title="Xu hướng doanh thu" description="Theo dõi doanh thu đã thanh toán theo tháng và đối soát cùng danh sách đơn hàng." />
                     <div className="h-[280px]">
                         <ResponsiveContainer width="100%" height="100%">
                             <LineChart data={billingSeries}>
@@ -1118,16 +1042,16 @@ export function AdminBillingPage() {
                     </div>
                 </AdminCard>
                 <AdminCard className="p-6">
-                    <AdminSectionHeader title="Thao tác thanh toán" description="Backend hiện mới có read-only orders/webhooks. Sync/manual subscription vẫn cần API mutation và audit log." />
+                    <AdminSectionHeader title="Thao tác thanh toán" description="Phiên bản hiện tại chỉ hỗ trợ xem và đối soát dữ liệu thanh toán." />
                     <div className="grid gap-3">
-                        <ActionButton tone="ghost">Chờ API đồng bộ đơn</ActionButton>
-                        <ActionButton tone="ghost">Chờ API gia hạn Pro</ActionButton>
-                        <ActionButton tone="ghost">Xuất doanh thu từ Overview</ActionButton>
+                        <ActionButton tone="ghost">Chưa hỗ trợ đồng bộ đơn</ActionButton>
+                        <ActionButton tone="ghost">Chưa hỗ trợ gia hạn Pro</ActionButton>
+                        <ActionButton tone="ghost">Xuất doanh thu</ActionButton>
                     </div>
                 </AdminCard>
             </div>
             <AdminCard className="p-5">
-                <AdminSectionHeader title="Đơn hàng" description="Dữ liệu lấy từ Admin Billing Orders API, hỗ trợ search, userId, status, plan, deletion và date range." action={<ApiTag>GET /api/Admin/billing/orders</ApiTag>} />
+                <AdminSectionHeader title="Đơn hàng" description="Theo dõi trạng thái thanh toán, gói đăng ký, thời điểm thanh toán và ngày hết hạn Premium." />
                 <AdminTable
                     columns={[
                         { key: 'orderCode', label: 'Mã đơn' },
@@ -1142,7 +1066,7 @@ export function AdminBillingPage() {
                 />
             </AdminCard>
             <AdminCard className="p-5">
-                <AdminSectionHeader title="Webhook thanh toán" description="Dùng để đối soát callback PayOS đã xử lý hay còn lỗi." action={<ApiTag>GET /api/Admin/billing/webhook-events</ApiTag>} />
+                <AdminSectionHeader title="Webhook thanh toán" description="Dùng để đối soát callback PayOS đã xử lý hay còn lỗi." />
                 <AdminTable
                     columns={[
                         { key: 'provider', label: 'Nhà cung cấp' },
@@ -1169,7 +1093,7 @@ export function AdminAiUsagePage() {
                 <MiniMetric icon={AlertTriangle} label="Tác vụ lỗi" value="162" tone="orange" />
             </div>
             <AdminCard className="p-6">
-                <AdminSectionHeader title="Mức dùng tuần này" action={<ApiTag>GET /api/Admin/ai-usage</ApiTag>} />
+                <AdminSectionHeader title="Mức dùng tuần này" />
                 <div className="h-[300px]">
                     <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={usageSeries}>
@@ -1185,7 +1109,7 @@ export function AdminAiUsagePage() {
                 </div>
             </AdminCard>
             <AdminCard className="p-5">
-                <AdminSectionHeader title="Luồng xử lý AI" description="API nên trả tỷ lệ thành công, thời gian trung bình, chi phí ước tính và trạng thái luồng xử lý." />
+                <AdminSectionHeader title="Luồng xử lý AI" description="Theo dõi tỷ lệ thành công, thời gian trung bình, chi phí ước tính và trạng thái luồng xử lý." />
                 <AdminTable
                     columns={[
                         { key: 'type', label: 'Luồng xử lý' },
@@ -1217,8 +1141,8 @@ export function AdminSupportPage() {
                     </div>
                     <div className="rounded-[24px] bg-[#102744] p-5 text-white">
                         <LifeBuoy className="h-8 w-8 text-[#A8D8EA]" />
-                        <p className="mt-4 text-xl font-black">API hỗ trợ</p>
-                        <p className="mt-2 text-sm font-semibold leading-6 text-white/72">GET /api/Admin/support/search?q=</p>
+                        <p className="mt-4 text-xl font-black">Tra cứu tập trung</p>
+                        <p className="mt-2 text-sm font-semibold leading-6 text-white/72">Tìm nhanh người dùng, phiên học, tài liệu và đơn hàng liên quan.</p>
                     </div>
                 </div>
             </AdminCard>
@@ -1256,7 +1180,7 @@ export function AdminAuditLogsPage() {
         <PageGrid>
             <FilterBar placeholder="Tìm người thao tác, đối tượng, hành động..." filters={['Người thao tác', 'Rủi ro', 'Hành động', 'Ngày']} />
             <AdminCard className="p-5">
-                <AdminSectionHeader title="Nhật ký thao tác" description="Mọi hành động quản trị có tác động đến người dùng, thanh toán, nội dung, hạn mức đều cần được ghi lại." action={<ApiTag>GET /api/Admin/audit-logs</ApiTag>} />
+                <AdminSectionHeader title="Nhật ký thao tác" description="Mọi hành động quản trị có tác động đến người dùng, thanh toán, nội dung, hạn mức đều cần được ghi lại." />
                 <AdminTable
                     columns={[
                         { key: 'time', label: 'Thời gian' },
@@ -1274,10 +1198,10 @@ export function AdminAuditLogsPage() {
 
 export function AdminSettingsPage() {
     const settings = [
-        { id: 'set-1', title: 'Giới hạn sử dụng gói miễn phí', description: 'Quy định tài khoản miễn phí được tải lên bao nhiêu tài liệu, tạo bao nhiêu bộ câu hỏi, thẻ ghi nhớ và phiên học.', icon: Database, api: 'PATCH /api/Admin/settings/quota' },
-        { id: 'set-2', title: 'Bật/tắt tính năng', description: 'Quản lý tính năng nào đang mở cho giáo viên và học sinh: thẻ ghi nhớ, trò chơi phiêu lưu, phân tích dữ liệu hoặc thử nghiệm mới.', icon: Flag, api: 'PATCH /api/Admin/settings/feature-flags' },
-        { id: 'set-3', title: 'Điều kiện gửi cảnh báo', description: 'Thiết lập khi nào hệ thống cần báo cho quản trị viên: lỗi AI tăng cao, đơn đã thanh toán chưa cấp Pro hoặc lỗi kết nối thời gian thực.', icon: ShieldAlert, api: 'PATCH /api/Admin/settings/alerts' },
-        { id: 'set-4', title: 'Phân quyền quản trị', description: 'Quy định ai được xem dữ liệu, hỗ trợ người dùng, kiểm duyệt nội dung, quản lý thanh toán hoặc thay đổi cấu hình hệ thống.', icon: LockKeyhole, api: 'PATCH /api/Admin/settings/roles' },
+        { id: 'set-1', title: 'Giới hạn sử dụng gói miễn phí', description: 'Quy định tài khoản miễn phí được tải lên bao nhiêu tài liệu, tạo bao nhiêu bộ câu hỏi, thẻ ghi nhớ và phiên học.', icon: Database },
+        { id: 'set-2', title: 'Bật/tắt tính năng', description: 'Quản lý tính năng nào đang mở cho giáo viên và học sinh: thẻ ghi nhớ, trò chơi phiêu lưu, phân tích dữ liệu hoặc thử nghiệm mới.', icon: Flag },
+        { id: 'set-3', title: 'Điều kiện gửi cảnh báo', description: 'Thiết lập khi nào hệ thống cần báo cho quản trị viên: lỗi AI tăng cao, đơn đã thanh toán chưa cấp Pro hoặc lỗi kết nối thời gian thực.', icon: ShieldAlert },
+        { id: 'set-4', title: 'Phân quyền quản trị', description: 'Quy định ai được xem dữ liệu, hỗ trợ người dùng, kiểm duyệt nội dung, quản lý thanh toán hoặc thay đổi cấu hình hệ thống.', icon: LockKeyhole },
     ];
 
     return (
@@ -1293,7 +1217,6 @@ export function AdminSettingsPage() {
                             <div className="min-w-0 flex-1">
                                 <h2 className="text-xl font-black text-[#071D35]">{item.title}</h2>
                                 <p className="mt-2 text-sm font-semibold leading-6 text-[#6C8098]">{item.description}</p>
-                                <div className="mt-4"><ApiTag>{item.api}</ApiTag></div>
                             </div>
                         </div>
                         <div className="mt-6 flex flex-wrap gap-3">
