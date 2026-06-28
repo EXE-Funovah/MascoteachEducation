@@ -1,6 +1,7 @@
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import {
     Bell,
+    CalendarClock,
     CreditCard,
     FileSearch,
     LayoutDashboard,
