@@ -109,11 +109,13 @@ export default function App() {
         <Route path="/verify-email" element={<VerifyEmailPage />} />
         <Route
           path="/admin"
-          element={
+          element={import.meta.env.DEV ? (
+            <AdminLayout />
+          ) : (
             <ProtectedRoute allowedRoles={['Admin']}>
               <AdminLayout />
             </ProtectedRoute>
-          }
+          )}
         >
           <Route index element={<AdminOverviewPage />} />
           <Route path="users" element={<AdminUsersPage />} />

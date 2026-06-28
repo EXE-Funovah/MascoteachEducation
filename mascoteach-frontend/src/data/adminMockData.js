@@ -22,7 +22,7 @@ export const adminOverviewStats = [
         label: 'Nội dung đã tạo',
         value: '19,406',
         delta: '+9.8%',
-        note: 'tài liệu, quiz, flashcard',
+        note: 'tài liệu, bộ câu hỏi, thẻ ghi nhớ',
         tone: 'green',
         api: 'GET /api/Admin/content/summary',
     },
@@ -31,7 +31,7 @@ export const adminOverviewStats = [
         label: 'Doanh thu tháng',
         value: '284.6M',
         delta: '+21.5%',
-        note: 'PRO monthly và yearly',
+        note: 'gói Pro theo tháng và theo năm',
         tone: 'peach',
         api: 'GET /api/Admin/billing/revenue',
     },
@@ -66,34 +66,34 @@ export const adminAlerts = [
     {
         id: 'alert-1',
         title: '18 tài liệu đang kẹt xử lý AI',
-        description: 'Cần API retry hoặc reset trạng thái processing.',
+        description: 'Cần API thử lại hoặc đặt lại trạng thái đang xử lý.',
         severity: 'warning',
-        owner: 'Content',
+        owner: 'Nội dung',
         api: 'GET /api/Admin/overview/alerts',
     },
     {
         id: 'alert-2',
-        title: '3 đơn paid chưa nâng cấp Pro',
-        description: 'Nên sync billing callback trước khi support thủ công.',
+        title: '3 đơn đã thanh toán chưa nâng cấp Pro',
+        description: 'Nên đồng bộ tín hiệu thanh toán trước khi hỗ trợ thủ công.',
         severity: 'critical',
-        owner: 'Billing',
+        owner: 'Thanh toán',
         api: 'GET /api/Admin/billing/orders?status=paid_unsynced',
     },
     {
         id: 'alert-3',
-        title: 'Tỷ lệ generate flashcard lỗi 4.8%',
+        title: 'Tỷ lệ tạo thẻ ghi nhớ lỗi 4.8%',
         description: 'Cao hơn ngưỡng 3% trong 24 giờ gần nhất.',
         severity: 'info',
-        owner: 'AI Usage',
+        owner: 'Mức dùng AI',
         api: 'GET /api/Admin/ai-usage/errors',
     },
 ];
 
 export const upcomingOps = [
-    { id: 'op-1', time: '09:00', title: 'Kiểm tra payment webhook', meta: 'Billing', tone: 'blue' },
-    { id: 'op-2', time: '10:30', title: 'Review nội dung bị report', meta: 'Moderation', tone: 'orange' },
-    { id: 'op-3', time: '14:00', title: 'Đối soát AI cost tuần', meta: 'AI Usage', tone: 'green' },
-    { id: 'op-4', time: '16:15', title: 'Kiểm tra session lỗi realtime', meta: 'Live Game', tone: 'red' },
+    { id: 'op-1', time: '09:00', title: 'Kiểm tra tín hiệu thanh toán', meta: 'Thanh toán', tone: 'blue' },
+    { id: 'op-2', time: '10:30', title: 'Rà soát nội dung bị báo cáo', meta: 'Kiểm duyệt', tone: 'orange' },
+    { id: 'op-3', time: '14:00', title: 'Đối soát chi phí AI tuần', meta: 'Mức dùng AI', tone: 'green' },
+    { id: 'op-4', time: '16:15', title: 'Kiểm tra phiên lỗi thời gian thực', meta: 'Trò chơi trực tiếp', tone: 'red' },
 ];
 
 export const topTeachers = [
@@ -187,7 +187,7 @@ export const adminUsers = [
     },
     {
         id: 'u-201',
-        name: 'Admin Mascoteach',
+        name: 'Quản trị Mascoteach',
         email: 'admin@mascoteach.com',
         role: 'Admin',
         plan: 'Internal',
@@ -228,11 +228,11 @@ export const adminDocuments = [
         size: '9.8 MB',
         createdAt: '2026-06-27',
         generated: 0,
-        lastError: 'AI worker timeout after 120s',
+        lastError: 'Bộ xử lý AI quá thời gian sau 120 giây',
     },
     {
         id: 'quiz-701',
-        title: 'Quiz: Sinh học tế bào',
+        title: 'Bộ câu hỏi: Sinh học tế bào',
         ownerId: 'u-101',
         owner: 'Nguyễn Minh Anh',
         type: 'Quiz',
@@ -245,7 +245,7 @@ export const adminDocuments = [
     },
     {
         id: 'flash-801',
-        title: 'Flashcard: Từ vựng Unit 8',
+        title: 'Thẻ ghi nhớ: Từ vựng bài 8',
         ownerId: 'u-103',
         owner: 'Lê Thanh Hương',
         type: 'Flashcards',
@@ -267,7 +267,7 @@ export const adminDocuments = [
         size: '32.6 MB',
         createdAt: '2026-06-23',
         generated: 0,
-        lastError: 'Unsupported embedded media',
+        lastError: 'Không hỗ trợ media nhúng',
     },
 ];
 
@@ -275,7 +275,7 @@ export const adminSessions = [
     {
         id: 'ses-901',
         pin: '482913',
-        title: 'Treasure Hunt: Sinh học tế bào',
+        title: 'Săn kho báu: Sinh học tế bào',
         teacher: 'Nguyễn Minh Anh',
         quizId: 'quiz-701',
         mode: 'Treasure Hunt',
@@ -301,7 +301,7 @@ export const adminSessions = [
     {
         id: 'ses-903',
         pin: '183650',
-        title: 'Từ vựng Unit 8',
+        title: 'Từ vựng bài 8',
         teacher: 'Lê Thanh Hương',
         quizId: 'flash-801',
         mode: 'Flashcards',
@@ -385,16 +385,16 @@ export const aiUsageRows = [
 ];
 
 export const auditLogs = [
-    { id: 'log-1', actor: 'Admin Mascoteach', action: 'Sync billing order', target: 'ord-3003', time: '2026-06-27 08:58', risk: 'Medium' },
-    { id: 'log-2', actor: 'Support Mascoteach', action: 'Viewed user detail', target: 'u-103', time: '2026-06-27 08:42', risk: 'Low' },
-    { id: 'log-3', actor: 'Admin Mascoteach', action: 'Retry document processing', target: 'doc-503', time: '2026-06-26 17:20', risk: 'Medium' },
-    { id: 'log-4', actor: 'Owner Mascoteach', action: 'Changed subscription', target: 'u-105', time: '2026-06-26 08:32', risk: 'High' },
+    { id: 'log-1', actor: 'Quản trị Mascoteach', action: 'Đồng bộ đơn thanh toán', target: 'ord-3003', time: '2026-06-27 08:58', risk: 'Medium' },
+    { id: 'log-2', actor: 'Hỗ trợ Mascoteach', action: 'Xem chi tiết người dùng', target: 'u-103', time: '2026-06-27 08:42', risk: 'Low' },
+    { id: 'log-3', actor: 'Quản trị Mascoteach', action: 'Thử xử lý lại tài liệu', target: 'doc-503', time: '2026-06-26 17:20', risk: 'Medium' },
+    { id: 'log-4', actor: 'Chủ sở hữu Mascoteach', action: 'Thay đổi gói đăng ký', target: 'u-105', time: '2026-06-26 08:32', risk: 'High' },
 ];
 
 export const supportTimeline = [
-    { id: 'tl-1', time: '08:42', title: 'Giáo viên báo lỗi generate flashcard', meta: 'u-103', status: 'Open' },
-    { id: 'tl-2', time: '09:10', title: 'Payment callback nhận paid nhưng chưa sync', meta: 'ord-3003', status: 'Investigating' },
-    { id: 'tl-3', time: '10:05', title: 'Session realtime reconnect 5 lần', meta: 'ses-903', status: 'Watch' },
+    { id: 'tl-1', time: '08:42', title: 'Giáo viên báo lỗi tạo thẻ ghi nhớ', meta: 'u-103', status: 'Open' },
+    { id: 'tl-2', time: '09:10', title: 'Tín hiệu thanh toán ghi nhận đã trả nhưng chưa đồng bộ', meta: 'ord-3003', status: 'Investigating' },
+    { id: 'tl-3', time: '10:05', title: 'Phiên thời gian thực kết nối lại 5 lần', meta: 'ses-903', status: 'Watch' },
 ];
 
 export function getUserById(id) {

@@ -19,11 +19,11 @@ const navItems = [
     { label: 'Tổng quan', path: '/admin', icon: LayoutDashboard },
     { label: 'Người dùng', path: '/admin/users', icon: UsersRound },
     { label: 'Nội dung', path: '/admin/content', icon: FileSearch },
-    { label: 'Phiên live', path: '/admin/sessions', icon: CalendarClock },
+    { label: 'Phiên trực tiếp', path: '/admin/sessions', icon: CalendarClock },
     { label: 'Thanh toán', path: '/admin/billing', icon: CreditCard },
-    { label: 'AI usage', path: '/admin/ai-usage', icon: Sparkles },
-    { label: 'Support', path: '/admin/support', icon: LifeBuoy },
-    { label: 'Audit', path: '/admin/audit-logs', icon: ListChecks },
+    { label: 'Mức dùng AI', path: '/admin/ai-usage', icon: Sparkles },
+    { label: 'Hỗ trợ', path: '/admin/support', icon: LifeBuoy },
+    { label: 'Nhật ký thao tác', path: '/admin/audit-logs', icon: ListChecks },
     { label: 'Cài đặt', path: '/admin/settings', icon: Settings },
 ];
 
@@ -33,15 +33,15 @@ const devNavItems = navItems.map((item) => ({
 }));
 
 const pageMeta = {
-    '/admin': { title: 'Dashboard Admin', eyebrow: 'Mascoteach Operations', description: 'Theo dõi người dùng, nội dung AI, phiên live và doanh thu.' },
-    '/admin/users': { title: 'Người dùng', eyebrow: 'User Management', description: 'Quản lý giáo viên, vai trò, gói Pro và hoạt động gần đây.' },
-    '/admin/content': { title: 'Nội dung & AI', eyebrow: 'Content Monitoring', description: 'Theo dõi tài liệu, quiz, flashcard và trạng thái xử lý AI.' },
-    '/admin/sessions': { title: 'Phiên live', eyebrow: 'Live Game Monitoring', description: 'Theo dõi phiên đang chạy, PIN, học sinh tham gia và lỗi realtime.' },
-    '/admin/billing': { title: 'Thanh toán', eyebrow: 'Billing Operations', description: 'Theo dõi đơn hàng, doanh thu, trạng thái Pro và các đơn cần sync.' },
-    '/admin/ai-usage': { title: 'AI usage & quota', eyebrow: 'AI Operations', description: 'Theo dõi lượt generate, lỗi AI, chi phí và quota người dùng.' },
-    '/admin/support': { title: 'Support console', eyebrow: 'Customer Operations', description: 'Tra cứu user, timeline sự cố và các case cần xử lý.' },
-    '/admin/audit-logs': { title: 'Audit logs', eyebrow: 'Security & Compliance', description: 'Ghi nhận hành động admin trên user, billing, content và quota.' },
-    '/admin/settings': { title: 'Cài đặt Admin', eyebrow: 'System Settings', description: 'Feature flags, ngưỡng cảnh báo, quyền admin và quota mặc định.' },
+    '/admin': { title: 'Bảng điều khiển quản trị', eyebrow: 'Vận hành Mascoteach', description: 'Theo dõi người dùng, nội dung AI, phiên trực tiếp và doanh thu.' },
+    '/admin/users': { title: 'Người dùng', eyebrow: 'Quản lý người dùng', description: 'Quản lý giáo viên, vai trò, gói Pro và hoạt động gần đây.' },
+    '/admin/content': { title: 'Nội dung & AI', eyebrow: 'Theo dõi nội dung', description: 'Theo dõi tài liệu, bộ câu hỏi, thẻ ghi nhớ và trạng thái xử lý AI.' },
+    '/admin/sessions': { title: 'Phiên trực tiếp', eyebrow: 'Theo dõi phiên trực tiếp', description: 'Theo dõi phiên đang chạy, PIN, học sinh tham gia và lỗi thời gian thực.' },
+    '/admin/billing': { title: 'Thanh toán', eyebrow: 'Vận hành thanh toán', description: 'Theo dõi đơn hàng, doanh thu, trạng thái Pro và các đơn cần đồng bộ.' },
+    '/admin/ai-usage': { title: 'Mức dùng AI & hạn mức', eyebrow: 'Vận hành AI', description: 'Theo dõi lượt tạo nội dung, lỗi AI, chi phí và hạn mức người dùng.' },
+    '/admin/support': { title: 'Trung tâm hỗ trợ', eyebrow: 'Hỗ trợ khách hàng', description: 'Tra cứu người dùng, dòng thời gian sự cố và các trường hợp cần xử lý.' },
+    '/admin/audit-logs': { title: 'Nhật ký thao tác', eyebrow: 'Bảo mật & tuân thủ', description: 'Ghi nhận hành động quản trị trên người dùng, thanh toán, nội dung và hạn mức.' },
+    '/admin/settings': { title: 'Cài đặt quản trị', eyebrow: 'Cấu hình hệ thống', description: 'Bật/tắt tính năng, ngưỡng cảnh báo, quyền quản trị và hạn mức mặc định.' },
 };
 
 function getMeta(pathname) {
@@ -53,6 +53,72 @@ function getMeta(pathname) {
     return pageMeta[matchedKey] || pageMeta['/admin'];
 }
 
+export function formatAdminValue(value) {
+    const labels = {
+        Admin: 'Quản trị viên',
+        Teacher: 'Giáo viên',
+        Student: 'Học sinh',
+        Parent: 'Phụ huynh',
+        Owner: 'Chủ sở hữu',
+        Internal: 'Nội bộ',
+        Free: 'Miễn phí',
+        Freemium: 'Miễn phí',
+        Premium: 'Premium',
+        Expired: 'Premium đã hết hạn',
+        'Pro Yearly': 'Pro theo năm',
+        'Pro Monthly': 'Pro theo tháng',
+        PRO_YEARLY: 'Pro theo năm',
+        PRO_MONTHLY: 'Pro theo tháng',
+        Active: 'Đang hoạt động bình thường',
+        Deleted: 'Đã xóa/ẩn',
+        Review: 'Cần quản trị viên rà soát',
+        'Quota Risk': 'Sắp chạm hạn mức sử dụng',
+        Document: 'Tài liệu',
+        Flashcards: 'Thẻ ghi nhớ',
+        Ready: 'Sẵn sàng tạo nội dung',
+        Processing: 'Đang xử lý bằng AI',
+        Failed: 'Xử lý thất bại',
+        Teacher_Approved: 'Giáo viên đã duyệt',
+        AI_Drafted: 'AI đã tạo bản nháp',
+        Published: 'Đã xuất bản',
+        Live: 'Đang diễn ra',
+        Waiting: 'Đang chờ bắt đầu',
+        Ended: 'Đã kết thúc',
+        'Realtime Issue': 'Có lỗi kết nối thời gian thực',
+        'Classic Quiz': 'Bộ câu hỏi cơ bản',
+        'Treasure Hunt': 'Săn kho báu',
+        Adventure: 'Phiêu lưu',
+        'AI Generated': 'AI tạo',
+        Quiz: 'Bộ câu hỏi',
+        Paid: 'Đã thanh toán và đã kích hoạt',
+        'Paid Unsynced': 'Đã thanh toán, chưa cấp Pro',
+        Cancelled: 'Đã hủy',
+        Healthy: 'Hoạt động ổn định',
+        Watch: 'Cần theo dõi thêm',
+        Risk: 'Có rủi ro cần xử lý',
+        Low: 'Rủi ro thấp',
+        Medium: 'Rủi ro trung bình',
+        High: 'Rủi ro cao',
+        Open: 'Chưa xử lý',
+        Investigating: 'Đang kiểm tra nguyên nhân',
+        Required: 'Bắt buộc',
+        Done: 'Hoàn tất',
+        Pending: 'Đang chờ xử lý',
+        Connected: 'Đang kết nối trong phiên',
+        Reconnected: 'Đã kết nối lại',
+        OK: 'Hoạt động bình thường',
+        warning: 'Cảnh báo cần xử lý',
+        critical: 'Nghiêm trọng, cần xử lý sớm',
+        info: 'Thông tin tham khảo',
+        'Quiz generation': 'Tạo bộ câu hỏi',
+        'Flashcard generation': 'Tạo thẻ ghi nhớ',
+        'Document parsing': 'Đọc tài liệu',
+        'Retry queue': 'Hàng đợi thử lại',
+    };
+
+    return labels[value] || value;
+}
+
 export default function AdminLayout() {
     const location = useLocation();
     const isDevPreview = location.pathname.startsWith('/dev/admin');
@@ -60,58 +126,20 @@ export default function AdminLayout() {
     const meta = getMeta(location.pathname);
 
     return (
-        <div className="min-h-screen bg-[#EAF6FF] text-[#102744]">
+        <div className="min-h-screen bg-[#F7FCFF] text-[#102744]">
             <div className="pointer-events-none fixed inset-0 overflow-hidden">
-                <div className="absolute left-[-10%] top-[-15%] h-[420px] w-[420px] rounded-full bg-white/80 blur-3xl" />
-                <div className="absolute right-[-8%] top-[12%] h-[460px] w-[460px] rounded-full bg-[#BFE8FA]/70 blur-3xl" />
-                <div className="absolute bottom-[-18%] left-[20%] h-[420px] w-[520px] rounded-full bg-[#F7E7EC]/70 blur-3xl" />
+                <div className="absolute left-[-8%] top-[-14%] h-[520px] w-[520px] rounded-full bg-white blur-3xl" />
+                <div className="absolute right-[-10%] top-[8%] h-[560px] w-[560px] rounded-full bg-[#DCF4FF]/70 blur-3xl" />
+                <div className="absolute bottom-[-18%] left-[12%] h-[520px] w-[640px] rounded-full bg-[#F8EEF4]/70 blur-3xl" />
             </div>
 
-            <div className="relative mx-auto flex min-h-screen w-full max-w-[1540px] flex-col px-4 py-5 sm:px-6 lg:px-8">
-                <header className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-                    <NavLink to={isDevPreview ? '/dev/admin' : '/admin'} className="flex items-center gap-3">
-                        <img src="/images/Logo_Redesign_Text.webp" alt="Mascoteach" className="h-10 w-auto" />
-                        <span className="rounded-full border border-[#B9DFF3] bg-white/70 px-3 py-1 text-xs font-black uppercase tracking-[0.14em] text-[#2B7AB5]">
-                            Admin
-                        </span>
-                    </NavLink>
+            <div className="relative flex min-h-screen w-full">
+                <aside className="sticky top-0 hidden h-screen w-[300px] shrink-0 p-4 lg:block xl:w-[316px] xl:p-6">
+                    <div className="flex h-full flex-col rounded-[30px] border border-[#E0EEF8] bg-white/90 p-3 shadow-[0_20px_55px_rgba(43,122,181,0.10)] backdrop-blur-xl">
+                        <NavLink to={isDevPreview ? '/dev/admin' : '/admin'} className="mb-6 flex items-center px-2 pt-1">
+                            <img src="/images/Logo_Redesign_Text.webp" alt="Mascoteach" className="h-12 w-auto max-w-[210px] object-contain" />
+                        </NavLink>
 
-                    <nav className="flex max-w-full items-center gap-2 overflow-x-auto rounded-full border border-white/80 bg-white/70 p-2 shadow-[0_18px_50px_rgba(43,122,181,0.12)] backdrop-blur-xl">
-                        {items.slice(0, 7).map((item) => {
-                            const Icon = item.icon;
-                            return (
-                                <NavLink
-                                    key={item.path}
-                                    to={item.path}
-                                    end={item.path.endsWith('/admin')}
-                                    className={({ isActive }) => [
-                                        'group grid h-12 w-12 flex-none place-items-center rounded-full text-[#52677F] transition-all duration-200 hover:bg-[#EAF6FF] hover:text-[#1B3A6B] sm:h-14 sm:w-14',
-                                        isActive ? 'bg-[#102744] text-white shadow-[0_12px_28px_rgba(16,39,68,0.24)] hover:bg-[#102744] hover:text-white' : '',
-                                    ].join(' ')}
-                                    title={item.label}
-                                >
-                                    <Icon className="h-5 w-5" strokeWidth={2.3} />
-                                </NavLink>
-                            );
-                        })}
-                    </nav>
-
-                    <div className="flex items-center justify-between gap-3 lg:justify-end">
-                        <button className="grid h-12 w-12 place-items-center rounded-full border border-white/80 bg-white text-[#102744] shadow-[0_12px_28px_rgba(43,122,181,0.12)] transition hover:-translate-y-0.5">
-                            <Bell className="h-5 w-5" />
-                        </button>
-                        <div className="flex items-center gap-3 rounded-full border border-white/80 bg-white px-3 py-2 shadow-[0_12px_28px_rgba(43,122,181,0.12)]">
-                            <div className="grid h-10 w-10 place-items-center rounded-full bg-[#102744] text-sm font-black text-white">AD</div>
-                            <div className="hidden pr-2 sm:block">
-                                <p className="text-sm font-black text-[#102744]">Admin Mascoteach</p>
-                                <p className="text-xs font-bold text-[#6C8098]">Owner</p>
-                            </div>
-                        </div>
-                    </div>
-                </header>
-
-                <main className="mt-7 grid flex-1 gap-6 lg:grid-cols-[236px_minmax(0,1fr)]">
-                    <aside className="hidden rounded-[28px] border border-white/80 bg-white/72 p-3 shadow-[0_24px_70px_rgba(43,122,181,0.12)] backdrop-blur-xl lg:block">
                         <div className="space-y-1">
                             {items.map((item) => {
                                 const Icon = item.icon;
@@ -121,10 +149,10 @@ export default function AdminLayout() {
                                         to={item.path}
                                         end={item.path.endsWith('/admin')}
                                         className={({ isActive }) => [
-                                            'flex items-center gap-3 rounded-[18px] px-4 py-3 text-sm font-black transition-all duration-200',
+                                            'flex items-center gap-3 rounded-[18px] px-4 py-3.5 text-sm font-black transition-all duration-200',
                                             isActive
-                                                ? 'bg-[#102744] text-white shadow-[0_16px_32px_rgba(16,39,68,0.22)]'
-                                                : 'text-[#566B83] hover:bg-[#EDF7FE] hover:text-[#102744]',
+                                                ? 'bg-[#173154] text-white shadow-[0_14px_30px_rgba(23,49,84,0.18)]'
+                                                : 'text-[#60758D] hover:bg-[#F0F8FE] hover:text-[#102744]',
                                         ].join(' ')}
                                     >
                                         <Icon className="h-5 w-5" />
@@ -134,40 +162,59 @@ export default function AdminLayout() {
                             })}
                         </div>
 
-                        <div className="mt-8 rounded-[24px] bg-[#102744] p-5 text-white">
+                        <div className="mt-auto rounded-[24px] bg-[#173154] p-5 text-white">
                             <div className="grid h-12 w-12 place-items-center rounded-full bg-white/12">
                                 <ShieldCheck className="h-6 w-6" />
                             </div>
-                            <p className="mt-4 text-base font-black">API readiness</p>
+                            <p className="mt-4 text-base font-black">Sẵn sàng nối API</p>
                             <p className="mt-2 text-sm font-semibold leading-6 text-white/72">
-                                Các trang đang dùng mock data đúng shape để backend map endpoint sau.
+                                Các trang đang dùng dữ liệu mẫu đúng cấu trúc để đội kỹ thuật nối API sau.
                             </p>
                             <button className="mt-4 inline-flex h-10 items-center gap-2 rounded-full bg-white px-4 text-sm font-black text-[#102744]">
                                 <Activity className="h-4 w-4" />
-                                Xem contract
+                                Xem đặc tả
                             </button>
                         </div>
-                    </aside>
+                    </div>
+                </aside>
 
-                    <section className="min-w-0">
-                        <div className="mb-6 grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
-                            <div>
-                                <p className="text-sm font-black uppercase tracking-[0.18em] text-[#2B7AB5]">{meta.eyebrow}</p>
-                                <h1 className="mt-2 text-[34px] font-black leading-tight text-[#071D35] sm:text-[42px]">{meta.title}</h1>
-                                <p className="mt-2 max-w-3xl text-base font-semibold leading-7 text-[#5E7289]">{meta.description}</p>
+                <section className="min-w-0 flex-1 px-4 py-5 sm:px-6 lg:px-2 lg:py-6 xl:px-4 2xl:px-6">
+                    <div className="mb-7 grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(320px,520px)] xl:items-start">
+                        <div>
+                            <div className="mb-4 flex items-center gap-3 lg:hidden">
+                                <img src="/images/Logo_Redesign_Text.webp" alt="Mascoteach" className="h-10 w-auto" />
+                                <span className="rounded-full border border-[#B9DFF3] bg-white px-3 py-1 text-xs font-black uppercase tracking-[0.14em] text-[#2B7AB5]">
+                                    Quản trị
+                                </span>
                             </div>
+                            <p className="text-sm font-black uppercase tracking-[0.18em] text-[#2B7AB5]">{meta.eyebrow}</p>
+                            <h1 className="mt-2 text-[34px] font-black leading-tight text-[#071D35] sm:text-[42px]">{meta.title}</h1>
+                            <p className="mt-2 max-w-3xl text-base font-semibold leading-7 text-[#5E7289]">{meta.description}</p>
+                        </div>
+
+                        <div className="flex flex-col gap-3 sm:flex-row xl:justify-end">
                             <div className="relative">
                                 <Search className="pointer-events-none absolute left-5 top-1/2 h-5 w-5 -translate-y-1/2 text-[#7790A8]" />
                                 <input
-                                    className="h-14 w-full rounded-full border border-white/80 bg-white/80 pl-12 pr-5 text-sm font-bold text-[#102744] outline-none shadow-[0_14px_36px_rgba(43,122,181,0.10)] placeholder:text-[#8EA1B4] focus:border-[#5BAED4] focus:ring-4 focus:ring-[#A8D8EA]/35"
-                                    placeholder="Tìm user, tài liệu, PIN, đơn hàng..."
+                                    className="h-14 w-full rounded-full border border-[#E0EEF8] bg-white pl-12 pr-5 text-sm font-bold text-[#102744] outline-none shadow-[0_12px_28px_rgba(43,122,181,0.08)] placeholder:text-[#8EA1B4] focus:border-[#5BAED4] focus:ring-4 focus:ring-[#A8D8EA]/30 sm:w-[320px] xl:w-[360px]"
+                                    placeholder="Tìm người dùng, tài liệu, PIN, đơn hàng..."
                                 />
                             </div>
+                            <button className="grid h-14 w-14 shrink-0 place-items-center rounded-full border border-[#E0EEF8] bg-white text-[#102744] shadow-[0_12px_28px_rgba(43,122,181,0.08)] transition hover:-translate-y-0.5">
+                                <Bell className="h-5 w-5" />
+                            </button>
+                            <div className="flex h-14 shrink-0 items-center gap-3 rounded-full border border-[#E0EEF8] bg-white px-3 shadow-[0_12px_28px_rgba(43,122,181,0.08)]">
+                                <div className="grid h-10 w-10 place-items-center rounded-full bg-[#173154] text-sm font-black text-white">AD</div>
+                                <div className="hidden pr-2 sm:block">
+                                    <p className="text-sm font-black text-[#102744]">Quản trị Mascoteach</p>
+                                    <p className="text-xs font-bold text-[#6C8098]">Chủ sở hữu</p>
+                                </div>
+                            </div>
                         </div>
+                    </div>
 
-                        <Outlet />
-                    </section>
-                </main>
+                    <Outlet />
+                </section>
             </div>
         </div>
     );
@@ -175,7 +222,7 @@ export default function AdminLayout() {
 
 export function AdminCard({ children, className = '' }) {
     return (
-        <div className={`rounded-[28px] border border-white/80 bg-white/82 shadow-[0_22px_64px_rgba(43,122,181,0.10)] backdrop-blur-xl ${className}`}>
+        <div className={`rounded-[28px] border border-[#E0EEF8] bg-white/90 shadow-[0_18px_48px_rgba(43,122,181,0.08)] backdrop-blur-xl ${className}`}>
             {children}
         </div>
     );
@@ -195,17 +242,17 @@ export function AdminSectionHeader({ title, description, action }) {
 
 export function StatusBadge({ value }) {
     const status = String(value || '').toLowerCase();
-    const tone = status.includes('paid unsynced') || status.includes('critical') || status.includes('failed') || status.includes('risk') || status.includes('issue')
+    const tone = status.includes('paid unsynced') || status.includes('critical') || status.includes('failed') || status.includes('risk') || status.includes('issue') || status.includes('deleted')
         ? 'border-[#FFD3D8] bg-[#FFF1F3] text-[#C2293A]'
-        : status.includes('processing') || status.includes('pending') || status.includes('review') || status.includes('watch') || status.includes('quota')
+        : status.includes('processing') || status.includes('pending') || status.includes('review') || status.includes('watch') || status.includes('quota') || status.includes('warning')
             ? 'border-[#FFE2B8] bg-[#FFF7E8] text-[#B76A00]'
             : status.includes('live') || status.includes('active') || status.includes('healthy') || status.includes('ready') || status.includes('paid')
                 ? 'border-[#BFECD8] bg-[#EEFFF7] text-[#137A4B]'
                 : 'border-[#D7E4F0] bg-[#F4F8FB] text-[#53677E]';
 
     return (
-        <span className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-black ${tone}`}>
-            {value}
+        <span className={`inline-flex items-center whitespace-nowrap rounded-full border px-3 py-1 text-xs font-black ${tone}`}>
+            {formatAdminValue(value)}
         </span>
     );
 }
@@ -216,7 +263,7 @@ export function AdminTable({ columns, rows, rowHref, emptyLabel = 'Chưa có d�
             <div className="overflow-x-auto">
                 <table className="min-w-full border-separate border-spacing-0">
                     <thead>
-                        <tr className="bg-[#F4FAFE]">
+                        <tr className="bg-[#F8FCFF]">
                             {columns.map((column) => (
                                 <th key={column.key} className="whitespace-nowrap px-5 py-4 text-left text-xs font-black uppercase tracking-[0.1em] text-[#60758D]">
                                     {column.label}
@@ -233,7 +280,7 @@ export function AdminTable({ columns, rows, rowHref, emptyLabel = 'Chưa có d�
                             const href = rowHref?.(row);
                             const content = columns.map((column) => (
                                 <td key={column.key} className="border-t border-[#E5F0F8] px-5 py-4 text-sm font-bold text-[#243B55]">
-                                    {column.render ? column.render(row) : row[column.key]}
+                                    {column.render ? column.render(row) : formatAdminValue(row[column.key])}
                                 </td>
                             ));
 
@@ -260,11 +307,11 @@ export function AdminTable({ columns, rows, rowHref, emptyLabel = 'Chưa có d�
 
 export function MiniMetric({ label, value, icon: Icon, tone = 'blue' }) {
     const tones = {
-        blue: 'bg-[#EAF6FF] text-[#2B7AB5]',
-        navy: 'bg-[#E8EEF8] text-[#1B3A6B]',
-        green: 'bg-[#EEFFF7] text-[#137A4B]',
-        orange: 'bg-[#FFF4EA] text-[#CF5B1B]',
-        red: 'bg-[#FFF1F3] text-[#C2293A]',
+        blue: 'bg-[#EEF8FF] text-[#2B7AB5]',
+        navy: 'bg-[#EEF3FA] text-[#1B3A6B]',
+        green: 'bg-[#F1FFF8] text-[#137A4B]',
+        orange: 'bg-[#FFF7EF] text-[#CF5B1B]',
+        red: 'bg-[#FFF4F6] text-[#C2293A]',
     };
 
     return (
@@ -283,10 +330,10 @@ export function ActionButton({ children, tone = 'primary' }) {
         ? 'bg-[#FFF1F3] text-[#C2293A] hover:bg-[#FFE5E9]'
         : tone === 'ghost'
             ? 'bg-white text-[#102744] hover:bg-[#F3FAFF]'
-            : 'bg-[#102744] text-white hover:bg-[#1B3A6B]';
+            : 'bg-[#173154] text-white hover:bg-[#1B3A6B]';
 
     return (
-        <button className={`inline-flex h-11 items-center justify-center rounded-full px-5 text-sm font-black shadow-[0_10px_28px_rgba(16,39,68,0.12)] transition hover:-translate-y-0.5 active:translate-y-0 ${styles}`}>
+        <button className={`inline-flex h-11 items-center justify-center rounded-full px-5 text-sm font-black shadow-[0_10px_28px_rgba(16,39,68,0.10)] transition hover:-translate-y-0.5 active:translate-y-0 ${styles}`}>
             {children}
         </button>
     );

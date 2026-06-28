@@ -1,3 +1,4 @@
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
 import {
     AlertTriangle,
@@ -45,6 +46,7 @@ import {
     AdminSectionHeader,
     AdminTable,
     ActionButton,
+    formatAdminValue,
     MiniMetric,
     StatusBadge,
 } from '@/components/admin/AdminLayout';
@@ -66,6 +68,21 @@ import {
     upcomingOps,
     usageSeries,
 } from '@/data/adminMockData';
+import {
+    getAdminBillingOrders,
+    getAdminBillingWebhookEvents,
+    getAdminDocumentById,
+    getAdminDocuments,
+    getAdminOverview,
+    getAdminQuizById,
+    getAdminQuizzes,
+    getAdminSessionById,
+    getAdminSessionParticipants,
+    getAdminSessions,
+    getAdminUserById as fetchAdminUserById,
+    getAdminUsers,
+    hasAdminApiToken,
+} from '@/services/adminService';
 
 function useAdminBase() {
     const location = useLocation();
@@ -106,6 +123,350 @@ function FilterBar({ placeholder = 'Tìm kiếm', filters = [] }) {
             </div>
         </AdminCard>
     );
+}
+
+function getField(source, camelKey, pascalKey = camelKey.charAt(0).toUpperCase() + camelKey.slice(1), fallback = undefined) {
+    if (!source) return fallback;
+    return source[camelKey] ?? source[pascalKey] ?? fallback;
+}
+
+function getItems(response) {
+    return getField(response, 'items', 'Items', []);
+}
+
+function formatNumber(value) {
+    const numeric = Number(value || 0);
+    return new Intl.NumberFormat('vi-VN').format(numeric);
+}
+
+function formatCompactVnd(value) {
+    const numeric = Number(value || 0);
+    if (numeric >= 1000000) {
+        return `${new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 1 }).format(numeric / 1000000)}M`;
+    }
+    return new Intl.NumberFormat('vi-VN').format(numeric);
+}
+
+function formatMoney(value, currency = 'VND') {
+    const numeric = Number(value || 0);
+    if (String(currency).toUpperCase() === 'VND') {
+        return new Intl.NumberFormat('vi-VN', {
+            style: 'currency',
+            currency: 'VND',
+            maximumFractionDigits: 0,
+        }).format(numeric);
+    }
+    return `${formatNumber(numeric)} ${currency}`;
+}
+
+function formatDate(value) {
+    if (!value) return 'Chưa có';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return String(value);
+    return new Intl.DateTimeFormat('vi-VN', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+    }).format(date);
+}
+
+function formatDateTime(value) {
+    if (!value) return 'Chưa có';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return String(value);
+    return new Intl.DateTimeFormat('vi-VN', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+    }).format(date);
+}
+
+function formatKpiValue(value, format) {
+    if (format === 'currency') return formatCompactVnd(value);
+    if (format === 'percent') return `${Number(value || 0).toFixed(1)}%`;
+    return formatNumber(value);
+}
+
+function getStatusFromDeletion(isDeleted, fallback = 'Active') {
+    return isDeleted ? 'Deleted' : fallback;
+}
+
+function useAdminResource(fetcher, fallback, deps = []) {
+    const [state, setState] = useState({
+        data: fallback,
+        error: '',
+        isLoading: false,
+        isFallback: true,
+    });
+
+    useEffect(() => {
+        if (!hasAdminApiToken()) {
+            setState({ data: fallback, error: '', isLoading: false, isFallback: true });
+            return undefined;
+        }
+
+        const controller = new AbortController();
+        setState((current) => ({ ...current, isLoading: true, error: '' }));
+
+        fetcher({ signal: controller.signal })
+            .then((data) => {
+                setState({ data, error: '', isLoading: false, isFallback: false });
+            })
+            .catch((error) => {
+                if (controller.signal.aborted) return;
+                setState({
+                    data: fallback,
+                    error: error?.message || 'Không thể tải dữ liệu admin.',
+                    isLoading: false,
+                    isFallback: true,
+                });
+            });
+
+        return () => controller.abort();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, deps);
+
+    return state;
+}
+
+function DataStateNotice({ state, fallbackLabel = 'Đang hiển thị dữ liệu mẫu vì chưa có phiên Admin hoặc API chưa sẵn sàng.' }) {
+    if (state?.isLoading) {
+        return (
+            <div className="rounded-[18px] border border-[#D8E9F5] bg-white px-4 py-3 text-sm font-bold text-[#52677F]">
+                Đang tải dữ liệu từ backend...
+            </div>
+        );
+    }
+
+    if (state?.error) {
+        return (
+            <div className="rounded-[18px] border border-[#FFE2B8] bg-[#FFF8EC] px-4 py-3 text-sm font-bold text-[#9B5A00]">
+                {state.error} {fallbackLabel}
+            </div>
+        );
+    }
+
+    if (state?.isFallback && !hasAdminApiToken()) {
+        return (
+            <div className="rounded-[18px] border border-[#D8E9F5] bg-[#F7FCFF] px-4 py-3 text-sm font-bold text-[#52677F]">
+                {fallbackLabel}
+            </div>
+        );
+    }
+
+    return null;
+}
+
+function adaptOverviewStats(overview) {
+    const kpis = getField(overview, 'kpis', 'Kpis', []);
+    if (!kpis.length) return adminOverviewStats;
+
+    const tones = ['blue', 'cyan', 'green', 'peach'];
+    return kpis.slice(0, 4).map((item, index) => {
+        const value = getField(item, 'value', 'Value', 0);
+        const format = getField(item, 'format', 'Format', 'int');
+        const deltaPercent = getField(item, 'deltaPercent', 'DeltaPercent', 0);
+        const up = getField(item, 'up', 'Up', true);
+
+        return {
+            id: getField(item, 'key', 'Key', `kpi-${index}`),
+            label: getField(item, 'label', 'Label', 'Chỉ số'),
+            value: formatKpiValue(value, format),
+            delta: `${up ? '+' : '-'}${Math.abs(Number(deltaPercent || 0)).toFixed(1)}%`,
+            note: 'so với kỳ trước',
+            tone: tones[index] || 'blue',
+            api: 'GET /api/Admin/overview',
+        };
+    });
+}
+
+function adaptRevenueSeries(overview) {
+    const series = getField(overview, 'paidRevenueSeries', 'PaidRevenueSeries', []);
+    if (!series.length) return revenueSeries;
+
+    return series.map((point) => {
+        const value = getField(point, 'value', 'Value', 0);
+        return {
+            month: getField(point, 'label', 'Label', ''),
+            revenue: Math.round(Number(value || 0) / 1000000),
+            collected: Math.round(Number(value || 0) / 1000000),
+            aiCost: 0,
+        };
+    });
+}
+
+function adaptUser(row) {
+    const subscriptionTier = getField(row, 'subscriptionTier', 'SubscriptionTier', 'Freemium');
+    const subscriptionStatus = getField(row, 'subscriptionStatus', 'SubscriptionStatus', subscriptionTier);
+    const fullName = getField(row, 'fullName', 'FullName', 'Chưa đặt tên');
+    const quizCount = Number(getField(row, 'quizCount', 'QuizCount', 0));
+    const flashcardCount = Number(getField(row, 'flashcardCount', 'FlashcardCount', 0));
+
+    return {
+        id: String(getField(row, 'id', 'Id', '')),
+        name: fullName,
+        email: getField(row, 'email', 'Email', ''),
+        role: getField(row, 'role', 'Role', 'Teacher'),
+        plan: subscriptionTier === 'Premium' ? 'Premium' : subscriptionTier,
+        status: subscriptionStatus,
+        joinedAt: formatDate(getField(row, 'createdAt', 'CreatedAt')),
+        lastActive: formatDate(getField(row, 'lastActiveDate', 'LastActiveDate')),
+        documents: Number(getField(row, 'documentCount', 'DocumentCount', 0)),
+        quizzes: quizCount,
+        flashcards: flashcardCount,
+        sessions: Number(getField(row, 'liveSessionCount', 'LiveSessionCount', 0)),
+        storage: `${Number(getField(row, 'documentsProcessed', 'DocumentsProcessed', 0))} tài liệu xử lý`,
+        revenue: getField(row, 'latestPaymentStatus', 'LatestPaymentStatus') || 'Chưa có thanh toán',
+        latestPaymentPlanCode: getField(row, 'latestPaymentPlanCode', 'LatestPaymentPlanCode', ''),
+        latestPaymentAt: formatDateTime(getField(row, 'latestPaymentAt', 'LatestPaymentAt')),
+        xp: Number(getField(row, 'xp', 'Xp', 0)),
+        currentStreak: Number(getField(row, 'currentStreak', 'CurrentStreak', 0)),
+        learningSeconds: Number(getField(row, 'totalLearningSeconds', 'TotalLearningSeconds', 0)),
+        correctAnswers: Number(getField(row, 'totalCorrectAnswers', 'TotalCorrectAnswers', 0)),
+        totalQuestions: Number(getField(row, 'totalQuestionsAnswered', 'TotalQuestionsAnswered', 0)),
+        paymentOrderCount: Number(getField(row, 'paymentOrderCount', 'PaymentOrderCount', 0)),
+    };
+}
+
+function adaptDocument(row) {
+    const id = getField(row, 'id', 'Id', '');
+    const quizCount = Number(getField(row, 'quizCount', 'QuizCount', 0));
+    const flashcardCount = Number(getField(row, 'flashcardCount', 'FlashcardCount', 0));
+
+    return {
+        id: `document-${id}`,
+        rawId: String(id),
+        detailType: 'document',
+        title: getField(row, 'fileName', 'FileName', 'Tài liệu chưa đặt tên'),
+        ownerId: String(getField(row, 'ownerId', 'OwnerId', '')),
+        owner: getField(row, 'ownerName', 'OwnerName', 'Không rõ'),
+        ownerEmail: getField(row, 'ownerEmail', 'OwnerEmail', ''),
+        type: 'Document',
+        source: 'Upload',
+        status: getStatusFromDeletion(getField(row, 'isDeleted', 'IsDeleted', false), 'Ready'),
+        size: `${quizCount} quiz / ${flashcardCount} thẻ`,
+        createdAt: formatDate(getField(row, 'uploadedAt', 'UploadedAt')),
+        generated: quizCount + flashcardCount,
+        lastError: '',
+    };
+}
+
+function adaptQuiz(row) {
+    const id = getField(row, 'id', 'Id', '');
+    const activityType = getField(row, 'activityType', 'ActivityType', 'Quiz');
+    const questionCount = Number(getField(row, 'questionCount', 'QuestionCount', 0));
+
+    return {
+        id: `${activityType === 'Flashcard' ? 'flashcard' : 'quiz'}-${id}`,
+        rawId: String(id),
+        detailType: 'quiz',
+        title: getField(row, 'title', 'Title', 'Bộ câu hỏi chưa đặt tên'),
+        ownerId: String(getField(row, 'ownerId', 'OwnerId', '')),
+        owner: getField(row, 'ownerName', 'OwnerName', 'Không rõ'),
+        ownerEmail: getField(row, 'ownerEmail', 'OwnerEmail', ''),
+        type: activityType === 'Flashcard' ? 'Flashcards' : 'Quiz',
+        source: getField(row, 'documentFileName', 'DocumentFileName', 'AI Generated'),
+        status: getStatusFromDeletion(getField(row, 'isDeleted', 'IsDeleted', false), getField(row, 'status', 'Status', 'AI_Drafted')),
+        size: `${questionCount} ${activityType === 'Flashcard' ? 'thẻ' : 'câu'}`,
+        createdAt: formatDate(getField(row, 'createdAt', 'CreatedAt')),
+        generated: questionCount,
+        documentId: getField(row, 'documentId', 'DocumentId', ''),
+        lastError: '',
+    };
+}
+
+function adaptSession(row) {
+    const id = getField(row, 'id', 'Id', '');
+    const status = getStatusFromDeletion(getField(row, 'isDeleted', 'IsDeleted', false), getField(row, 'status', 'Status', 'Waiting'));
+
+    return {
+        id: String(id),
+        pin: getField(row, 'gamePin', 'GamePin', ''),
+        title: getField(row, 'quizTitle', 'QuizTitle', 'Phiên học chưa đặt tên'),
+        teacherId: String(getField(row, 'teacherId', 'TeacherId', '')),
+        teacher: getField(row, 'teacherName', 'TeacherName', 'Không rõ'),
+        teacherEmail: getField(row, 'teacherEmail', 'TeacherEmail', ''),
+        quizId: String(getField(row, 'quizId', 'QuizId', '')),
+        mode: getField(row, 'templateName', 'TemplateName', getField(row, 'quizActivityType', 'QuizActivityType', 'Quiz')),
+        status,
+        participants: Number(getField(row, 'participantCount', 'ParticipantCount', 0)),
+        accuracy: 'Chưa có',
+        startedAt: formatDateTime(getField(row, 'createdAt', 'CreatedAt')),
+        duration: 'Chưa có',
+    };
+}
+
+function adaptParticipant(row) {
+    return {
+        id: String(getField(row, 'id', 'Id', '')),
+        name: getField(row, 'studentName', 'StudentName', 'Học sinh'),
+        score: Number(getField(row, 'totalScore', 'TotalScore', 0) || 0),
+        answers: 'Chưa có',
+        status: getField(row, 'isDeleted', 'IsDeleted', false) ? 'Deleted' : 'Connected',
+    };
+}
+
+function adaptBillingOrder(row) {
+    if (row?.user && row?.amount) {
+        return {
+            ...row,
+            orderCode: row.orderCode || row.id,
+            provider: row.provider || 'PayOS',
+            premiumStatus: row.premiumStatus || row.status,
+        };
+    }
+
+    const id = getField(row, 'id', 'Id', '');
+    const currency = getField(row, 'currency', 'Currency', 'VND');
+    const isDeleted = getField(row, 'isDeleted', 'IsDeleted', false);
+    const isPremiumActive = getField(row, 'isPremiumActive', 'IsPremiumActive', false);
+
+    return {
+        id: String(id),
+        orderCode: String(getField(row, 'orderCode', 'OrderCode', id)),
+        userId: String(getField(row, 'userId', 'UserId', '')),
+        user: getField(row, 'userName', 'UserName', 'Không rõ'),
+        email: getField(row, 'userEmail', 'UserEmail', ''),
+        plan: getField(row, 'planCode', 'PlanCode', ''),
+        amount: formatMoney(getField(row, 'amount', 'Amount', 0), currency),
+        status: isDeleted ? 'Deleted' : getField(row, 'status', 'Status', 'Pending'),
+        provider: getField(row, 'provider', 'Provider', ''),
+        reference: getField(row, 'payosReference', 'PayosReference', ''),
+        paidAt: formatDateTime(getField(row, 'paidAt', 'PaidAt')),
+        cancelledAt: formatDateTime(getField(row, 'cancelledAt', 'CancelledAt')),
+        createdAt: formatDateTime(getField(row, 'createdAt', 'CreatedAt')),
+        updatedAt: formatDateTime(getField(row, 'updatedAt', 'UpdatedAt')),
+        expiresAt: formatDate(getField(row, 'premiumExpiresAt', 'PremiumExpiresAt')),
+        subscription: getField(row, 'subscriptionTier', 'SubscriptionTier', 'Freemium'),
+        premiumStatus: isPremiumActive ? 'Premium' : 'Expired',
+    };
+}
+
+function adaptWebhookEvent(row) {
+    const error = getField(row, 'processingError', 'ProcessingError', '');
+    const isProcessed = getField(row, 'isProcessed', 'IsProcessed', false);
+
+    return {
+        id: String(getField(row, 'id', 'Id', '')),
+        provider: getField(row, 'provider', 'Provider', ''),
+        orderCode: getField(row, 'orderCode', 'OrderCode', 'Chưa có'),
+        reference: getField(row, 'reference', 'Reference', 'Chưa có'),
+        processedAt: formatDateTime(getField(row, 'processedAt', 'ProcessedAt')),
+        status: error ? 'Failed' : isProcessed ? 'Done' : 'Pending',
+        error: error || 'Không có lỗi',
+    };
+}
+
+function splitContentRouteId(contentId) {
+    if (String(contentId).startsWith('document-')) {
+        return { type: 'document', id: String(contentId).replace('document-', '') };
+    }
+    if (String(contentId).startsWith('quiz-') || String(contentId).startsWith('flashcard-')) {
+        return { type: 'quiz', id: String(contentId).replace('quiz-', '').replace('flashcard-', '') };
+    }
+    return { type: 'mock', id: contentId };
 }
 
 function StatCard({ stat }) {
@@ -177,28 +538,37 @@ function CalendarCard() {
 
 export function AdminOverviewPage() {
     const base = useAdminBase();
+    const overviewState = useAdminResource(
+        (options) => getAdminOverview({ range: '30d' }, options),
+        null,
+        []
+    );
+    const overviewStats = useMemo(() => adaptOverviewStats(overviewState.data), [overviewState.data]);
+    const chartSeries = useMemo(() => adaptRevenueSeries(overviewState.data), [overviewState.data]);
+    const collectedTotal = chartSeries.reduce((total, point) => total + Number(point.collected || 0), 0);
 
     return (
         <PageGrid>
+            <DataStateNotice state={overviewState} />
             <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
-                {adminOverviewStats.map((stat) => <StatCard key={stat.id} stat={stat} />)}
+                {overviewStats.map((stat) => <StatCard key={stat.id} stat={stat} />)}
             </div>
 
-            <div className="grid gap-6 2xl:grid-cols-[minmax(0,1fr)_380px]">
+            <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px] 2xl:grid-cols-[minmax(0,1fr)_400px]">
                 <PageGrid>
                     <AdminCard className="p-6">
                         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                             <div>
-                                <h2 className="text-2xl font-black text-[#071D35]">Doanh thu & chi phí AI</h2>
-                                <p className="mt-1 text-sm font-semibold text-[#6C8098]">Theo dõi doanh thu collected, revenue ghi nhận và chi phí AI ước tính.</p>
+                                <h2 className="text-2xl font-black text-[#071D35]">Doanh thu đã thu</h2>
+                                <p className="mt-1 text-sm font-semibold text-[#6C8098]">Dữ liệu doanh thu Paid theo kỳ từ API Overview. Chi phí AI sẽ nối sau khi backend có telemetry.</p>
                             </div>
                             <div className="rounded-full bg-[#102744] px-4 py-2 text-sm font-black text-white">
-                                Collected: 344M
+                                Đã thu: {formatCompactVnd(collectedTotal * 1000000)}
                             </div>
                         </div>
                         <div className="mt-6 h-[330px]">
                             <ResponsiveContainer width="100%" height="100%">
-                                <AreaChart data={revenueSeries}>
+                                <AreaChart data={chartSeries}>
                                     <defs>
                                         <linearGradient id="adminRevenue" x1="0" x2="0" y1="0" y2="1">
                                             <stop offset="5%" stopColor="#2B7AB5" stopOpacity={0.28} />
@@ -223,7 +593,7 @@ export function AdminOverviewPage() {
 
                     <div className="grid gap-6 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
                         <AdminCard className="p-6">
-                            <AdminSectionHeader title="Top giáo viên" description="Xếp theo mức độ sử dụng lành mạnh, Pro status và phiên học hoàn tất." />
+                            <AdminSectionHeader title="Giáo viên nổi bật" description="Xếp theo mức độ sử dụng lành mạnh, trạng thái Pro và phiên học đã hoàn tất." />
                             <div className="space-y-3">
                                 {topTeachers.map((teacher) => (
                                     <Link key={teacher.id} to={`${base}/users/${teacher.id}`} className="flex items-center gap-3 rounded-[18px] bg-[#F7FBFE] p-3 transition hover:-translate-y-0.5 hover:bg-[#EEF7FD]">
@@ -265,13 +635,13 @@ export function AdminOverviewPage() {
 
                 <PageGrid>
                     <CalendarCard />
-                    <AdminCard className="overflow-hidden bg-[#071D35] p-6 text-white">
+                        <AdminCard className="self-start overflow-hidden !bg-[#173154] p-6 text-white">
                         <div className="grid h-14 w-14 place-items-center rounded-full bg-white/12">
                             <Sparkles className="h-7 w-7 text-[#A8D8EA]" />
                         </div>
-                        <h2 className="mt-6 text-2xl font-black">API contract đã rõ</h2>
+                        <h2 className="mt-6 text-2xl font-black">Đã nối API read-only</h2>
                         <p className="mt-2 text-sm font-semibold leading-6 text-white/72">
-                            Mỗi card, table và action đều có dữ liệu mock theo đúng module backend cần triển khai.
+                            Overview, người dùng, nội dung và phiên trực tiếp dùng API backend khi có token Admin.
                         </p>
                         <Link to={`${base}/settings`} className="mt-6 inline-flex h-11 items-center gap-2 rounded-full bg-white px-5 text-sm font-black text-[#071D35]">
                             Xem cấu hình
@@ -286,28 +656,41 @@ export function AdminOverviewPage() {
 
 export function AdminUsersPage() {
     const base = useAdminBase();
+    const usersState = useAdminResource(
+        (options) => getAdminUsers({ page: 1, pageSize: 50 }, options),
+        { items: adminUsers },
+        []
+    );
+    const users = useMemo(() => getItems(usersState.data).map((user) => {
+        if (user.name) return user;
+        return adaptUser(user);
+    }), [usersState.data]);
+    const totalUsers = getField(usersState.data, 'total', 'Total', users.length);
+    const teacherCount = users.filter((user) => user.role === 'Teacher').length;
+    const premiumCount = users.filter((user) => ['Premium', 'Active'].includes(user.plan) || user.status === 'Premium').length;
     const columns = [
         { key: 'name', label: 'Người dùng', render: (row) => <UserCell row={row} /> },
-        { key: 'role', label: 'Role' },
+        { key: 'role', label: 'Vai trò' },
         { key: 'plan', label: 'Gói' },
         { key: 'status', label: 'Trạng thái', render: (row) => <StatusBadge value={row.status} /> },
         { key: 'documents', label: 'Tài liệu' },
-        { key: 'sessions', label: 'Session' },
+        { key: 'sessions', label: 'Phiên' },
         { key: 'lastActive', label: 'Hoạt động gần nhất' },
     ];
 
     return (
         <PageGrid>
+            <DataStateNotice state={usersState} />
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                <MiniMetric icon={UsersRound} label="Tổng user" value="51,420" />
-                <MiniMetric icon={UserCog} label="Giáo viên" value="2,840" tone="navy" />
-                <MiniMetric icon={ShieldCheck} label="Pro active" value="1,126" tone="green" />
-                <MiniMetric icon={AlertTriangle} label="Cần review" value="8" tone="orange" />
+                <MiniMetric icon={UsersRound} label="Tổng người dùng" value={formatNumber(totalUsers)} />
+                <MiniMetric icon={UserCog} label="Giáo viên trong trang" value={formatNumber(teacherCount)} tone="navy" />
+                <MiniMetric icon={ShieldCheck} label="Premium trong trang" value={formatNumber(premiumCount)} tone="green" />
+                <MiniMetric icon={AlertTriangle} label="Đã tải trang" value={formatNumber(getField(usersState.data, 'page', 'Page', 1))} tone="orange" />
             </div>
-            <FilterBar placeholder="Tìm theo tên, email, role..." filters={['Role', 'Gói Pro', 'Trạng thái', 'Ngày tạo']} />
+            <FilterBar placeholder="Tìm theo tên, email, vai trò..." filters={['Vai trò', 'Gói Pro', 'Trạng thái', 'Ngày tạo']} />
             <AdminCard className="p-5">
-                <AdminSectionHeader title="Danh sách người dùng" description="Backend nên hỗ trợ pagination, search, sort và filter role/subscription/status." action={<ApiTag>GET /api/Admin/users</ApiTag>} />
-                <AdminTable columns={columns} rows={adminUsers} rowHref={(row) => `${base}/users/${row.id}`} />
+                <AdminSectionHeader title="Danh sách người dùng" description="Dữ liệu lấy từ Admin Users API, hỗ trợ search, role, subscription và pagination." action={<ApiTag>GET /api/Admin/users</ApiTag>} />
+                <AdminTable columns={columns} rows={users} rowHref={(row) => `${base}/users/${row.id}`} />
             </AdminCard>
         </PageGrid>
     );
@@ -330,32 +713,62 @@ function UserCell({ row }) {
 export function AdminUserDetailPage() {
     const base = useAdminBase();
     const { userId } = useParams();
-    const user = getUserById(userId);
-    const userContent = adminDocuments.filter((item) => item.ownerId === user.id);
-    const userSessions = adminSessions.filter((session) => session.teacher === user.name);
+    const fallbackUser = getUserById(userId);
+    const userState = useAdminResource(
+        (options) => fetchAdminUserById(userId, options),
+        fallbackUser,
+        [userId]
+    );
+    const user = useMemo(() => {
+        if (userState.data?.name) return userState.data;
+        return adaptUser(userState.data);
+    }, [userState.data]);
+    const documentsState = useAdminResource(
+        (options) => getAdminDocuments({ ownerId: userId, page: 1, pageSize: 8 }, options),
+        { items: adminDocuments.filter((item) => item.ownerId === fallbackUser.id && item.type === 'Document') },
+        [userId]
+    );
+    const quizzesState = useAdminResource(
+        (options) => getAdminQuizzes({ ownerId: userId, page: 1, pageSize: 8 }, options),
+        { items: adminDocuments.filter((item) => item.ownerId === fallbackUser.id && item.type !== 'Document') },
+        [userId]
+    );
+    const sessionsState = useAdminResource(
+        (options) => getAdminSessions({ teacherId: userId, page: 1, pageSize: 8 }, options),
+        { items: adminSessions.filter((session) => session.teacher === fallbackUser.name) },
+        [userId]
+    );
+    const userContent = useMemo(() => [
+        ...getItems(documentsState.data).map((item) => (item.title ? item : adaptDocument(item))),
+        ...getItems(quizzesState.data).map((item) => (item.title ? item : adaptQuiz(item))),
+    ], [documentsState.data, quizzesState.data]);
+    const userSessions = useMemo(() => getItems(sessionsState.data).map((session) => (
+        session.pin ? session : adaptSession(session)
+    )), [sessionsState.data]);
 
     return (
         <PageGrid>
+            <DataStateNotice state={userState} />
             <DetailHero
                 backTo={`${base}/users`}
                 title={user.name}
                 subtitle={user.email}
                 status={user.status}
                 icon={UsersRound}
-                actions={<><ActionButton>Chỉnh subscription</ActionButton><ActionButton tone="ghost">Gửi email</ActionButton></>}
+                actions={<><ActionButton tone="ghost">Chờ API audit để chỉnh gói</ActionButton><ActionButton tone="ghost">Gửi email</ActionButton></>}
             />
 
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
                 <MiniMetric icon={FileSearch} label="Tài liệu" value={user.documents} />
-                <MiniMetric icon={BookOpenCheck} label="Quiz" value={user.quizzes} tone="navy" />
-                <MiniMetric icon={Sparkles} label="Flashcard" value={user.flashcards} tone="green" />
-                <MiniMetric icon={Gamepad2} label="Session" value={user.sessions} tone="orange" />
-                <MiniMetric icon={HardDrive} label="Storage" value={user.storage} />
+                <MiniMetric icon={BookOpenCheck} label="Bộ câu hỏi" value={user.quizzes} tone="navy" />
+                <MiniMetric icon={Sparkles} label="Thẻ ghi nhớ" value={user.flashcards} tone="green" />
+                <MiniMetric icon={Gamepad2} label="Phiên" value={user.sessions} tone="orange" />
+                <MiniMetric icon={HardDrive} label="XP học tập" value={formatNumber(user.xp || 0)} />
             </div>
 
             <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
                 <AdminCard className="p-5">
-                    <AdminSectionHeader title="Nội dung của giáo viên" description="Admin xem metadata, trạng thái xử lý và lỗi. Không sửa nội dung học tập trong MVP." action={<ApiTag>GET /api/Admin/users/{'{id}'}/content</ApiTag>} />
+                    <AdminSectionHeader title="Nội dung của giáo viên" description="Nối bằng documents/quizzes API có ownerId. Backend chưa có endpoint timeline riêng cho user." action={<ApiTag>GET /api/Admin/documents + quizzes?ownerId={userId}</ApiTag>} />
                     <AdminTable
                         columns={[
                             { key: 'title', label: 'Nội dung' },
@@ -370,29 +783,32 @@ export function AdminUserDetailPage() {
                 </AdminCard>
 
                 <AdminCard className="p-6">
-                    <AdminSectionHeader title="Hồ sơ vận hành" description="Các trường backend cần trả về cho support." />
+                    <AdminSectionHeader title="Hồ sơ vận hành" description="Các trường API cần trả về cho đội hỗ trợ." />
                     <InfoList items={[
-                        ['Role', user.role],
+                        ['Vai trò', user.role],
                         ['Gói', user.plan],
                         ['Ngày tham gia', user.joinedAt],
                         ['Hoạt động gần nhất', user.lastActive],
-                        ['Doanh thu', user.revenue],
+                        ['Thanh toán gần nhất', user.revenue],
+                        ['Gói thanh toán gần nhất', user.latestPaymentPlanCode || 'Chưa có'],
+                        ['Số đơn thanh toán', user.paymentOrderCount || 0],
+                        ['Streak hiện tại', `${user.currentStreak || 0} ngày`],
                     ]} />
                     <div className="mt-6 grid gap-3">
-                        <ActionButton tone="ghost">Reset quota</ActionButton>
-                        <ActionButton tone="ghost">Khoá tài khoản</ActionButton>
-                        <ActionButton tone="danger">Soft delete user</ActionButton>
+                        <ActionButton tone="ghost">Chờ API quota</ActionButton>
+                        <ActionButton tone="ghost">Chờ API khóa tài khoản</ActionButton>
+                        <ActionButton tone="danger">Chờ audit log để xóa mềm</ActionButton>
                     </div>
                 </AdminCard>
             </div>
 
             <AdminCard className="p-5">
-                <AdminSectionHeader title="Session gần đây" action={<ApiTag>GET /api/Admin/users/{'{id}'}/sessions</ApiTag>} />
+                <AdminSectionHeader title="Phiên gần đây" action={<ApiTag>GET /api/Admin/sessions?teacherId={userId}</ApiTag>} />
                 <AdminTable
                     columns={[
                         { key: 'pin', label: 'PIN' },
                         { key: 'title', label: 'Tên phiên' },
-                        { key: 'mode', label: 'Game mode' },
+                        { key: 'mode', label: 'Chế độ chơi' },
                         { key: 'status', label: 'Trạng thái', render: (row) => <StatusBadge value={row.status} /> },
                         { key: 'participants', label: 'Học sinh' },
                         { key: 'startedAt', label: 'Bắt đầu' },
@@ -407,17 +823,38 @@ export function AdminUserDetailPage() {
 
 export function AdminContentPage() {
     const base = useAdminBase();
+    const documentsState = useAdminResource(
+        (options) => getAdminDocuments({ page: 1, pageSize: 30 }, options),
+        { items: adminDocuments.filter((item) => item.type === 'Document') },
+        []
+    );
+    const quizzesState = useAdminResource(
+        (options) => getAdminQuizzes({ page: 1, pageSize: 30 }, options),
+        { items: adminDocuments.filter((item) => item.type !== 'Document') },
+        []
+    );
+    const documents = useMemo(() => getItems(documentsState.data).map((item) => (
+        item.title ? item : adaptDocument(item)
+    )), [documentsState.data]);
+    const quizzes = useMemo(() => getItems(quizzesState.data).map((item) => (
+        item.title ? item : adaptQuiz(item)
+    )), [quizzesState.data]);
+    const contentRows = useMemo(() => [...documents, ...quizzes], [documents, quizzes]);
+    const flashcardCount = quizzes.filter((item) => item.type === 'Flashcards').length;
+    const quizCount = quizzes.length - flashcardCount;
+
     return (
         <PageGrid>
+            <DataStateNotice state={documentsState} />
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                <MiniMetric icon={FileSearch} label="Documents" value="6,820" />
-                <MiniMetric icon={BookOpenCheck} label="Quiz" value="9,460" tone="navy" />
-                <MiniMetric icon={Sparkles} label="Flashcards" value="3,126" tone="green" />
-                <MiniMetric icon={AlertTriangle} label="Processing issues" value="18" tone="orange" />
+                <MiniMetric icon={FileSearch} label="Tài liệu trong trang" value={formatNumber(documents.length)} />
+                <MiniMetric icon={BookOpenCheck} label="Bộ câu hỏi trong trang" value={formatNumber(quizCount)} tone="navy" />
+                <MiniMetric icon={Sparkles} label="Thẻ ghi nhớ trong trang" value={formatNumber(flashcardCount)} tone="green" />
+                <MiniMetric icon={AlertTriangle} label="Đã xóa/ẩn" value={formatNumber(contentRows.filter((item) => item.status === 'Deleted').length)} tone="orange" />
             </div>
-            <FilterBar placeholder="Tìm tài liệu, quiz, flashcard, giáo viên..." filters={['Loại nội dung', 'Trạng thái', 'Owner', 'Ngày tạo']} />
+            <FilterBar placeholder="Tìm tài liệu, bộ câu hỏi, thẻ ghi nhớ, giáo viên..." filters={['Loại nội dung', 'Trạng thái', 'Chủ sở hữu', 'Ngày tạo']} />
             <AdminCard className="p-5">
-                <AdminSectionHeader title="Content monitoring" description="Trang này là vận hành và moderation, không phải CMS chỉnh nội dung giáo viên." action={<ApiTag>GET /api/Admin/content</ApiTag>} />
+                <AdminSectionHeader title="Theo dõi nội dung" description="Trang này gộp dữ liệu từ Documents API và Quizzes API. Backend không có endpoint /content tổng hợp." action={<ApiTag>GET /api/Admin/documents + quizzes</ApiTag>} />
                 <AdminTable
                     columns={[
                         { key: 'title', label: 'Tên nội dung' },
@@ -428,7 +865,7 @@ export function AdminContentPage() {
                         { key: 'size', label: 'Kích thước' },
                         { key: 'createdAt', label: 'Ngày tạo' },
                     ]}
-                    rows={adminDocuments}
+                    rows={contentRows}
                     rowHref={(row) => `${base}/content/${row.id}`}
                 />
             </AdminCard>
@@ -439,28 +876,48 @@ export function AdminContentPage() {
 export function AdminContentDetailPage() {
     const base = useAdminBase();
     const { contentId } = useParams();
-    const content = getContentById(contentId);
+    const routeTarget = splitContentRouteId(contentId);
+    const fallbackContent = getContentById(contentId);
+    const contentState = useAdminResource(
+        (options) => {
+            if (routeTarget.type === 'document') return getAdminDocumentById(routeTarget.id, options);
+            if (routeTarget.type === 'quiz') return getAdminQuizById(routeTarget.id, options);
+            return Promise.resolve(fallbackContent);
+        },
+        fallbackContent,
+        [contentId]
+    );
+    const content = useMemo(() => {
+        if (contentState.data?.title) return contentState.data;
+        if (routeTarget.type === 'document') return adaptDocument(contentState.data);
+        if (routeTarget.type === 'quiz') return adaptQuiz(contentState.data);
+        return fallbackContent;
+    }, [contentState.data, fallbackContent, routeTarget.type]);
+    const detailEndpoint = content.detailType === 'document'
+        ? 'GET /api/Admin/documents/{id}'
+        : 'GET /api/Admin/quizzes/{id}';
 
     return (
         <PageGrid>
+            <DataStateNotice state={contentState} />
             <DetailHero
                 backTo={`${base}/content`}
                 title={content.title}
-                subtitle={`${content.type} của ${content.owner}`}
+                subtitle={`${formatAdminValue(content.type)} của ${content.owner}`}
                 status={content.status}
                 icon={FileSearch}
-                actions={<><ActionButton><RotateCw className="mr-2 h-4 w-4" />Retry</ActionButton><ActionButton tone="danger">Ẩn nội dung</ActionButton></>}
+                actions={<><ActionButton tone="ghost"><RotateCw className="mr-2 h-4 w-4" />Chờ API retry</ActionButton><ActionButton tone="danger">Chờ audit log để ẩn</ActionButton></>}
             />
             <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
                 <AdminCard className="p-6">
-                    <AdminSectionHeader title="Metadata" action={<ApiTag>GET /api/Admin/content/{'{id}'}</ApiTag>} />
+                    <AdminSectionHeader title="Siêu dữ liệu" action={<ApiTag>{detailEndpoint}</ApiTag>} />
                     <div className="grid gap-4 md:grid-cols-2">
-                        <InfoBlock label="Owner" value={content.owner} />
+                        <InfoBlock label="Chủ sở hữu" value={content.owner} />
                         <InfoBlock label="Loại" value={content.type} />
                         <InfoBlock label="Nguồn" value={content.source} />
                         <InfoBlock label="Ngày tạo" value={content.createdAt} />
                         <InfoBlock label="Kích thước" value={content.size} />
-                        <InfoBlock label="Generated items" value={content.generated} />
+                        <InfoBlock label="Nội dung đã sinh" value={content.generated} />
                     </div>
                     {content.lastError && (
                         <div className="mt-5 rounded-[20px] border border-[#FFD3D8] bg-[#FFF1F3] p-4">
@@ -470,21 +927,21 @@ export function AdminContentDetailPage() {
                     )}
                 </AdminCard>
                 <AdminCard className="p-6">
-                    <AdminSectionHeader title="Action backend cần có" />
+                    <AdminSectionHeader title="Trạng thái API" />
                     <div className="space-y-3">
-                        <ApiTag>POST /api/Admin/content/{'{id}'}/retry</ApiTag>
-                        <ApiTag>PATCH /api/Admin/content/{'{id}'}/hide</ApiTag>
-                        <ApiTag>PATCH /api/Admin/content/{'{id}'}/restore</ApiTag>
-                        <ApiTag>GET /api/Admin/content/{'{id}'}/logs</ApiTag>
+                        <ApiTag>{detailEndpoint}</ApiTag>
+                        <ApiTag>Chưa có retry/hide/restore</ApiTag>
+                        <ApiTag>Chờ Admin_Audit_Logs</ApiTag>
+                        <ApiTag>Chưa có processing logs</ApiTag>
                     </div>
                 </AdminCard>
             </div>
             <AdminCard className="p-5">
-                <AdminSectionHeader title="Log xử lý" description="Timeline này giúp support biết file bị lỗi ở parser, AI worker hay storage." />
+                <AdminSectionHeader title="Nhật ký xử lý" description="Dòng thời gian này giúp đội hỗ trợ biết tệp lỗi ở bộ đọc tài liệu, bộ xử lý AI hay lưu trữ." />
                 <Timeline items={[
-                    ['Upload received', 'Storage nhận file và tạo document metadata.', 'Done'],
-                    ['AI parsing', content.status === 'Failed' ? content.lastError : 'Trích xuất nội dung thành công.', content.status === 'Failed' ? 'Failed' : 'Done'],
-                    ['Generation queue', 'Đẩy job tạo quiz/flashcard vào queue.', content.generated > 0 ? 'Done' : 'Pending'],
+                    ['Đã nhận tệp', 'Hệ thống lưu trữ nhận tệp và tạo siêu dữ liệu tài liệu.', 'Hoàn tất'],
+                    ['Đọc nội dung bằng AI', content.status === 'Failed' ? content.lastError : 'Trích xuất nội dung thành công.', content.status === 'Failed' ? 'Failed' : 'Hoàn tất'],
+                    ['Hàng đợi tạo nội dung', 'Đẩy tác vụ tạo bộ câu hỏi/thẻ ghi nhớ vào hàng đợi.', content.generated > 0 ? 'Hoàn tất' : 'Đang chờ'],
                 ]} />
             </AdminCard>
         </PageGrid>
@@ -493,29 +950,41 @@ export function AdminContentDetailPage() {
 
 export function AdminSessionsPage() {
     const base = useAdminBase();
+    const sessionsState = useAdminResource(
+        (options) => getAdminSessions({ page: 1, pageSize: 40 }, options),
+        { items: adminSessions },
+        []
+    );
+    const sessions = useMemo(() => getItems(sessionsState.data).map((session) => (
+        session.pin ? session : adaptSession(session)
+    )), [sessionsState.data]);
+    const activeCount = sessions.filter((session) => ['Active', 'Live'].includes(session.status)).length;
+    const participantTotal = sessions.reduce((total, session) => total + Number(session.participants || 0), 0);
+
     return (
         <PageGrid>
+            <DataStateNotice state={sessionsState} />
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                <MiniMetric icon={Gamepad2} label="Session hôm nay" value="428" />
-                <MiniMetric icon={UsersRound} label="Học sinh tham gia" value="8,920" tone="navy" />
-                <MiniMetric icon={CheckCircle2} label="Hoàn tất ổn định" value="96.8%" tone="green" />
-                <MiniMetric icon={ShieldAlert} label="Realtime issue" value="7" tone="red" />
+                <MiniMetric icon={Gamepad2} label="Phiên trong trang" value={formatNumber(sessions.length)} />
+                <MiniMetric icon={UsersRound} label="Lượt tham gia" value={formatNumber(participantTotal)} tone="navy" />
+                <MiniMetric icon={CheckCircle2} label="Đang diễn ra" value={formatNumber(activeCount)} tone="green" />
+                <MiniMetric icon={ShieldAlert} label="Đã xóa/ẩn" value={formatNumber(sessions.filter((session) => session.status === 'Deleted').length)} tone="red" />
             </div>
-            <FilterBar placeholder="Tìm theo PIN, giáo viên, quiz..." filters={['Trạng thái', 'Game mode', 'Ngày', 'Teacher']} />
+            <FilterBar placeholder="Tìm theo PIN, giáo viên, bộ câu hỏi..." filters={['Trạng thái', 'Chế độ chơi', 'Ngày', 'Giáo viên']} />
             <AdminCard className="p-5">
-                <AdminSectionHeader title="Live sessions" action={<ApiTag>GET /api/Admin/sessions</ApiTag>} />
+                <AdminSectionHeader title="Phiên trực tiếp" action={<ApiTag>GET /api/Admin/sessions</ApiTag>} />
                 <AdminTable
                     columns={[
                         { key: 'pin', label: 'PIN' },
                         { key: 'title', label: 'Tên phiên' },
                         { key: 'teacher', label: 'Giáo viên' },
-                        { key: 'mode', label: 'Mode' },
+                        { key: 'mode', label: 'Chế độ' },
                         { key: 'status', label: 'Trạng thái', render: (row) => <StatusBadge value={row.status} /> },
                         { key: 'participants', label: 'Học sinh' },
                         { key: 'accuracy', label: 'Đúng' },
                         { key: 'startedAt', label: 'Bắt đầu' },
                     ]}
-                    rows={adminSessions}
+                    rows={sessions}
                     rowHref={(row) => `${base}/sessions/${row.id}`}
                 />
             </AdminCard>
@@ -526,28 +995,52 @@ export function AdminSessionsPage() {
 export function AdminSessionDetailPage() {
     const base = useAdminBase();
     const { sessionId } = useParams();
-    const session = getSessionById(sessionId);
+    const fallbackSession = getSessionById(sessionId);
+    const sessionState = useAdminResource(
+        (options) => getAdminSessionById(sessionId, options),
+        fallbackSession,
+        [sessionId]
+    );
+    const participantsState = useAdminResource(
+        (options) => getAdminSessionParticipants(sessionId, { page: 1, pageSize: 30 }, options),
+        {
+            items: [
+                { id: 'p-1', name: 'Lan Anh', score: 920, answers: '12/14', status: 'Connected' },
+                { id: 'p-2', name: 'Minh Khang', score: 860, answers: '11/14', status: 'Connected' },
+                { id: 'p-3', name: 'Gia Huy', score: 640, answers: '8/14', status: 'Reconnected' },
+            ],
+        },
+        [sessionId]
+    );
+    const session = useMemo(() => {
+        if (sessionState.data?.pin) return sessionState.data;
+        return adaptSession(sessionState.data);
+    }, [sessionState.data]);
+    const participants = useMemo(() => getItems(participantsState.data).map((participant) => (
+        participant.name ? participant : adaptParticipant(participant)
+    )), [participantsState.data]);
 
     return (
         <PageGrid>
+            <DataStateNotice state={sessionState} />
             <DetailHero
                 backTo={`${base}/sessions`}
                 title={session.title}
                 subtitle={`PIN ${session.pin} • ${session.teacher}`}
                 status={session.status}
                 icon={Gamepad2}
-                actions={<><ActionButton>Yêu cầu trạng thái mới</ActionButton><ActionButton tone="danger">Kết thúc phiên</ActionButton></>}
+                actions={<><ActionButton tone="ghost">Làm mới dữ liệu</ActionButton><ActionButton tone="danger">Chờ audit log để kết thúc phiên</ActionButton></>}
             />
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-                <MiniMetric icon={UsersRound} label="Participants" value={session.participants} />
-                <MiniMetric icon={CheckCircle2} label="Accuracy" value={session.accuracy} tone="green" />
-                <MiniMetric icon={Clock3} label="Duration" value={session.duration} tone="navy" />
-                <MiniMetric icon={Gamepad2} label="Mode" value={session.mode} tone="orange" />
-                <MiniMetric icon={Zap} label="Realtime" value={session.status === 'Realtime Issue' ? 'Watch' : 'OK'} tone={session.status === 'Realtime Issue' ? 'red' : 'green'} />
+                <MiniMetric icon={UsersRound} label="Người tham gia" value={session.participants} />
+                <MiniMetric icon={CheckCircle2} label="Độ đúng" value={session.accuracy} tone="green" />
+                <MiniMetric icon={Clock3} label="Thời lượng" value={session.duration} tone="navy" />
+                <MiniMetric icon={Gamepad2} label="Chế độ" value={formatAdminValue(session.mode)} tone="orange" />
+                <MiniMetric icon={Zap} label="Thời gian thực" value={session.status === 'Realtime Issue' ? 'Cần theo dõi' : 'Ổn'} tone={session.status === 'Realtime Issue' ? 'red' : 'green'} />
             </div>
             <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
                 <AdminCard className="p-5">
-                    <AdminSectionHeader title="Participant snapshot" action={<ApiTag>GET /api/Admin/sessions/{'{id}'}/participants</ApiTag>} />
+                    <AdminSectionHeader title="Tổng quan người tham gia" action={<ApiTag>GET /api/Admin/sessions/{'{id}'}/participants</ApiTag>} />
                     <AdminTable
                         columns={[
                             { key: 'name', label: 'Học sinh' },
@@ -555,19 +1048,15 @@ export function AdminSessionDetailPage() {
                             { key: 'answers', label: 'Câu trả lời' },
                             { key: 'status', label: 'Trạng thái', render: (row) => <StatusBadge value={row.status} /> },
                         ]}
-                        rows={[
-                            { id: 'p-1', name: 'Lan Anh', score: 920, answers: '12/14', status: 'Connected' },
-                            { id: 'p-2', name: 'Minh Khang', score: 860, answers: '11/14', status: 'Connected' },
-                            { id: 'p-3', name: 'Gia Huy', score: 640, answers: '8/14', status: 'Reconnected' },
-                        ]}
+                        rows={participants}
                     />
                 </AdminCard>
                 <AdminCard className="p-6">
-                    <AdminSectionHeader title="Session APIs" />
+                    <AdminSectionHeader title="API phiên học" />
                     <div className="space-y-3">
                         <ApiTag>GET /api/Admin/sessions/{'{id}'}</ApiTag>
-                        <ApiTag>POST /api/Admin/sessions/{'{id}'}/end</ApiTag>
-                        <ApiTag>GET /api/Admin/sessions/{'{id}'}/events</ApiTag>
+                        <ApiTag>GET /api/Admin/sessions/{'{id}'}/participants</ApiTag>
+                        <ApiTag>Chưa có POST end/events</ApiTag>
                     </div>
                 </AdminCard>
             </div>
@@ -576,20 +1065,49 @@ export function AdminSessionDetailPage() {
 }
 
 export function AdminBillingPage() {
+    const overviewState = useAdminResource(
+        (options) => getAdminOverview({ range: '30d' }, options),
+        null,
+        []
+    );
+    const ordersState = useAdminResource(
+        (options) => getAdminBillingOrders({ page: 1, pageSize: 30 }, options),
+        { items: adminOrders },
+        []
+    );
+    const webhookState = useAdminResource(
+        (options) => getAdminBillingWebhookEvents({ page: 1, pageSize: 10 }, options),
+        { items: [] },
+        []
+    );
+    const billingSeries = useMemo(() => adaptRevenueSeries(overviewState.data), [overviewState.data]);
+    const collectedTotal = billingSeries.reduce((total, point) => total + Number(point.collected || 0), 0);
+    const orders = useMemo(() => getItems(ordersState.data).map((order) => (
+        order.orderCode ? order : adaptBillingOrder(order)
+    )), [ordersState.data]);
+    const webhookEvents = useMemo(() => getItems(webhookState.data).map((event) => (
+        event.processedAt ? event : adaptWebhookEvent(event)
+    )), [webhookState.data]);
+    const paidOrders = orders.filter((order) => order.status === 'Paid').length;
+    const pendingOrders = orders.filter((order) => order.status === 'Pending').length;
+    const webhookErrors = webhookEvents.filter((event) => event.status === 'Failed').length;
+
     return (
         <PageGrid>
+            <DataStateNotice state={overviewState} />
+            <DataStateNotice state={ordersState} fallbackLabel="Đang hiển thị dữ liệu đơn hàng mẫu vì chưa có phiên Admin hoặc API billing chưa sẵn sàng." />
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                <MiniMetric icon={CircleDollarSign} label="MRR" value="284.6M" />
-                <MiniMetric icon={CreditCard} label="Paid orders" value="1,428" tone="green" />
-                <MiniMetric icon={ReceiptText} label="Pending" value="36" tone="orange" />
-                <MiniMetric icon={AlertTriangle} label="Paid unsynced" value="3" tone="red" />
+                <MiniMetric icon={CircleDollarSign} label="Doanh thu từ Overview" value={formatCompactVnd(collectedTotal * 1000000)} />
+                <MiniMetric icon={CreditCard} label="Đơn đã thanh toán" value={formatNumber(paidOrders)} tone="green" />
+                <MiniMetric icon={ReceiptText} label="Đang chờ" value={formatNumber(pendingOrders)} tone="orange" />
+                <MiniMetric icon={AlertTriangle} label="Webhook lỗi" value={formatNumber(webhookErrors)} tone="red" />
             </div>
             <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
                 <AdminCard className="p-6">
-                    <AdminSectionHeader title="Revenue trend" action={<ApiTag>GET /api/Admin/billing/revenue</ApiTag>} />
+                    <AdminSectionHeader title="Xu hướng doanh thu" description="Doanh thu Paid theo kỳ nằm trong Overview; danh sách đơn và webhook đã có Admin Billing API riêng." action={<ApiTag>GET /api/Admin/overview</ApiTag>} />
                     <div className="h-[280px]">
                         <ResponsiveContainer width="100%" height="100%">
-                            <LineChart data={revenueSeries}>
+                            <LineChart data={billingSeries}>
                                 <CartesianGrid stroke="#E5F0F8" vertical={false} />
                                 <XAxis dataKey="month" axisLine={false} tickLine={false} />
                                 <YAxis axisLine={false} tickLine={false} />
@@ -600,27 +1118,41 @@ export function AdminBillingPage() {
                     </div>
                 </AdminCard>
                 <AdminCard className="p-6">
-                    <AdminSectionHeader title="Billing actions" description="Các action cần audit log." />
+                    <AdminSectionHeader title="Thao tác thanh toán" description="Backend hiện mới có read-only orders/webhooks. Sync/manual subscription vẫn cần API mutation và audit log." />
                     <div className="grid gap-3">
-                        <ActionButton>Sync paid orders</ActionButton>
-                        <ActionButton tone="ghost">Gia hạn Pro thủ công</ActionButton>
-                        <ActionButton tone="ghost">Export doanh thu</ActionButton>
+                        <ActionButton tone="ghost">Chờ API đồng bộ đơn</ActionButton>
+                        <ActionButton tone="ghost">Chờ API gia hạn Pro</ActionButton>
+                        <ActionButton tone="ghost">Xuất doanh thu từ Overview</ActionButton>
                     </div>
                 </AdminCard>
             </div>
             <AdminCard className="p-5">
-                <AdminSectionHeader title="Orders" action={<ApiTag>GET /api/Admin/billing/orders</ApiTag>} />
+                <AdminSectionHeader title="Đơn hàng" description="Dữ liệu lấy từ Admin Billing Orders API, hỗ trợ search, userId, status, plan, deletion và date range." action={<ApiTag>GET /api/Admin/billing/orders</ApiTag>} />
                 <AdminTable
                     columns={[
-                        { key: 'id', label: 'Order' },
-                        { key: 'user', label: 'User' },
-                        { key: 'plan', label: 'Plan' },
-                        { key: 'amount', label: 'Amount' },
-                        { key: 'status', label: 'Status', render: (row) => <StatusBadge value={row.status} /> },
-                        { key: 'paidAt', label: 'Paid at' },
-                        { key: 'expiresAt', label: 'Expires' },
+                        { key: 'orderCode', label: 'Mã đơn' },
+                        { key: 'user', label: 'Người dùng' },
+                        { key: 'plan', label: 'Gói' },
+                        { key: 'amount', label: 'Số tiền' },
+                        { key: 'status', label: 'Trạng thái', render: (row) => <StatusBadge value={row.status} /> },
+                        { key: 'paidAt', label: 'Thanh toán lúc' },
+                        { key: 'expiresAt', label: 'Hết hạn' },
                     ]}
-                    rows={adminOrders}
+                    rows={orders}
+                />
+            </AdminCard>
+            <AdminCard className="p-5">
+                <AdminSectionHeader title="Webhook thanh toán" description="Dùng để đối soát callback PayOS đã xử lý hay còn lỗi." action={<ApiTag>GET /api/Admin/billing/webhook-events</ApiTag>} />
+                <AdminTable
+                    columns={[
+                        { key: 'provider', label: 'Nhà cung cấp' },
+                        { key: 'orderCode', label: 'Mã đơn' },
+                        { key: 'reference', label: 'Tham chiếu' },
+                        { key: 'processedAt', label: 'Thời điểm xử lý' },
+                        { key: 'status', label: 'Trạng thái', render: (row) => <StatusBadge value={row.status} /> },
+                        { key: 'error', label: 'Lỗi' },
+                    ]}
+                    rows={webhookEvents}
                 />
             </AdminCard>
         </PageGrid>
@@ -631,13 +1163,13 @@ export function AdminAiUsagePage() {
     return (
         <PageGrid>
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                <MiniMetric icon={Sparkles} label="Generate requests" value="4,082" />
-                <MiniMetric icon={CheckCircle2} label="Success rate" value="96.1%" tone="green" />
-                <MiniMetric icon={Clock3} label="Avg latency" value="18.4s" tone="navy" />
-                <MiniMetric icon={AlertTriangle} label="Failed jobs" value="162" tone="orange" />
+                <MiniMetric icon={Sparkles} label="Lượt tạo bằng AI" value="4,082" />
+                <MiniMetric icon={CheckCircle2} label="Tỷ lệ thành công" value="96.1%" tone="green" />
+                <MiniMetric icon={Clock3} label="Độ trễ trung bình" value="18.4s" tone="navy" />
+                <MiniMetric icon={AlertTriangle} label="Tác vụ lỗi" value="162" tone="orange" />
             </div>
             <AdminCard className="p-6">
-                <AdminSectionHeader title="Usage tuần này" action={<ApiTag>GET /api/Admin/ai-usage</ApiTag>} />
+                <AdminSectionHeader title="Mức dùng tuần này" action={<ApiTag>GET /api/Admin/ai-usage</ApiTag>} />
                 <div className="h-[300px]">
                     <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={usageSeries}>
@@ -653,15 +1185,15 @@ export function AdminAiUsagePage() {
                 </div>
             </AdminCard>
             <AdminCard className="p-5">
-                <AdminSectionHeader title="AI pipelines" description="Backend nên trả success rate, avg time, cost estimate và trạng thái pipeline." />
+                <AdminSectionHeader title="Luồng xử lý AI" description="API nên trả tỷ lệ thành công, thời gian trung bình, chi phí ước tính và trạng thái luồng xử lý." />
                 <AdminTable
                     columns={[
-                        { key: 'type', label: 'Pipeline' },
-                        { key: 'requests', label: 'Requests' },
-                        { key: 'success', label: 'Success' },
-                        { key: 'avgTime', label: 'Avg time' },
-                        { key: 'cost', label: 'Cost estimate' },
-                        { key: 'status', label: 'Status', render: (row) => <StatusBadge value={row.status} /> },
+                        { key: 'type', label: 'Luồng xử lý' },
+                        { key: 'requests', label: 'Lượt gọi' },
+                        { key: 'success', label: 'Thành công' },
+                        { key: 'avgTime', label: 'Thời gian TB' },
+                        { key: 'cost', label: 'Chi phí ước tính' },
+                        { key: 'status', label: 'Trạng thái', render: (row) => <StatusBadge value={row.status} /> },
                     ]}
                     rows={aiUsageRows}
                 />
@@ -676,8 +1208,8 @@ export function AdminSupportPage() {
             <AdminCard className="p-6">
                 <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
                     <div>
-                        <h2 className="text-2xl font-black text-[#071D35]">Tra cứu support</h2>
-                        <p className="mt-1 text-sm font-semibold text-[#6C8098]">Tìm user bằng email, PIN session, document id hoặc order id.</p>
+                        <h2 className="text-2xl font-black text-[#071D35]">Tra cứu hỗ trợ</h2>
+                        <p className="mt-1 text-sm font-semibold text-[#6C8098]">Tìm người dùng bằng email, PIN phiên học, mã tài liệu hoặc mã đơn hàng.</p>
                         <div className="relative mt-5">
                             <Search className="pointer-events-none absolute left-5 top-1/2 h-5 w-5 -translate-y-1/2 text-[#7790A8]" />
                             <input className="h-14 w-full rounded-full border border-[#D8E9F5] bg-white pl-12 pr-5 text-sm font-bold outline-none focus:border-[#5BAED4] focus:ring-4 focus:ring-[#A8D8EA]/30" placeholder="Ví dụ: huong.le@school.vn hoặc PIN 183650" />
@@ -685,14 +1217,14 @@ export function AdminSupportPage() {
                     </div>
                     <div className="rounded-[24px] bg-[#102744] p-5 text-white">
                         <LifeBuoy className="h-8 w-8 text-[#A8D8EA]" />
-                        <p className="mt-4 text-xl font-black">Support API</p>
+                        <p className="mt-4 text-xl font-black">API hỗ trợ</p>
                         <p className="mt-2 text-sm font-semibold leading-6 text-white/72">GET /api/Admin/support/search?q=</p>
                     </div>
                 </div>
             </AdminCard>
             <div className="grid gap-6 xl:grid-cols-2">
                 <AdminCard className="p-6">
-                    <AdminSectionHeader title="Timeline case hôm nay" />
+                    <AdminSectionHeader title="Dòng thời gian sự cố hôm nay" />
                     <div className="space-y-4">
                         {supportTimeline.map((item) => (
                             <div key={item.id} className="flex gap-4 rounded-[20px] bg-[#F7FBFE] p-4">
@@ -707,11 +1239,11 @@ export function AdminSupportPage() {
                     </div>
                 </AdminCard>
                 <AdminCard className="p-6">
-                    <AdminSectionHeader title="Checklist support" />
+                    <AdminSectionHeader title="Danh sách kiểm tra hỗ trợ" />
                     <Timeline items={[
-                        ['Xác minh user', 'Email, role, subscription, quota hiện tại.', 'Required'],
-                        ['Xem content/session liên quan', 'Chỉ xem metadata trước, mở detail khi cần.', 'Required'],
-                        ['Ghi audit note', 'Mọi action billing, quota, hide content cần log.', 'Required'],
+                        ['Xác minh người dùng', 'Email, vai trò, gói đăng ký và hạn mức hiện tại.', 'Bắt buộc'],
+                        ['Xem nội dung/phiên liên quan', 'Chỉ xem siêu dữ liệu trước, mở chi tiết khi cần.', 'Bắt buộc'],
+                        ['Ghi ghi chú kiểm tra', 'Mọi thao tác thanh toán, hạn mức, ẩn nội dung đều cần ghi nhật ký.', 'Bắt buộc'],
                     ]} />
                 </AdminCard>
             </div>
@@ -722,16 +1254,16 @@ export function AdminSupportPage() {
 export function AdminAuditLogsPage() {
     return (
         <PageGrid>
-            <FilterBar placeholder="Tìm actor, target, action..." filters={['Actor', 'Risk', 'Action', 'Ngày']} />
+            <FilterBar placeholder="Tìm người thao tác, đối tượng, hành động..." filters={['Người thao tác', 'Rủi ro', 'Hành động', 'Ngày']} />
             <AdminCard className="p-5">
-                <AdminSectionHeader title="Audit logs" description="Mọi hành động admin có tác động đến user, billing, content, quota cần được ghi lại." action={<ApiTag>GET /api/Admin/audit-logs</ApiTag>} />
+                <AdminSectionHeader title="Nhật ký thao tác" description="Mọi hành động quản trị có tác động đến người dùng, thanh toán, nội dung, hạn mức đều cần được ghi lại." action={<ApiTag>GET /api/Admin/audit-logs</ApiTag>} />
                 <AdminTable
                     columns={[
                         { key: 'time', label: 'Thời gian' },
-                        { key: 'actor', label: 'Actor' },
-                        { key: 'action', label: 'Action' },
-                        { key: 'target', label: 'Target' },
-                        { key: 'risk', label: 'Risk', render: (row) => <StatusBadge value={row.risk} /> },
+                        { key: 'actor', label: 'Người thao tác' },
+                        { key: 'action', label: 'Hành động' },
+                        { key: 'target', label: 'Đối tượng' },
+                        { key: 'risk', label: 'Rủi ro', render: (row) => <StatusBadge value={row.risk} /> },
                     ]}
                     rows={auditLogs}
                 />
@@ -742,10 +1274,10 @@ export function AdminAuditLogsPage() {
 
 export function AdminSettingsPage() {
     const settings = [
-        { id: 'set-1', title: 'Quota Free', description: 'Giới hạn tài liệu, quiz, flashcard và session cho tài khoản Free.', icon: Database, api: 'PATCH /api/Admin/settings/quota' },
-        { id: 'set-2', title: 'Feature flags', description: 'Bật tắt flashcard, adventure game, analytics và thử nghiệm mới.', icon: Flag, api: 'PATCH /api/Admin/settings/feature-flags' },
-        { id: 'set-3', title: 'Alert thresholds', description: 'Ngưỡng cảnh báo AI failure, paid unsynced, realtime issue.', icon: ShieldAlert, api: 'PATCH /api/Admin/settings/alerts' },
-        { id: 'set-4', title: 'Admin roles', description: 'Owner, Admin, Support, Content Moderator, Billing Manager.', icon: LockKeyhole, api: 'PATCH /api/Admin/settings/roles' },
+        { id: 'set-1', title: 'Giới hạn sử dụng gói miễn phí', description: 'Quy định tài khoản miễn phí được tải lên bao nhiêu tài liệu, tạo bao nhiêu bộ câu hỏi, thẻ ghi nhớ và phiên học.', icon: Database, api: 'PATCH /api/Admin/settings/quota' },
+        { id: 'set-2', title: 'Bật/tắt tính năng', description: 'Quản lý tính năng nào đang mở cho giáo viên và học sinh: thẻ ghi nhớ, trò chơi phiêu lưu, phân tích dữ liệu hoặc thử nghiệm mới.', icon: Flag, api: 'PATCH /api/Admin/settings/feature-flags' },
+        { id: 'set-3', title: 'Điều kiện gửi cảnh báo', description: 'Thiết lập khi nào hệ thống cần báo cho quản trị viên: lỗi AI tăng cao, đơn đã thanh toán chưa cấp Pro hoặc lỗi kết nối thời gian thực.', icon: ShieldAlert, api: 'PATCH /api/Admin/settings/alerts' },
+        { id: 'set-4', title: 'Phân quyền quản trị', description: 'Quy định ai được xem dữ liệu, hỗ trợ người dùng, kiểm duyệt nội dung, quản lý thanh toán hoặc thay đổi cấu hình hệ thống.', icon: LockKeyhole, api: 'PATCH /api/Admin/settings/roles' },
     ];
 
     return (
@@ -765,8 +1297,8 @@ export function AdminSettingsPage() {
                             </div>
                         </div>
                         <div className="mt-6 flex flex-wrap gap-3">
-                            <ActionButton>Chỉnh cấu hình</ActionButton>
-                            <ActionButton tone="ghost">Xem lịch sử</ActionButton>
+                            <ActionButton>Cập nhật thiết lập</ActionButton>
+                            <ActionButton tone="ghost">Lịch sử thay đổi</ActionButton>
                         </div>
                     </AdminCard>
                 );
@@ -800,7 +1332,7 @@ function InfoBlock({ label, value }) {
     return (
         <div className="rounded-[20px] bg-[#F7FBFE] p-4">
             <p className="text-xs font-black uppercase tracking-[0.1em] text-[#7C91A8]">{label}</p>
-            <p className="mt-2 text-base font-black text-[#102744]">{value}</p>
+            <p className="mt-2 text-base font-black text-[#102744]">{formatAdminValue(value)}</p>
         </div>
     );
 }
@@ -811,7 +1343,7 @@ function InfoList({ items }) {
             {items.map(([label, value]) => (
                 <div key={label} className="flex items-center justify-between gap-4 px-4 py-3">
                     <span className="text-sm font-bold text-[#6C8098]">{label}</span>
-                    <span className="text-right text-sm font-black text-[#102744]">{value}</span>
+                    <span className="text-right text-sm font-black text-[#102744]">{formatAdminValue(value)}</span>
                 </div>
             ))}
         </div>
