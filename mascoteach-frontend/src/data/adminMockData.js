@@ -74,7 +74,7 @@ export const adminAlerts = [
     {
         id: 'alert-2',
         title: 'Đơn thanh toán cần đối soát',
-        description: 'Kiểm tra các đơn đã thanh toán, trạng thái Premium và tín hiệu webhook liên quan.',
+        description: 'Kiểm tra các đơn đã thanh toán, trạng thái gói trả phí và tín hiệu thanh toán liên quan.',
         severity: 'info',
         owner: 'Thanh toán',
         api: 'GET /api/Admin/billing/orders',
@@ -84,8 +84,8 @@ export const adminAlerts = [
         title: 'Một số thao tác quản trị chưa bật',
         description: 'Các thao tác ảnh hưởng đến người dùng và nội dung cần cơ chế ghi nhận lịch sử trước khi sử dụng.',
         severity: 'info',
-        owner: 'Audit',
-        api: 'Chờ Admin_Audit_Logs',
+        owner: 'Lịch sử',
+        api: 'Chờ lịch sử thao tác',
     },
 ];
 
@@ -393,7 +393,7 @@ export const auditLogs = [
 
 export const supportTimeline = [
     { id: 'tl-1', time: '08:42', title: 'Giáo viên báo lỗi tạo thẻ ghi nhớ', meta: 'u-103', status: 'Open' },
-    { id: 'tl-2', time: '09:10', title: 'Tín hiệu thanh toán ghi nhận đã trả nhưng chưa đồng bộ', meta: 'ord-3003', status: 'Investigating' },
+    { id: 'tl-2', time: '09:10', title: 'Đơn hàng đã thanh toán nhưng chưa kích hoạt gói', meta: 'ord-3003', status: 'Investigating' },
     { id: 'tl-3', time: '10:05', title: 'Phiên thời gian thực kết nối lại 5 lần', meta: 'ses-903', status: 'Watch' },
 ];
 

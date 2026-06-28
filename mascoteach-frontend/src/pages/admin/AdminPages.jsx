@@ -540,7 +540,7 @@ export function AdminOverviewPage() {
 
                 <div className="grid gap-6 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
                     <AdminCard className="p-6">
-                        <AdminSectionHeader title="Giáo viên nổi bật" description="Xếp theo mức độ sử dụng lành mạnh, trạng thái Pro và phiên học đã hoàn tất." />
+                        <AdminSectionHeader title="Giáo viên nổi bật" description="Xếp theo mức độ sử dụng lành mạnh, trạng thái gói trả phí và phiên học đã hoàn tất." />
                         <div className="space-y-3">
                             {topTeachers.map((teacher) => (
                                 <Link key={teacher.id} to={`${base}/users/${teacher.id}`} className="flex items-center gap-3 rounded-[18px] bg-[#F7FBFE] p-3 transition hover:-translate-y-0.5 hover:bg-[#EEF7FD]">
@@ -612,10 +612,10 @@ export function AdminUsersPage() {
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                 <MiniMetric icon={UsersRound} label="Tổng người dùng" value={formatNumber(totalUsers)} />
                 <MiniMetric icon={UserCog} label="Giáo viên trong trang" value={formatNumber(teacherCount)} tone="navy" />
-                <MiniMetric icon={ShieldCheck} label="Premium trong trang" value={formatNumber(premiumCount)} tone="green" />
+                <MiniMetric icon={ShieldCheck} label="Gói trả phí" value={formatNumber(premiumCount)} tone="green" />
                 <MiniMetric icon={AlertTriangle} label="Đã tải trang" value={formatNumber(getField(usersState.data, 'page', 'Page', 1))} tone="orange" />
             </div>
-            <FilterBar placeholder="Tìm theo tên, email, vai trò..." filters={['Vai trò', 'Gói Pro', 'Trạng thái', 'Ngày tạo']} />
+            <FilterBar placeholder="Tìm theo tên, email, vai trò..." filters={['Vai trò', 'Gói trả phí', 'Trạng thái', 'Ngày tạo']} />
             <AdminCard className="p-5">
                 <AdminSectionHeader title="Danh sách người dùng" description="Theo dõi tài khoản, vai trò, gói đăng ký và hoạt động gần đây." />
                 <AdminTable columns={columns} rows={users} rowHref={(row) => `${base}/users/${row.id}`} />
@@ -725,7 +725,7 @@ export function AdminUserDetailPage() {
                     <div className="mt-6 grid gap-3">
                         <ActionButton tone="ghost">Chưa hỗ trợ chỉnh hạn mức</ActionButton>
                         <ActionButton tone="ghost">Chưa hỗ trợ khóa tài khoản</ActionButton>
-                        <ActionButton tone="danger">Chờ audit log để xóa mềm</ActionButton>
+                        <ActionButton tone="danger">Chưa hỗ trợ xóa tài khoản</ActionButton>
                     </div>
                 </AdminCard>
             </div>
@@ -834,14 +834,14 @@ export function AdminContentDetailPage() {
             />
             <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
                 <AdminCard className="p-6">
-                    <AdminSectionHeader title="Siêu dữ liệu" />
+                    <AdminSectionHeader title="Thông tin nội dung" />
                     <div className="grid gap-4 md:grid-cols-2">
                         <InfoBlock label="Chủ sở hữu" value={content.owner} />
                         <InfoBlock label="Loại" value={content.type} />
                         <InfoBlock label="Nguồn" value={content.source} />
                         <InfoBlock label="Ngày tạo" value={content.createdAt} />
                         <InfoBlock label="Kích thước" value={content.size} />
-                        <InfoBlock label="Nội dung đã sinh" value={content.generated} />
+                        <InfoBlock label="Đã tạo ra" value={content.generated} />
                     </div>
                     {content.lastError && (
                         <div className="mt-5 rounded-[20px] border border-[#FFD3D8] bg-[#FFF1F3] p-4">
@@ -851,20 +851,20 @@ export function AdminContentDetailPage() {
                     )}
                 </AdminCard>
                 <AdminCard className="p-6">
-                    <AdminSectionHeader title="Quyền thao tác" description="Phiên bản hiện tại chỉ cho phép xem siêu dữ liệu an toàn." />
+                    <AdminSectionHeader title="Thao tác khả dụng" description="Phiên bản hiện tại chỉ cho phép xem thông tin an toàn của nội dung." />
                     <Timeline items={[
-                        ['Xem metadata', 'Có thể xem chủ sở hữu, loại nội dung, ngày tạo và số lượng nội dung đã sinh.', 'Hoàn tất'],
+                        ['Xem thông tin nội dung', 'Có thể xem chủ sở hữu, loại nội dung, ngày tạo và số lượng nội dung đã tạo ra.', 'Hoàn tất'],
                         ['Xử lý lại hoặc ẩn nội dung', 'Chưa hỗ trợ thao tác trực tiếp từ trang quản trị.', 'Đang chờ'],
-                        ['Nhật ký xử lý chi tiết', 'Sẽ hiển thị khi hệ thống có lịch sử xử lý nội dung đầy đủ.', 'Đang chờ'],
+                        ['Lịch sử xử lý chi tiết', 'Sẽ hiển thị khi hệ thống có lịch sử xử lý nội dung đầy đủ.', 'Đang chờ'],
                     ]} />
                 </AdminCard>
             </div>
             <AdminCard className="p-5">
-                <AdminSectionHeader title="Nhật ký xử lý" description="Dòng thời gian này giúp đội hỗ trợ biết tệp lỗi ở bộ đọc tài liệu, bộ xử lý AI hay lưu trữ." />
+                <AdminSectionHeader title="Lịch sử xử lý" description="Dòng thời gian này giúp đội hỗ trợ biết nội dung đang ở bước nào." />
                 <Timeline items={[
-                    ['Đã nhận tệp', 'Hệ thống lưu trữ nhận tệp và tạo siêu dữ liệu tài liệu.', 'Hoàn tất'],
-                    ['Đọc nội dung bằng AI', content.status === 'Failed' ? content.lastError : 'Trích xuất nội dung thành công.', content.status === 'Failed' ? 'Failed' : 'Hoàn tất'],
-                    ['Hàng đợi tạo nội dung', 'Đẩy tác vụ tạo bộ câu hỏi/thẻ ghi nhớ vào hàng đợi.', content.generated > 0 ? 'Hoàn tất' : 'Đang chờ'],
+                    ['Đã nhận tệp', 'Hệ thống đã lưu tệp và ghi nhận thông tin ban đầu.', 'Hoàn tất'],
+                    ['Đọc nội dung tự động', content.status === 'Failed' ? content.lastError : 'Đã đọc nội dung thành công.', content.status === 'Failed' ? 'Failed' : 'Hoàn tất'],
+                    ['Chờ tạo nội dung', 'Đã đưa yêu cầu tạo bộ câu hỏi/thẻ ghi nhớ vào danh sách chờ.', content.generated > 0 ? 'Hoàn tất' : 'Đang chờ'],
                 ]} />
             </AdminCard>
         </PageGrid>
@@ -952,7 +952,7 @@ export function AdminSessionDetailPage() {
                 subtitle={`PIN ${session.pin} • ${session.teacher}`}
                 status={session.status}
                 icon={Gamepad2}
-                actions={<><ActionButton tone="ghost">Làm mới dữ liệu</ActionButton><ActionButton tone="danger">Chờ audit log để kết thúc phiên</ActionButton></>}
+                actions={<><ActionButton tone="ghost">Làm mới dữ liệu</ActionButton><ActionButton tone="danger">Chưa hỗ trợ kết thúc phiên</ActionButton></>}
             />
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
                 <MiniMetric icon={UsersRound} label="Người tham gia" value={session.participants} />
@@ -1024,7 +1024,7 @@ export function AdminBillingPage() {
                 <MiniMetric icon={CircleDollarSign} label="Doanh thu đã thu" value={formatCompactVnd(collectedTotal * 1000000)} />
                 <MiniMetric icon={CreditCard} label="Đơn đã thanh toán" value={formatNumber(paidOrders)} tone="green" />
                 <MiniMetric icon={ReceiptText} label="Đang chờ" value={formatNumber(pendingOrders)} tone="orange" />
-                <MiniMetric icon={AlertTriangle} label="Webhook lỗi" value={formatNumber(webhookErrors)} tone="red" />
+                <MiniMetric icon={AlertTriangle} label="Lỗi thanh toán" value={formatNumber(webhookErrors)} tone="red" />
             </div>
             <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
                 <AdminCard className="p-6">
@@ -1045,13 +1045,13 @@ export function AdminBillingPage() {
                     <AdminSectionHeader title="Thao tác thanh toán" description="Phiên bản hiện tại chỉ hỗ trợ xem và đối soát dữ liệu thanh toán." />
                     <div className="grid gap-3">
                         <ActionButton tone="ghost">Chưa hỗ trợ đồng bộ đơn</ActionButton>
-                        <ActionButton tone="ghost">Chưa hỗ trợ gia hạn Pro</ActionButton>
+                        <ActionButton tone="ghost">Chưa hỗ trợ gia hạn gói</ActionButton>
                         <ActionButton tone="ghost">Xuất doanh thu</ActionButton>
                     </div>
                 </AdminCard>
             </div>
             <AdminCard className="p-5">
-                <AdminSectionHeader title="Đơn hàng" description="Theo dõi trạng thái thanh toán, gói đăng ký, thời điểm thanh toán và ngày hết hạn Premium." />
+                <AdminSectionHeader title="Đơn hàng" description="Theo dõi trạng thái thanh toán, gói đăng ký, thời điểm thanh toán và ngày hết hạn gói trả phí." />
                 <AdminTable
                     columns={[
                         { key: 'orderCode', label: 'Mã đơn' },
@@ -1066,7 +1066,7 @@ export function AdminBillingPage() {
                 />
             </AdminCard>
             <AdminCard className="p-5">
-                <AdminSectionHeader title="Webhook thanh toán" description="Dùng để đối soát callback PayOS đã xử lý hay còn lỗi." />
+                <AdminSectionHeader title="Ghi nhận thanh toán" description="Dùng để đối soát thông báo từ PayOS đã xử lý hay còn lỗi." />
                 <AdminTable
                     columns={[
                         { key: 'provider', label: 'Nhà cung cấp' },
@@ -1166,7 +1166,7 @@ export function AdminSupportPage() {
                     <AdminSectionHeader title="Danh sách kiểm tra hỗ trợ" />
                     <Timeline items={[
                         ['Xác minh người dùng', 'Email, vai trò, gói đăng ký và hạn mức hiện tại.', 'Bắt buộc'],
-                        ['Xem nội dung/phiên liên quan', 'Chỉ xem siêu dữ liệu trước, mở chi tiết khi cần.', 'Bắt buộc'],
+                        ['Xem nội dung/phiên liên quan', 'Ưu tiên xem thông tin tóm tắt trước, mở chi tiết khi cần.', 'Bắt buộc'],
                         ['Ghi ghi chú kiểm tra', 'Mọi thao tác thanh toán, hạn mức, ẩn nội dung đều cần ghi nhật ký.', 'Bắt buộc'],
                     ]} />
                 </AdminCard>
@@ -1200,7 +1200,7 @@ export function AdminSettingsPage() {
     const settings = [
         { id: 'set-1', title: 'Giới hạn sử dụng gói miễn phí', description: 'Quy định tài khoản miễn phí được tải lên bao nhiêu tài liệu, tạo bao nhiêu bộ câu hỏi, thẻ ghi nhớ và phiên học.', icon: Database },
         { id: 'set-2', title: 'Bật/tắt tính năng', description: 'Quản lý tính năng nào đang mở cho giáo viên và học sinh: thẻ ghi nhớ, trò chơi phiêu lưu, phân tích dữ liệu hoặc thử nghiệm mới.', icon: Flag },
-        { id: 'set-3', title: 'Điều kiện gửi cảnh báo', description: 'Thiết lập khi nào hệ thống cần báo cho quản trị viên: lỗi AI tăng cao, đơn đã thanh toán chưa cấp Pro hoặc lỗi kết nối thời gian thực.', icon: ShieldAlert },
+        { id: 'set-3', title: 'Điều kiện gửi cảnh báo', description: 'Thiết lập khi nào hệ thống cần báo cho quản trị viên: lỗi xử lý tăng cao, đơn đã thanh toán chưa kích hoạt gói hoặc lỗi kết nối thời gian thực.', icon: ShieldAlert },
         { id: 'set-4', title: 'Phân quyền quản trị', description: 'Quy định ai được xem dữ liệu, hỗ trợ người dùng, kiểm duyệt nội dung, quản lý thanh toán hoặc thay đổi cấu hình hệ thống.', icon: LockKeyhole },
     ];
 
