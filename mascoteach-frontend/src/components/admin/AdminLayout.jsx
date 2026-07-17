@@ -311,7 +311,7 @@ export function MiniMetric({ label, value, icon: Icon, tone = 'blue' }) {
     );
 }
 
-export function ActionButton({ children, tone = 'primary' }) {
+export function ActionButton({ children, tone = 'primary', className = '', ...props }) {
     const styles = tone === 'danger'
         ? 'bg-[#FFF1F3] text-[#C2293A] hover:bg-[#FFE5E9]'
         : tone === 'ghost'
@@ -319,7 +319,10 @@ export function ActionButton({ children, tone = 'primary' }) {
             : 'bg-[#173154] text-white hover:bg-[#1B3A6B]';
 
     return (
-        <button className={`inline-flex h-11 items-center justify-center rounded-full px-5 text-sm font-black shadow-[0_10px_28px_rgba(16,39,68,0.10)] transition hover:-translate-y-0.5 active:translate-y-0 ${styles}`}>
+        <button
+            className={`inline-flex h-11 items-center justify-center rounded-full px-5 text-sm font-black shadow-[0_10px_28px_rgba(16,39,68,0.10)] transition hover:-translate-y-0.5 active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 ${styles} ${className}`}
+            {...props}
+        >
             {children}
         </button>
     );

@@ -68,6 +68,8 @@ import {
 import {
     getAdminBillingOrders,
     getAdminBillingWebhookEvents,
+    getAdminAuditLogById,
+    getAdminAuditLogs,
     getAdminDocumentById,
     getAdminDocuments,
     getAdminOverview,
@@ -79,6 +81,11 @@ import {
     getAdminUserById as fetchAdminUserById,
     getAdminUsers,
     hasAdminApiToken,
+    hideAdminDocument,
+    restoreAdminDocument,
+    updateAdminUserRole,
+    updateAdminUserStatus,
+    updateAdminUserSubscription,
 } from '@/services/adminService';
 
 function useAdminBase() {
@@ -112,6 +119,116 @@ function FilterBar({ placeholder = 'Tìm kiếm', filters = [] }) {
             </div>
         </AdminCard>
     );
+}
+
+const pageSizeOptions = [10, 20, 30, 50];
+
+function getTotal(response, fallback = 0) {
+    return Number(getField(response, 'total', 'Total', fallback) || 0);
+}
+
+function AdminQueryToolbar({ draft, onDraftChange, onSubmit, searchPlaceholder = 'Tìm kiếm...', fields = [], embedded = false }) {
+    const content = (
+        <form className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-end" onSubmit={onSubmit}>
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                <label className="grid gap-2 md:col-span-2 xl:col-span-1">
+                    <span className="text-xs font-black uppercase tracking-[0.1em] text-[#60758D]">Tìm kiếm</span>
+                    <input
+                        className="h-12 rounded-[16px] border border-[#D8E9F5] bg-white px-4 text-sm font-bold text-[#102744] outline-none focus:border-[#5BAED4] focus:ring-4 focus:ring-[#A8D8EA]/30"
+                        value={draft.search || ''}
+                        onChange={(event) => onDraftChange('search', event.target.value)}
+                        placeholder={searchPlaceholder}
+                    />
+                </label>
+                {fields.map((field) => (
+                    <label key={field.name} className="grid gap-2">
+                        <span className="text-xs font-black uppercase tracking-[0.1em] text-[#60758D]">{field.label}</span>
+                        {field.type === 'select' ? (
+                            <select
+                                className="h-12 rounded-[16px] border border-[#D8E9F5] bg-white px-4 text-sm font-bold text-[#102744] outline-none focus:border-[#5BAED4] focus:ring-4 focus:ring-[#A8D8EA]/30"
+                                value={draft[field.name] || ''}
+                                onChange={(event) => onDraftChange(field.name, event.target.value)}
+                            >
+                                {field.options.map((option) => (
+                                    <option key={option.value} value={option.value}>{option.label}</option>
+                                ))}
+                            </select>
+                        ) : (
+                            <input
+                                className="h-12 rounded-[16px] border border-[#D8E9F5] bg-white px-4 text-sm font-bold text-[#102744] outline-none focus:border-[#5BAED4] focus:ring-4 focus:ring-[#A8D8EA]/30"
+                                type={field.type || 'text'}
+                                value={draft[field.name] || ''}
+                                onChange={(event) => onDraftChange(field.name, event.target.value)}
+                                placeholder={field.placeholder}
+                            />
+                        )}
+                    </label>
+                ))}
+            </div>
+            <ActionButton type="submit">Lọc</ActionButton>
+        </form>
+    );
+
+    if (embedded) {
+        return <div className="rounded-[22px] border border-[#D8E9F5] bg-[#F8FCFF] p-4">{content}</div>;
+    }
+
+    return (
+        <AdminCard className="p-4">
+            {content}
+        </AdminCard>
+    );
+}
+
+function AdminPagination({ page = 1, pageSize = 20, total = 0, onPageChange, onPageSizeChange }) {
+    const totalPages = Math.max(1, Math.ceil(Number(total || 0) / Number(pageSize || 20)));
+    const currentPage = Math.min(Math.max(1, Number(page || 1)), totalPages);
+
+    return (
+        <div className="mt-4 flex flex-col gap-3 rounded-[20px] border border-[#D8E9F5] bg-[#F8FCFF] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm font-bold text-[#60758D]">
+                Trang <span className="font-black text-[#102744]">{currentPage}</span> / {totalPages} · {formatNumber(total)} dòng
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+                <select
+                    className="h-10 rounded-full border border-[#D8E9F5] bg-white px-3 text-sm font-black text-[#102744] outline-none"
+                    value={pageSize}
+                    onChange={(event) => onPageSizeChange(Number(event.target.value))}
+                >
+                    {pageSizeOptions.map((size) => (
+                        <option key={size} value={size}>{size}/trang</option>
+                    ))}
+                </select>
+                <ActionButton type="button" tone="ghost" disabled={currentPage <= 1} onClick={() => onPageChange(currentPage - 1)}>Trước</ActionButton>
+                <ActionButton type="button" tone="ghost" disabled={currentPage >= totalPages} onClick={() => onPageChange(currentPage + 1)}>Sau</ActionButton>
+            </div>
+        </div>
+    );
+}
+
+function AdminToast({ toast, onClose }) {
+    if (!toast?.message) return null;
+
+    const tone = toast.type === 'error'
+        ? 'border-[#FFD3D8] bg-[#FFF1F3] text-[#C2293A]'
+        : 'border-[#BFECD8] bg-[#EEFFF7] text-[#137A4B]';
+
+    return (
+        <div className={`fixed bottom-5 right-5 z-50 max-w-md rounded-[20px] border px-4 py-3 text-sm font-bold shadow-[0_18px_48px_rgba(16,39,68,0.16)] ${tone}`}>
+            <div className="flex items-start gap-3">
+                <span className="min-w-0 flex-1">{toast.message}</span>
+                <button type="button" className="font-black" onClick={onClose}>x</button>
+            </div>
+        </div>
+    );
+}
+
+function formatAdminActionError(error, fallback = 'Không thể thực hiện thao tác.') {
+    const message = error?.message || fallback;
+    if (error?.status === 400) return `Dữ liệu chưa hợp lệ: ${message}`;
+    if (error?.status === 404) return `Không tìm thấy dữ liệu: ${message}`;
+    if (error?.status === 409) return `Không thể thực hiện: ${message}`;
+    return message;
 }
 
 function getField(source, camelKey, pascalKey = camelKey.charAt(0).toUpperCase() + camelKey.slice(1), fallback = undefined) {
@@ -448,6 +565,27 @@ function adaptWebhookEvent(row) {
     };
 }
 
+function adaptAuditLog(row) {
+    if (row?.time && row?.actor) return row;
+
+    const targetType = getField(row, 'targetType', 'TargetType', '');
+    const targetId = getField(row, 'targetId', 'TargetId', '');
+
+    return {
+        id: String(getField(row, 'id', 'Id', '')),
+        time: formatDateTime(getField(row, 'createdAt', 'CreatedAt')),
+        actor: getField(row, 'actorEmail', 'ActorEmail', 'Khong ro'),
+        action: getField(row, 'action', 'Action', ''),
+        target: `${targetType}${targetId ? ` #${targetId}` : ''}`,
+        risk: getField(row, 'riskLevel', 'RiskLevel', ''),
+        reason: getField(row, 'reason', 'Reason', ''),
+        ipAddress: getField(row, 'ipAddress', 'IpAddress', ''),
+        beforeJson: getField(row, 'beforeJson', 'BeforeJson', ''),
+        afterJson: getField(row, 'afterJson', 'AfterJson', ''),
+        userAgent: getField(row, 'userAgent', 'UserAgent', ''),
+    };
+}
+
 function splitContentRouteId(contentId) {
     if (String(contentId).startsWith('document-')) {
         return { type: 'document', id: String(contentId).replace('document-', '') };
@@ -456,6 +594,129 @@ function splitContentRouteId(contentId) {
         return { type: 'quiz', id: String(contentId).replace('quiz-', '').replace('flashcard-', '') };
     }
     return { type: 'mock', id: contentId };
+}
+
+function AdminCommandModal({
+    title,
+    description,
+    fields = [],
+    values,
+    onChange,
+    onClose,
+    onSubmit,
+    pending,
+    error,
+    success,
+    submitLabel = 'Xac nhan',
+    tone = 'primary',
+}) {
+    return (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-[#071D35]/45 px-4 py-6 backdrop-blur-sm">
+            <form
+                className="w-full max-w-xl rounded-[28px] border border-[#D8E9F5] bg-white p-6 shadow-[0_30px_80px_rgba(7,29,53,0.24)]"
+                onSubmit={onSubmit}
+            >
+                <div className="flex items-start justify-between gap-4">
+                    <div>
+                        <h2 className="text-2xl font-black text-[#071D35]">{title}</h2>
+                        {description && <p className="mt-2 text-sm font-semibold leading-6 text-[#6C8098]">{description}</p>}
+                    </div>
+                    <button
+                        type="button"
+                        className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#F3FAFF] text-lg font-black text-[#102744]"
+                        onClick={onClose}
+                        disabled={pending}
+                    >
+                        x
+                    </button>
+                </div>
+
+                <div className="mt-5 grid gap-4">
+                    {fields.map((field) => (
+                        <label key={field.name} className="grid gap-2">
+                            <span className="text-xs font-black uppercase tracking-[0.1em] text-[#60758D]">{field.label}</span>
+                            {field.type === 'select' ? (
+                                <select
+                                    className="h-12 rounded-[16px] border border-[#D8E9F5] bg-white px-4 text-sm font-bold text-[#102744] outline-none focus:border-[#5BAED4] focus:ring-4 focus:ring-[#A8D8EA]/30"
+                                    value={values[field.name] || ''}
+                                    onChange={(event) => onChange(field.name, event.target.value)}
+                                    required={field.required}
+                                >
+                                    {field.options.map((option) => (
+                                        <option key={option.value} value={option.value}>{option.label}</option>
+                                    ))}
+                                </select>
+                            ) : field.type === 'textarea' ? (
+                                <textarea
+                                    className="min-h-[116px] rounded-[16px] border border-[#D8E9F5] bg-white px-4 py-3 text-sm font-bold text-[#102744] outline-none focus:border-[#5BAED4] focus:ring-4 focus:ring-[#A8D8EA]/30"
+                                    value={values[field.name] || ''}
+                                    onChange={(event) => onChange(field.name, event.target.value)}
+                                    maxLength={field.maxLength}
+                                    required={field.required}
+                                />
+                            ) : (
+                                <input
+                                    className="h-12 rounded-[16px] border border-[#D8E9F5] bg-white px-4 text-sm font-bold text-[#102744] outline-none focus:border-[#5BAED4] focus:ring-4 focus:ring-[#A8D8EA]/30"
+                                    type={field.type || 'text'}
+                                    value={values[field.name] || ''}
+                                    onChange={(event) => onChange(field.name, event.target.value)}
+                                    required={field.required}
+                                />
+                            )}
+                        </label>
+                    ))}
+                </div>
+
+                {error && (
+                    <div className="mt-4 rounded-[18px] border border-[#FFD3D8] bg-[#FFF1F3] px-4 py-3 text-sm font-bold text-[#C2293A]">
+                        {error}
+                    </div>
+                )}
+                {success && (
+                    <div className="mt-4 rounded-[18px] border border-[#BFECD8] bg-[#EEFFF7] px-4 py-3 text-sm font-bold text-[#137A4B]">
+                        {success}
+                    </div>
+                )}
+
+                <div className="mt-6 flex flex-wrap justify-end gap-3">
+                    <ActionButton type="button" tone="ghost" onClick={onClose} disabled={pending}>Huy</ActionButton>
+                    <ActionButton type="submit" tone={tone} disabled={pending}>{pending ? 'Dang luu...' : submitLabel}</ActionButton>
+                </div>
+            </form>
+        </div>
+    );
+}
+
+function AuditLogDetailModal({ log, onClose }) {
+    if (!log) return null;
+
+    return (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-[#071D35]/45 px-4 py-6 backdrop-blur-sm">
+            <div className="max-h-[88vh] w-full max-w-3xl overflow-y-auto rounded-[28px] border border-[#D8E9F5] bg-white p-6 shadow-[0_30px_80px_rgba(7,29,53,0.24)]">
+                <div className="flex items-start justify-between gap-4">
+                    <div>
+                        <h2 className="text-2xl font-black text-[#071D35]">Chi tiet audit log</h2>
+                        <p className="mt-2 text-sm font-semibold text-[#6C8098]">{log.time} - {log.actor}</p>
+                    </div>
+                    <button type="button" className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#F3FAFF] text-lg font-black text-[#102744]" onClick={onClose}>x</button>
+                </div>
+                <div className="mt-5 grid gap-4 md:grid-cols-2">
+                    <InfoBlock label="Action" value={log.action} />
+                    <InfoBlock label="Target" value={log.target} />
+                    <InfoBlock label="Risk" value={log.risk} />
+                    <InfoBlock label="IP" value={log.ipAddress || 'Khong co'} />
+                </div>
+                <div className="mt-5 rounded-[20px] bg-[#F7FBFE] p-4">
+                    <p className="text-xs font-black uppercase tracking-[0.1em] text-[#7C91A8]">Reason</p>
+                    <p className="mt-2 text-sm font-bold leading-6 text-[#102744]">{log.reason || 'Khong co'}</p>
+                </div>
+                <div className="mt-5 grid gap-4 md:grid-cols-2">
+                    <pre className="max-h-80 overflow-auto rounded-[18px] bg-[#102744] p-4 text-xs font-semibold leading-5 text-white">{log.beforeJson || 'No before data'}</pre>
+                    <pre className="max-h-80 overflow-auto rounded-[18px] bg-[#102744] p-4 text-xs font-semibold leading-5 text-white">{log.afterJson || 'No after data'}</pre>
+                </div>
+            </div>
+        </div>
+    );
 }
 
 function StatCard({ stat }) {
@@ -584,16 +845,18 @@ export function AdminOverviewPage() {
 
 export function AdminUsersPage() {
     const base = useAdminBase();
+    const [query, setQuery] = useState({ page: 1, pageSize: 20, search: '', role: '', subscription: '' });
+    const [draft, setDraft] = useState({ search: '', role: '', subscription: '' });
     const usersState = useAdminResource(
-        (options) => getAdminUsers({ page: 1, pageSize: 50 }, options),
+        (options) => getAdminUsers(query, options),
         { items: adminUsers },
-        []
+        [JSON.stringify(query)]
     );
     const users = useMemo(() => getItems(usersState.data).map((user) => {
         if (user.name) return user;
         return adaptUser(user);
     }), [usersState.data]);
-    const totalUsers = getField(usersState.data, 'total', 'Total', users.length);
+    const totalUsers = getTotal(usersState.data, users.length);
     const teacherCount = users.filter((user) => user.role === 'Teacher').length;
     const premiumCount = users.filter((user) => ['Premium', 'Active'].includes(user.plan) || user.status === 'Premium').length;
     const columns = [
@@ -606,6 +869,11 @@ export function AdminUsersPage() {
         { key: 'lastActive', label: 'Hoạt động gần nhất' },
     ];
 
+    function applyUsersFilters(event) {
+        event.preventDefault();
+        setQuery((current) => ({ ...current, ...draft, page: 1 }));
+    }
+
     return (
         <PageGrid>
             <DataStateNotice state={usersState} />
@@ -615,10 +883,47 @@ export function AdminUsersPage() {
                 <MiniMetric icon={ShieldCheck} label="Gói trả phí" value={formatNumber(premiumCount)} tone="green" />
                 <MiniMetric icon={AlertTriangle} label="Đã tải trang" value={formatNumber(getField(usersState.data, 'page', 'Page', 1))} tone="orange" />
             </div>
-            <FilterBar placeholder="Tìm theo tên, email, vai trò..." filters={['Vai trò', 'Gói trả phí', 'Trạng thái', 'Ngày tạo']} />
+            <AdminQueryToolbar
+                draft={draft}
+                onDraftChange={(name, value) => setDraft((current) => ({ ...current, [name]: value }))}
+                onSubmit={applyUsersFilters}
+                searchPlaceholder="Tìm theo tên hoặc email..."
+                fields={[
+                    {
+                        name: 'role',
+                        label: 'Vai trò',
+                        type: 'select',
+                        options: [
+                            { value: '', label: 'Tất cả' },
+                            { value: 'Teacher', label: formatAdminValue('Teacher') },
+                            { value: 'Student', label: formatAdminValue('Student') },
+                            { value: 'Parent', label: formatAdminValue('Parent') },
+                            { value: 'Admin', label: formatAdminValue('Admin') },
+                        ],
+                    },
+                    {
+                        name: 'subscription',
+                        label: 'Gói',
+                        type: 'select',
+                        options: [
+                            { value: '', label: 'Tất cả' },
+                            { value: 'Freemium', label: formatAdminValue('Freemium') },
+                            { value: 'Premium', label: formatAdminValue('Premium') },
+                            { value: 'Expired', label: formatAdminValue('Expired') },
+                        ],
+                    },
+                ]}
+            />
             <AdminCard className="p-5">
                 <AdminSectionHeader title="Danh sách người dùng" description="Theo dõi tài khoản, vai trò, gói đăng ký và hoạt động gần đây." />
                 <AdminTable columns={columns} rows={users} rowHref={(row) => `${base}/users/${row.id}`} />
+                <AdminPagination
+                    page={query.page}
+                    pageSize={query.pageSize}
+                    total={totalUsers}
+                    onPageChange={(page) => setQuery((current) => ({ ...current, page }))}
+                    onPageSizeChange={(pageSize) => setQuery((current) => ({ ...current, page: 1, pageSize }))}
+                />
             </AdminCard>
         </PageGrid>
     );
@@ -642,10 +947,15 @@ export function AdminUserDetailPage() {
     const base = useAdminBase();
     const { userId } = useParams();
     const fallbackUser = getUserById(userId);
+    const [refreshKey, setRefreshKey] = useState(0);
+    const [commandType, setCommandType] = useState('');
+    const [commandValues, setCommandValues] = useState({});
+    const [commandState, setCommandState] = useState({ pending: false, error: '', success: '' });
+    const [toast, setToast] = useState(null);
     const userState = useAdminResource(
         (options) => fetchAdminUserById(userId, options),
         fallbackUser,
-        [userId]
+        [userId, refreshKey]
     );
     const user = useMemo(() => {
         if (userState.data?.name) return userState.data;
@@ -673,6 +983,121 @@ export function AdminUserDetailPage() {
     const userSessions = useMemo(() => getItems(sessionsState.data).map((session) => (
         session.pin ? session : adaptSession(session)
     )), [sessionsState.data]);
+    const userCommandConfig = useMemo(() => {
+        const currentStatus = user.status === 'Deleted' ? 'Deleted' : 'Active';
+        const configs = {
+            role: {
+                title: 'Doi vai tro nguoi dung',
+                description: 'Backend se ghi audit log va chan tu doi vai tro hoac ha quyen admin cuoi cung.',
+                submitLabel: 'Luu vai tro',
+                fields: [
+                    {
+                        name: 'role',
+                        label: 'Vai tro',
+                        type: 'select',
+                        required: true,
+                        options: ['Teacher', 'Student', 'Parent', 'Admin'].map((role) => ({ value: role, label: formatAdminValue(role) })),
+                    },
+                    { name: 'reason', label: 'Ly do', type: 'textarea', required: true, maxLength: 500 },
+                ],
+            },
+            subscription: {
+                title: 'Cap nhat goi dang ky',
+                description: 'Goi Premium can ngay het han trong tuong lai.',
+                submitLabel: 'Luu goi',
+                fields: [
+                    {
+                        name: 'subscriptionTier',
+                        label: 'Goi',
+                        type: 'select',
+                        required: true,
+                        options: ['Freemium', 'Premium'].map((tier) => ({ value: tier, label: formatAdminValue(tier) })),
+                    },
+                    { name: 'premiumExpiresAt', label: 'Ngay het han Premium', type: 'datetime-local' },
+                    { name: 'reason', label: 'Ly do', type: 'textarea', required: true, maxLength: 500 },
+                ],
+            },
+            status: {
+                title: currentStatus === 'Deleted' ? 'Khoi phuc tai khoan' : 'Khoa tai khoan',
+                description: 'Backend se chan tu khoa tai khoan admin hien tai va admin cuoi cung.',
+                submitLabel: currentStatus === 'Deleted' ? 'Khoi phuc' : 'Khoa tai khoan',
+                tone: currentStatus === 'Deleted' ? 'primary' : 'danger',
+                fields: [
+                    {
+                        name: 'status',
+                        label: 'Trang thai moi',
+                        type: 'select',
+                        required: true,
+                        options: ['Active', 'Deleted'].map((status) => ({ value: status, label: formatAdminValue(status) })),
+                    },
+                    { name: 'reason', label: 'Ly do', type: 'textarea', required: true, maxLength: 500 },
+                ],
+            },
+        };
+        return configs[commandType];
+    }, [commandType, user.status]);
+
+    function openUserCommand(type) {
+        const premiumDefault = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 16);
+        const currentStatus = user.status === 'Deleted' ? 'Deleted' : 'Active';
+        const initialValues = {
+            role: { role: user.role || 'Teacher', reason: '' },
+            subscription: { subscriptionTier: user.plan === 'Premium' ? 'Premium' : 'Freemium', premiumExpiresAt: premiumDefault, reason: '' },
+            status: { status: currentStatus === 'Deleted' ? 'Active' : 'Deleted', reason: '' },
+        };
+        setCommandType(type);
+        setCommandValues(initialValues[type] || {});
+        setCommandState({ pending: false, error: '', success: '' });
+    }
+
+    function closeUserCommand() {
+        if (commandState.pending) return;
+        setCommandType('');
+        setCommandValues({});
+        setCommandState({ pending: false, error: '', success: '' });
+    }
+
+    async function submitUserCommand(event) {
+        event.preventDefault();
+        if (!commandType) return;
+
+        setCommandState({ pending: true, error: '', success: '' });
+        try {
+            if (commandType === 'role') {
+                await updateAdminUserRole(userId, {
+                    role: commandValues.role,
+                    reason: commandValues.reason,
+                });
+            } else if (commandType === 'subscription') {
+                if (commandValues.subscriptionTier === 'Premium' && !commandValues.premiumExpiresAt) {
+                    throw new Error('Vui long chon ngay het han Premium.');
+                }
+                await updateAdminUserSubscription(userId, {
+                    subscriptionTier: commandValues.subscriptionTier,
+                    premiumExpiresAt: commandValues.subscriptionTier === 'Premium'
+                        ? new Date(commandValues.premiumExpiresAt).toISOString()
+                        : null,
+                    reason: commandValues.reason,
+                });
+            } else if (commandType === 'status') {
+                await updateAdminUserStatus(userId, {
+                    status: commandValues.status,
+                    reason: commandValues.reason,
+                });
+            }
+            setCommandState({ pending: false, error: '', success: 'Đã cập nhật thành công.' });
+            setToast({ type: 'success', message: 'Đã cập nhật người dùng và tải lại dữ liệu mới nhất.' });
+            setRefreshKey((value) => value + 1);
+        } catch (error) {
+            const message = formatAdminActionError(error, 'Không thể cập nhật người dùng.');
+            setCommandState({
+                pending: false,
+                error: message,
+                success: '',
+            });
+            setToast({ type: 'error', message });
+        }
+    }
 
     return (
         <PageGrid>
@@ -683,7 +1108,7 @@ export function AdminUserDetailPage() {
                 subtitle={user.email}
                 status={user.status}
                 icon={UsersRound}
-                actions={<><ActionButton tone="ghost">Chưa hỗ trợ chỉnh gói</ActionButton><ActionButton tone="ghost">Gửi email</ActionButton></>}
+                actions={<><ActionButton tone="ghost" onClick={() => openUserCommand('role')}>Đổi vai trò</ActionButton><ActionButton tone="ghost" onClick={() => openUserCommand('subscription')}>Cập nhật gói</ActionButton><ActionButton tone={user.status === 'Deleted' ? 'primary' : 'danger'} onClick={() => openUserCommand('status')}>{user.status === 'Deleted' ? 'Khôi phục' : 'Khóa tài khoản'}</ActionButton></>}
             />
 
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
@@ -723,9 +1148,9 @@ export function AdminUserDetailPage() {
                         ['Streak hiện tại', `${user.currentStreak || 0} ngày`],
                     ]} />
                     <div className="mt-6 grid gap-3">
-                        <ActionButton tone="ghost">Chưa hỗ trợ chỉnh hạn mức</ActionButton>
-                        <ActionButton tone="ghost">Chưa hỗ trợ khóa tài khoản</ActionButton>
-                        <ActionButton tone="danger">Chưa hỗ trợ xóa tài khoản</ActionButton>
+                        <ActionButton tone="ghost" onClick={() => openUserCommand('role')}>Đổi vai trò</ActionButton>
+                        <ActionButton tone="ghost" onClick={() => openUserCommand('subscription')}>Cập nhật gói Premium</ActionButton>
+                        <ActionButton tone={user.status === 'Deleted' ? 'primary' : 'danger'} onClick={() => openUserCommand('status')}>{user.status === 'Deleted' ? 'Khôi phục tài khoản' : 'Khóa tài khoản'}</ActionButton>
                     </div>
                 </AdminCard>
             </div>
@@ -745,21 +1170,55 @@ export function AdminUserDetailPage() {
                     rowHref={(row) => `${base}/sessions/${row.id}`}
                 />
             </AdminCard>
+            {userCommandConfig && (
+                <AdminCommandModal
+                    title={userCommandConfig.title}
+                    description={userCommandConfig.description}
+                    fields={userCommandConfig.fields}
+                    values={commandValues}
+                    onChange={(name, value) => setCommandValues((current) => ({ ...current, [name]: value }))}
+                    onClose={closeUserCommand}
+                    onSubmit={submitUserCommand}
+                    pending={commandState.pending}
+                    error={commandState.error}
+                    success={commandState.success}
+                    submitLabel={userCommandConfig.submitLabel}
+                    tone={userCommandConfig.tone || 'primary'}
+                />
+            )}
+            <AdminToast toast={toast} onClose={() => setToast(null)} />
         </PageGrid>
     );
 }
 
 export function AdminContentPage() {
     const base = useAdminBase();
+    const [query, setQuery] = useState({ page: 1, pageSize: 20, search: '', deletion: 'Active', contentType: '' });
+    const [draft, setDraft] = useState({ search: '', deletion: 'Active', contentType: '' });
+    const shouldFetchDocuments = !query.contentType || query.contentType === 'Document';
+    const shouldFetchQuizzes = !query.contentType || query.contentType === 'Quiz' || query.contentType === 'Flashcard';
+    const documentParams = {
+        page: query.page,
+        pageSize: query.pageSize,
+        search: query.search,
+        deletion: query.deletion,
+    };
+    const quizParams = {
+        page: query.page,
+        pageSize: query.pageSize,
+        search: query.search,
+        deletion: query.deletion,
+        activityType: query.contentType === 'Quiz' || query.contentType === 'Flashcard' ? query.contentType : '',
+    };
     const documentsState = useAdminResource(
-        (options) => getAdminDocuments({ page: 1, pageSize: 30 }, options),
+        (options) => shouldFetchDocuments ? getAdminDocuments(documentParams, options) : Promise.resolve({ items: [], total: 0, page: query.page, pageSize: query.pageSize }),
         { items: adminDocuments.filter((item) => item.type === 'Document') },
-        []
+        [JSON.stringify(query)]
     );
     const quizzesState = useAdminResource(
-        (options) => getAdminQuizzes({ page: 1, pageSize: 30 }, options),
+        (options) => shouldFetchQuizzes ? getAdminQuizzes(quizParams, options) : Promise.resolve({ items: [], total: 0, page: query.page, pageSize: query.pageSize }),
         { items: adminDocuments.filter((item) => item.type !== 'Document') },
-        []
+        [JSON.stringify(query)]
     );
     const documents = useMemo(() => getItems(documentsState.data).map((item) => (
         item.title ? item : adaptDocument(item)
@@ -770,17 +1229,52 @@ export function AdminContentPage() {
     const contentRows = useMemo(() => [...documents, ...quizzes], [documents, quizzes]);
     const flashcardCount = quizzes.filter((item) => item.type === 'Flashcards').length;
     const quizCount = quizzes.length - flashcardCount;
+    const totalContent = getTotal(documentsState.data, documents.length) + getTotal(quizzesState.data, quizzes.length);
+
+    function applyContentFilters(event) {
+        event.preventDefault();
+        setQuery((current) => ({ ...current, ...draft, page: 1 }));
+    }
 
     return (
         <PageGrid>
             <DataStateNotice state={documentsState} />
+            <DataStateNotice state={quizzesState} fallbackLabel="Đang hiển thị dữ liệu nội dung mẫu vì chưa có phiên quản trị." />
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                 <MiniMetric icon={FileSearch} label="Tài liệu trong trang" value={formatNumber(documents.length)} />
                 <MiniMetric icon={BookOpenCheck} label="Bộ câu hỏi trong trang" value={formatNumber(quizCount)} tone="navy" />
                 <MiniMetric icon={Sparkles} label="Thẻ ghi nhớ trong trang" value={formatNumber(flashcardCount)} tone="green" />
                 <MiniMetric icon={AlertTriangle} label="Đã xóa/ẩn" value={formatNumber(contentRows.filter((item) => item.status === 'Deleted').length)} tone="orange" />
             </div>
-            <FilterBar placeholder="Tìm tài liệu, bộ câu hỏi, thẻ ghi nhớ, giáo viên..." filters={['Loại nội dung', 'Trạng thái', 'Chủ sở hữu', 'Ngày tạo']} />
+            <AdminQueryToolbar
+                draft={draft}
+                onDraftChange={(name, value) => setDraft((current) => ({ ...current, [name]: value }))}
+                onSubmit={applyContentFilters}
+                searchPlaceholder="Tìm tài liệu, quiz, flashcard, giáo viên..."
+                fields={[
+                    {
+                        name: 'contentType',
+                        label: 'Loại nội dung',
+                        type: 'select',
+                        options: [
+                            { value: '', label: 'Tất cả' },
+                            { value: 'Document', label: formatAdminValue('Document') },
+                            { value: 'Quiz', label: formatAdminValue('Quiz') },
+                            { value: 'Flashcard', label: formatAdminValue('Flashcards') },
+                        ],
+                    },
+                    {
+                        name: 'deletion',
+                        label: 'Trạng thái',
+                        type: 'select',
+                        options: [
+                            { value: 'Active', label: 'Đang hoạt động' },
+                            { value: 'Deleted', label: 'Đã xóa/ẩn' },
+                            { value: 'All', label: 'Tất cả' },
+                        ],
+                    },
+                ]}
+            />
             <AdminCard className="p-5">
                 <AdminSectionHeader title="Theo dõi nội dung" description="Trang này phục vụ vận hành và kiểm duyệt, không phải nơi chỉnh nội dung học tập của giáo viên." />
                 <AdminTable
@@ -796,6 +1290,13 @@ export function AdminContentPage() {
                     rows={contentRows}
                     rowHref={(row) => `${base}/content/${row.id}`}
                 />
+                <AdminPagination
+                    page={query.page}
+                    pageSize={query.pageSize}
+                    total={totalContent}
+                    onPageChange={(page) => setQuery((current) => ({ ...current, page }))}
+                    onPageSizeChange={(pageSize) => setQuery((current) => ({ ...current, page: 1, pageSize }))}
+                />
             </AdminCard>
         </PageGrid>
     );
@@ -806,6 +1307,11 @@ export function AdminContentDetailPage() {
     const { contentId } = useParams();
     const routeTarget = splitContentRouteId(contentId);
     const fallbackContent = getContentById(contentId);
+    const [refreshKey, setRefreshKey] = useState(0);
+    const [moderationOpen, setModerationOpen] = useState(false);
+    const [moderationValues, setModerationValues] = useState({ reason: '' });
+    const [moderationState, setModerationState] = useState({ pending: false, error: '', success: '' });
+    const [toast, setToast] = useState(null);
     const contentState = useAdminResource(
         (options) => {
             if (routeTarget.type === 'document') return getAdminDocumentById(routeTarget.id, options);
@@ -813,7 +1319,7 @@ export function AdminContentDetailPage() {
             return Promise.resolve(fallbackContent);
         },
         fallbackContent,
-        [contentId]
+        [contentId, refreshKey]
     );
     const content = useMemo(() => {
         if (contentState.data?.title) return contentState.data;
@@ -821,6 +1327,73 @@ export function AdminContentDetailPage() {
         if (routeTarget.type === 'quiz') return adaptQuiz(contentState.data);
         return fallbackContent;
     }, [contentState.data, fallbackContent, routeTarget.type]);
+    const isDocument = routeTarget.type === 'document';
+    const shouldRestore = content.status === 'Deleted';
+    const moderationConfig = isDocument ? {
+        title: shouldRestore ? 'Khôi phục tài liệu' : 'Ẩn tài liệu',
+        description: shouldRestore
+            ? 'Tài liệu sẽ được mở lại cho các luồng đọc dữ liệu hợp lệ.'
+            : 'Tài liệu sẽ bị đánh dấu ẩn/xóa mềm và thao tác này được ghi audit log.',
+        submitLabel: shouldRestore ? 'Khôi phục tài liệu' : 'Ẩn tài liệu',
+        tone: shouldRestore ? 'primary' : 'danger',
+    } : null;
+    const contentHeroActions = (
+        <>
+            <ActionButton tone="ghost" disabled><RotateCw className="mr-2 h-4 w-4" />Chưa hỗ trợ xử lý lại</ActionButton>
+            {isDocument && (
+                <ActionButton tone={shouldRestore ? 'primary' : 'danger'} onClick={openModerationModal}>
+                    {shouldRestore ? 'Khôi phục tài liệu' : 'Ẩn tài liệu'}
+                </ActionButton>
+            )}
+        </>
+    );
+    const actionTimelineItems = [
+        ['Xem thông tin nội dung', 'Có thể xem chủ sở hữu, loại nội dung, ngày tạo và số lượng nội dung đã tạo ra.', 'Hoàn tất'],
+        ['Lịch sử xử lý chi tiết', 'Sẽ hiển thị khi hệ thống có lịch sử xử lý nội dung đầy đủ.', 'Đang chờ'],
+    ];
+    if (isDocument) {
+        actionTimelineItems.splice(1, 0, ['Ẩn/khôi phục tài liệu', 'Đã hỗ trợ thao tác trực tiếp cho tài liệu.', 'Hoàn tất']);
+    }
+
+    function openModerationModal() {
+        setModerationOpen(true);
+        setModerationValues({ reason: '' });
+        setModerationState({ pending: false, error: '', success: '' });
+    }
+
+    function closeModerationModal() {
+        if (moderationState.pending) return;
+        setModerationOpen(false);
+        setModerationValues({ reason: '' });
+        setModerationState({ pending: false, error: '', success: '' });
+    }
+
+    async function submitModeration(event) {
+        event.preventDefault();
+        if (!isDocument) return;
+
+        setModerationState({ pending: true, error: '', success: '' });
+        try {
+            const payload = { reason: moderationValues.reason };
+            if (shouldRestore) {
+                await restoreAdminDocument(routeTarget.id, payload);
+            } else {
+                await hideAdminDocument(routeTarget.id, payload);
+            }
+            setModerationState({ pending: false, error: '', success: 'Đã cập nhật nội dung thành công.' });
+            setToast({ type: 'success', message: 'Đã cập nhật tài liệu và tải lại trạng thái mới nhất.' });
+            setRefreshKey((value) => value + 1);
+        } catch (error) {
+            const message = formatAdminActionError(error, 'Không thể cập nhật nội dung.');
+            setModerationState({
+                pending: false,
+                error: message,
+                success: '',
+            });
+            setToast({ type: 'error', message });
+        }
+    }
+
     return (
         <PageGrid>
             <DataStateNotice state={contentState} />
@@ -830,7 +1403,7 @@ export function AdminContentDetailPage() {
                 subtitle={`${formatAdminValue(content.type)} của ${content.owner}`}
                 status={content.status}
                 icon={FileSearch}
-                actions={<><ActionButton tone="ghost"><RotateCw className="mr-2 h-4 w-4" />Chưa hỗ trợ xử lý lại</ActionButton><ActionButton tone="danger">Chưa hỗ trợ ẩn nội dung</ActionButton></>}
+                actions={contentHeroActions}
             />
             <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
                 <AdminCard className="p-6">
@@ -851,38 +1424,59 @@ export function AdminContentDetailPage() {
                     )}
                 </AdminCard>
                 <AdminCard className="p-6">
-                    <AdminSectionHeader title="Thao tác khả dụng" description="Phiên bản hiện tại chỉ cho phép xem thông tin an toàn của nội dung." />
-                    <Timeline items={[
-                        ['Xem thông tin nội dung', 'Có thể xem chủ sở hữu, loại nội dung, ngày tạo và số lượng nội dung đã tạo ra.', 'Hoàn tất'],
-                        ['Xử lý lại hoặc ẩn nội dung', 'Chưa hỗ trợ thao tác trực tiếp từ trang quản trị.', 'Đang chờ'],
-                        ['Lịch sử xử lý chi tiết', 'Sẽ hiển thị khi hệ thống có lịch sử xử lý nội dung đầy đủ.', 'Đang chờ'],
-                    ]} />
+                    <AdminSectionHeader title="Thao tác khả dụng"/>
+                    <Timeline items={actionTimelineItems} />
                 </AdminCard>
             </div>
             <AdminCard className="p-5">
-                <AdminSectionHeader title="Lịch sử xử lý" description="Dòng thời gian này giúp đội hỗ trợ biết nội dung đang ở bước nào." />
+                <AdminSectionHeader title="Lịch sử xử lý" description="Giúp đội hỗ trợ biết nội dung đang ở bước nào." />
                 <Timeline items={[
                     ['Đã nhận tệp', 'Hệ thống đã lưu tệp và ghi nhận thông tin ban đầu.', 'Hoàn tất'],
                     ['Đọc nội dung tự động', content.status === 'Failed' ? content.lastError : 'Đã đọc nội dung thành công.', content.status === 'Failed' ? 'Failed' : 'Hoàn tất'],
                     ['Chờ tạo nội dung', 'Đã đưa yêu cầu tạo bộ câu hỏi/thẻ ghi nhớ vào danh sách chờ.', content.generated > 0 ? 'Hoàn tất' : 'Đang chờ'],
                 ]} />
             </AdminCard>
+            {moderationOpen && moderationConfig && (
+                <AdminCommandModal
+                    title={moderationConfig.title}
+                    description={moderationConfig.description}
+                    fields={[{ name: 'reason', label: 'Lý do', type: 'textarea', required: true, maxLength: 500 }]}
+                    values={moderationValues}
+                    onChange={(name, value) => setModerationValues((current) => ({ ...current, [name]: value }))}
+                    onClose={closeModerationModal}
+                    onSubmit={submitModeration}
+                    pending={moderationState.pending}
+                    error={moderationState.error}
+                    success={moderationState.success}
+                    submitLabel={moderationConfig.submitLabel}
+                    tone={moderationConfig.tone}
+                />
+            )}
+            <AdminToast toast={toast} onClose={() => setToast(null)} />
         </PageGrid>
     );
 }
 
 export function AdminSessionsPage() {
     const base = useAdminBase();
+    const [query, setQuery] = useState({ page: 1, pageSize: 20, search: '', status: '', deletion: 'Active' });
+    const [draft, setDraft] = useState({ search: '', status: '', deletion: 'Active' });
     const sessionsState = useAdminResource(
-        (options) => getAdminSessions({ page: 1, pageSize: 40 }, options),
+        (options) => getAdminSessions(query, options),
         { items: adminSessions },
-        []
+        [JSON.stringify(query)]
     );
     const sessions = useMemo(() => getItems(sessionsState.data).map((session) => (
         session.pin ? session : adaptSession(session)
     )), [sessionsState.data]);
     const activeCount = sessions.filter((session) => ['Active', 'Live'].includes(session.status)).length;
     const participantTotal = sessions.reduce((total, session) => total + Number(session.participants || 0), 0);
+    const totalSessions = getTotal(sessionsState.data, sessions.length);
+
+    function applySessionFilters(event) {
+        event.preventDefault();
+        setQuery((current) => ({ ...current, ...draft, page: 1 }));
+    }
 
     return (
         <PageGrid>
@@ -893,7 +1487,35 @@ export function AdminSessionsPage() {
                 <MiniMetric icon={CheckCircle2} label="Đang diễn ra" value={formatNumber(activeCount)} tone="green" />
                 <MiniMetric icon={ShieldAlert} label="Đã xóa/ẩn" value={formatNumber(sessions.filter((session) => session.status === 'Deleted').length)} tone="red" />
             </div>
-            <FilterBar placeholder="Tìm theo PIN, giáo viên, bộ câu hỏi..." filters={['Trạng thái', 'Chế độ chơi', 'Ngày', 'Giáo viên']} />
+            <AdminQueryToolbar
+                draft={draft}
+                onDraftChange={(name, value) => setDraft((current) => ({ ...current, [name]: value }))}
+                onSubmit={applySessionFilters}
+                searchPlaceholder="Tìm theo PIN, giáo viên, bộ câu hỏi..."
+                fields={[
+                    {
+                        name: 'status',
+                        label: 'Trạng thái',
+                        type: 'select',
+                        options: [
+                            { value: '', label: 'Tất cả' },
+                            { value: 'Waiting', label: formatAdminValue('Waiting') },
+                            { value: 'Active', label: formatAdminValue('Active') },
+                            { value: 'Ended', label: formatAdminValue('Ended') },
+                        ],
+                    },
+                    {
+                        name: 'deletion',
+                        label: 'Ẩn/xóa',
+                        type: 'select',
+                        options: [
+                            { value: 'Active', label: 'Đang hoạt động' },
+                            { value: 'Deleted', label: 'Đã xóa/ẩn' },
+                            { value: 'All', label: 'Tất cả' },
+                        ],
+                    },
+                ]}
+            />
             <AdminCard className="p-5">
                 <AdminSectionHeader title="Phiên trực tiếp" />
                 <AdminTable
@@ -909,6 +1531,13 @@ export function AdminSessionsPage() {
                     ]}
                     rows={sessions}
                     rowHref={(row) => `${base}/sessions/${row.id}`}
+                />
+                <AdminPagination
+                    page={query.page}
+                    pageSize={query.pageSize}
+                    total={totalSessions}
+                    onPageChange={(page) => setQuery((current) => ({ ...current, page }))}
+                    onPageSizeChange={(pageSize) => setQuery((current) => ({ ...current, page: 1, pageSize }))}
                 />
             </AdminCard>
         </PageGrid>
@@ -989,20 +1618,24 @@ export function AdminSessionDetailPage() {
 }
 
 export function AdminBillingPage() {
+    const [ordersQuery, setOrdersQuery] = useState({ page: 1, pageSize: 20, search: '', status: '', plan: '', deletion: 'Active' });
+    const [ordersDraft, setOrdersDraft] = useState({ search: '', status: '', plan: '', deletion: 'Active' });
+    const [webhookQuery, setWebhookQuery] = useState({ page: 1, pageSize: 10, search: '', processed: '', hasError: '' });
+    const [webhookDraft, setWebhookDraft] = useState({ search: '', processed: '', hasError: '' });
     const overviewState = useAdminResource(
         (options) => getAdminOverview({ range: '30d' }, options),
         null,
         []
     );
     const ordersState = useAdminResource(
-        (options) => getAdminBillingOrders({ page: 1, pageSize: 30 }, options),
+        (options) => getAdminBillingOrders(ordersQuery, options),
         { items: adminOrders },
-        []
+        [JSON.stringify(ordersQuery)]
     );
     const webhookState = useAdminResource(
-        (options) => getAdminBillingWebhookEvents({ page: 1, pageSize: 10 }, options),
+        (options) => getAdminBillingWebhookEvents(webhookQuery, options),
         { items: [] },
-        []
+        [JSON.stringify(webhookQuery)]
     );
     const billingSeries = useMemo(() => adaptRevenueSeries(overviewState.data), [overviewState.data]);
     const collectedTotal = billingSeries.reduce((total, point) => total + Number(point.collected || 0), 0);
@@ -1015,6 +1648,18 @@ export function AdminBillingPage() {
     const paidOrders = orders.filter((order) => order.status === 'Paid').length;
     const pendingOrders = orders.filter((order) => order.status === 'Pending').length;
     const webhookErrors = webhookEvents.filter((event) => event.status === 'Failed').length;
+    const totalOrders = getTotal(ordersState.data, orders.length);
+    const totalWebhookEvents = getTotal(webhookState.data, webhookEvents.length);
+
+    function applyOrderFilters(event) {
+        event.preventDefault();
+        setOrdersQuery((current) => ({ ...current, ...ordersDraft, page: 1 }));
+    }
+
+    function applyWebhookFilters(event) {
+        event.preventDefault();
+        setWebhookQuery((current) => ({ ...current, ...webhookDraft, page: 1 }));
+    }
 
     return (
         <PageGrid>
@@ -1052,6 +1697,39 @@ export function AdminBillingPage() {
             </div>
             <AdminCard className="p-5">
                 <AdminSectionHeader title="Đơn hàng" description="Theo dõi trạng thái thanh toán, gói đăng ký, thời điểm thanh toán và ngày hết hạn gói trả phí." />
+                <div className="mb-5">
+                    <AdminQueryToolbar
+                        embedded
+                        draft={ordersDraft}
+                        onDraftChange={(name, value) => setOrdersDraft((current) => ({ ...current, [name]: value }))}
+                        onSubmit={applyOrderFilters}
+                        searchPlaceholder="Tìm mã đơn, email, người dùng..."
+                        fields={[
+                            {
+                                name: 'status',
+                                label: 'Trạng thái',
+                                type: 'select',
+                                options: [
+                                    { value: '', label: 'Tất cả' },
+                                    { value: 'Pending', label: formatAdminValue('Pending') },
+                                    { value: 'Paid', label: formatAdminValue('Paid') },
+                                    { value: 'Cancelled', label: formatAdminValue('Cancelled') },
+                                ],
+                            },
+                            { name: 'plan', label: 'Mã gói', placeholder: 'PRO_MONTHLY' },
+                            {
+                                name: 'deletion',
+                                label: 'Ẩn/xóa',
+                                type: 'select',
+                                options: [
+                                    { value: 'Active', label: 'Đang hoạt động' },
+                                    { value: 'Deleted', label: 'Đã xóa/ẩn' },
+                                    { value: 'All', label: 'Tất cả' },
+                                ],
+                            },
+                        ]}
+                    />
+                </div>
                 <AdminTable
                     columns={[
                         { key: 'orderCode', label: 'Mã đơn' },
@@ -1064,9 +1742,47 @@ export function AdminBillingPage() {
                     ]}
                     rows={orders}
                 />
+                <AdminPagination
+                    page={ordersQuery.page}
+                    pageSize={ordersQuery.pageSize}
+                    total={totalOrders}
+                    onPageChange={(page) => setOrdersQuery((current) => ({ ...current, page }))}
+                    onPageSizeChange={(pageSize) => setOrdersQuery((current) => ({ ...current, page: 1, pageSize }))}
+                />
             </AdminCard>
             <AdminCard className="p-5">
                 <AdminSectionHeader title="Ghi nhận thanh toán" description="Dùng để đối soát thông báo từ PayOS đã xử lý hay còn lỗi." />
+                <div className="mb-5">
+                    <AdminQueryToolbar
+                        embedded
+                        draft={webhookDraft}
+                        onDraftChange={(name, value) => setWebhookDraft((current) => ({ ...current, [name]: value }))}
+                        onSubmit={applyWebhookFilters}
+                        searchPlaceholder="Tìm order code, reference..."
+                        fields={[
+                            {
+                                name: 'processed',
+                                label: 'Xử lý',
+                                type: 'select',
+                                options: [
+                                    { value: '', label: 'Tất cả' },
+                                    { value: 'true', label: 'Đã xử lý' },
+                                    { value: 'false', label: 'Chưa xử lý' },
+                                ],
+                            },
+                            {
+                                name: 'hasError',
+                                label: 'Lỗi',
+                                type: 'select',
+                                options: [
+                                    { value: '', label: 'Tất cả' },
+                                    { value: 'true', label: 'Có lỗi' },
+                                    { value: 'false', label: 'Không lỗi' },
+                                ],
+                            },
+                        ]}
+                    />
+                </div>
                 <AdminTable
                     columns={[
                         { key: 'provider', label: 'Nhà cung cấp' },
@@ -1077,6 +1793,13 @@ export function AdminBillingPage() {
                         { key: 'error', label: 'Lỗi' },
                     ]}
                     rows={webhookEvents}
+                />
+                <AdminPagination
+                    page={webhookQuery.page}
+                    pageSize={webhookQuery.pageSize}
+                    total={totalWebhookEvents}
+                    onPageChange={(page) => setWebhookQuery((current) => ({ ...current, page }))}
+                    onPageSizeChange={(pageSize) => setWebhookQuery((current) => ({ ...current, page: 1, pageSize }))}
                 />
             </AdminCard>
         </PageGrid>
@@ -1176,9 +1899,89 @@ export function AdminSupportPage() {
 }
 
 export function AdminAuditLogsPage() {
+    const [query, setQuery] = useState({ page: 1, pageSize: 50 });
+    const [draft, setDraft] = useState({ search: '', action: '', targetType: '', riskLevel: '' });
+    const [detailLog, setDetailLog] = useState(null);
+    const [detailError, setDetailError] = useState('');
+    const [detailLoading, setDetailLoading] = useState(false);
+    const logsState = useAdminResource(
+        (options) => getAdminAuditLogs(query, options),
+        { items: auditLogs },
+        [JSON.stringify(query)]
+    );
+    const logs = useMemo(() => getItems(logsState.data).map(adaptAuditLog), [logsState.data]);
+    const totalLogs = getTotal(logsState.data, logs.length);
+
+    function applyAuditFilters(event) {
+        event.preventDefault();
+        setQuery({ page: 1, pageSize: 50, ...draft });
+    }
+
+    async function openAuditDetail(row) {
+        setDetailLog(row);
+        setDetailError('');
+        const numericId = Number(row.id);
+        if (!hasAdminApiToken() || !Number.isInteger(numericId)) return;
+
+        setDetailLoading(true);
+        try {
+            const detail = await getAdminAuditLogById(numericId);
+            setDetailLog(adaptAuditLog(detail));
+        } catch (error) {
+            setDetailError(error?.message || 'Khong the tai chi tiet audit log.');
+        } finally {
+            setDetailLoading(false);
+        }
+    }
+
     return (
         <PageGrid>
-            <FilterBar placeholder="Tìm người thao tác, đối tượng, hành động..." filters={['Người thao tác', 'Rủi ro', 'Hành động', 'Ngày']} />
+            <AdminCard className="p-4">
+                <form className="grid gap-3 xl:grid-cols-[minmax(0,1.2fr)_repeat(3,minmax(160px,0.4fr))_auto] xl:items-end" onSubmit={applyAuditFilters}>
+                    <label className="grid gap-2">
+                        <span className="text-xs font-black uppercase tracking-[0.1em] text-[#60758D]">Tìm kiếm</span>
+                        <input
+                            className="h-12 rounded-[16px] border border-[#D8E9F5] bg-white px-4 text-sm font-bold text-[#102744] outline-none focus:border-[#5BAED4] focus:ring-4 focus:ring-[#A8D8EA]/30"
+                            value={draft.search}
+                            onChange={(event) => setDraft((current) => ({ ...current, search: event.target.value }))}
+                            placeholder="Email, action, target..."
+                        />
+                    </label>
+                    <label className="grid gap-2">
+                        <span className="text-xs font-black uppercase tracking-[0.1em] text-[#60758D]">Rủi ro</span>
+                        <select
+                            className="h-12 rounded-[16px] border border-[#D8E9F5] bg-white px-4 text-sm font-bold text-[#102744] outline-none focus:border-[#5BAED4] focus:ring-4 focus:ring-[#A8D8EA]/30"
+                            value={draft.riskLevel}
+                            onChange={(event) => setDraft((current) => ({ ...current, riskLevel: event.target.value }))}
+                        >
+                            <option value="">Tất cả</option>
+                            <option value="Low">Low</option>
+                            <option value="Medium">Medium</option>
+                            <option value="High">High</option>
+                        </select>
+                    </label>
+                    <label className="grid gap-2">
+                        <span className="text-xs font-black uppercase tracking-[0.1em] text-[#60758D]">Action</span>
+                        <input
+                            className="h-12 rounded-[16px] border border-[#D8E9F5] bg-white px-4 text-sm font-bold text-[#102744] outline-none focus:border-[#5BAED4] focus:ring-4 focus:ring-[#A8D8EA]/30"
+                            value={draft.action}
+                            onChange={(event) => setDraft((current) => ({ ...current, action: event.target.value }))}
+                            placeholder="User.RoleChanged"
+                        />
+                    </label>
+                    <label className="grid gap-2">
+                        <span className="text-xs font-black uppercase tracking-[0.1em] text-[#60758D]">Target</span>
+                        <input
+                            className="h-12 rounded-[16px] border border-[#D8E9F5] bg-white px-4 text-sm font-bold text-[#102744] outline-none focus:border-[#5BAED4] focus:ring-4 focus:ring-[#A8D8EA]/30"
+                            value={draft.targetType}
+                            onChange={(event) => setDraft((current) => ({ ...current, targetType: event.target.value }))}
+                            placeholder="User"
+                        />
+                    </label>
+                    <ActionButton type="submit">Lọc</ActionButton>
+                </form>
+            </AdminCard>
+            <DataStateNotice state={logsState} fallbackLabel="Đang hiển thị audit log mẫu vì chưa có phiên quản trị." />
             <AdminCard className="p-5">
                 <AdminSectionHeader title="Nhật ký thao tác" description="Mọi hành động quản trị có tác động đến người dùng, thanh toán, nội dung, hạn mức đều cần được ghi lại." />
                 <AdminTable
@@ -1188,10 +1991,29 @@ export function AdminAuditLogsPage() {
                         { key: 'action', label: 'Hành động' },
                         { key: 'target', label: 'Đối tượng' },
                         { key: 'risk', label: 'Rủi ro', render: (row) => <StatusBadge value={row.risk} /> },
+                        { key: 'detail', label: 'Chi tiết', render: (row) => <button type="button" className="text-sm font-black text-[#2B7AB5] hover:text-[#1B3A6B]" onClick={() => openAuditDetail(row)}>Xem</button> },
                     ]}
-                    rows={auditLogs}
+                    rows={logs}
+                />
+                <AdminPagination
+                    page={query.page}
+                    pageSize={query.pageSize}
+                    total={totalLogs}
+                    onPageChange={(page) => setQuery((current) => ({ ...current, page }))}
+                    onPageSizeChange={(pageSize) => setQuery((current) => ({ ...current, page: 1, pageSize }))}
                 />
             </AdminCard>
+            {detailError && (
+                <div className="rounded-[18px] border border-[#FFD3D8] bg-[#FFF1F3] px-4 py-3 text-sm font-bold text-[#C2293A]">
+                    {detailError}
+                </div>
+            )}
+            {detailLoading && (
+                <div className="rounded-[18px] border border-[#D8E9F5] bg-white px-4 py-3 text-sm font-bold text-[#52677F]">
+                    Đang tải chi tiết audit log...
+                </div>
+            )}
+            <AuditLogDetailModal log={detailLog} onClose={() => setDetailLog(null)} />
         </PageGrid>
     );
 }

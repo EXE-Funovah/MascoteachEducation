@@ -67,3 +67,31 @@ export function getAdminBillingOrderById(id, options = {}) {
 export function getAdminBillingWebhookEvents(params = {}, options = {}) {
     return api.get(`/api/Admin/billing/webhook-events${buildQuery({ page: 1, pageSize: 20, ...params })}`, options);
 }
+
+export function getAdminAuditLogs(params = {}, options = {}) {
+    return api.get(`/api/Admin/audit-logs${buildQuery({ page: 1, pageSize: 20, ...params })}`, options);
+}
+
+export function getAdminAuditLogById(id, options = {}) {
+    return api.get(`/api/Admin/audit-logs/${id}`, options);
+}
+
+export function updateAdminUserRole(id, data, options = {}) {
+    return api.patch(`/api/Admin/users/${id}/role`, data, options);
+}
+
+export function updateAdminUserSubscription(id, data, options = {}) {
+    return api.patch(`/api/Admin/users/${id}/subscription`, data, options);
+}
+
+export function updateAdminUserStatus(id, data, options = {}) {
+    return api.patch(`/api/Admin/users/${id}/status`, data, options);
+}
+
+export function hideAdminDocument(id, data, options = {}) {
+    return api.patch(`/api/Admin/documents/${id}/hide`, data, options);
+}
+
+export function restoreAdminDocument(id, data, options = {}) {
+    return api.patch(`/api/Admin/documents/${id}/restore`, data, options);
+}
