@@ -18,7 +18,6 @@ import TermsPage from '@/pages/TermsPage';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import AdminLayout from '@/components/admin/AdminLayout';
 import {
-  AdminAiUsagePage,
   AdminAuditLogsPage,
   AdminBillingPage,
   AdminContentDetailPage,
@@ -26,8 +25,6 @@ import {
   AdminOverviewPage,
   AdminSessionDetailPage,
   AdminSessionsPage,
-  AdminSettingsPage,
-  AdminSupportPage,
   AdminUserDetailPage,
   AdminUsersPage,
 } from '@/pages/admin/AdminPages';
@@ -125,10 +122,7 @@ export default function App() {
           <Route path="sessions" element={<AdminSessionsPage />} />
           <Route path="sessions/:sessionId" element={<AdminSessionDetailPage />} />
           <Route path="billing" element={<AdminBillingPage />} />
-          <Route path="ai-usage" element={<AdminAiUsagePage />} />
-          <Route path="support" element={<AdminSupportPage />} />
           <Route path="audit-logs" element={<AdminAuditLogsPage />} />
-          <Route path="settings" element={<AdminSettingsPage />} />
         </Route>
         <Route
           path="/teacher"
@@ -168,10 +162,7 @@ export default function App() {
               <Route path="sessions" element={<AdminSessionsPage />} />
               <Route path="sessions/:sessionId" element={<AdminSessionDetailPage />} />
               <Route path="billing" element={<AdminBillingPage />} />
-              <Route path="ai-usage" element={<AdminAiUsagePage />} />
-              <Route path="support" element={<AdminSupportPage />} />
               <Route path="audit-logs" element={<AdminAuditLogsPage />} />
-              <Route path="settings" element={<AdminSettingsPage />} />
             </Route>
           </>
         )}

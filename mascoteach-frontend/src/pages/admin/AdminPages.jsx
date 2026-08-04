@@ -8,14 +8,10 @@ import {
     CircleDollarSign,
     Clock3,
     CreditCard,
-    Database,
     FileSearch,
     Filter,
-    Flag,
     Gamepad2,
     HardDrive,
-    LifeBuoy,
-    LockKeyhole,
     ReceiptText,
     RotateCw,
     Search,
@@ -29,8 +25,6 @@ import {
 import {
     Area,
     AreaChart,
-    Bar,
-    BarChart,
     CartesianGrid,
     Line,
     LineChart,
@@ -48,23 +42,6 @@ import {
     MiniMetric,
     StatusBadge,
 } from '@/components/admin/AdminLayout';
-import {
-    adminAlerts,
-    adminDocuments,
-    adminOrders,
-    adminOverviewStats,
-    adminSessions,
-    adminUsers,
-    aiUsageRows,
-    auditLogs,
-    getContentById,
-    getSessionById,
-    getUserById,
-    revenueSeries,
-    supportTimeline,
-    topTeachers,
-    usageSeries,
-} from '@/data/adminMockData';
 import {
     getAdminBillingOrders,
     getAdminBillingWebhookEvents,
@@ -337,7 +314,7 @@ function useAdminResource(fetcher, fallback, deps = []) {
     return state;
 }
 
-function DataStateNotice({ state, fallbackLabel = 'Đang hiển thị dữ liệu mẫu vì chưa có phiên quản trị.' }) {
+function DataStateNotice({ state }) {
     if (state?.isLoading) {
         return (
             <div className="rounded-[18px] border border-[#D8E9F5] bg-white px-4 py-3 text-sm font-bold text-[#52677F]">
@@ -349,7 +326,7 @@ function DataStateNotice({ state, fallbackLabel = 'Đang hiển thị dữ liệ
     if (state?.error) {
         return (
             <div className="rounded-[18px] border border-[#FFE2B8] bg-[#FFF8EC] px-4 py-3 text-sm font-bold text-[#9B5A00]">
-                Chưa thể tải dữ liệu mới nhất. {fallbackLabel}
+                Không thể tải dữ liệu từ hệ thống. Vui lòng thử lại sau.
             </div>
         );
     }
@@ -357,7 +334,7 @@ function DataStateNotice({ state, fallbackLabel = 'Đang hiển thị dữ liệ
     if (state?.isFallback && !hasAdminApiToken()) {
         return (
             <div className="rounded-[18px] border border-[#D8E9F5] bg-[#F7FCFF] px-4 py-3 text-sm font-bold text-[#52677F]">
-                {fallbackLabel}
+                Vui lòng đăng nhập bằng tài khoản quản trị để tải dữ liệu.
             </div>
         );
     }
@@ -367,7 +344,7 @@ function DataStateNotice({ state, fallbackLabel = 'Đang hiển thị dữ liệ
 
 function adaptOverviewStats(overview) {
     const kpis = getField(overview, 'kpis', 'Kpis', []);
-    if (!kpis.length) return adminOverviewStats;
+    if (!kpis.length) return [];
 
     const tones = ['blue', 'cyan', 'green', 'peach'];
     return kpis.slice(0, 4).map((item, index) => {
@@ -390,15 +367,13 @@ function adaptOverviewStats(overview) {
 
 function adaptRevenueSeries(overview) {
     const series = getField(overview, 'paidRevenueSeries', 'PaidRevenueSeries', []);
-    if (!series.length) return revenueSeries;
+    if (!series.length) return [];
 
     return series.map((point) => {
         const value = getField(point, 'value', 'Value', 0);
         return {
             month: getField(point, 'label', 'Label', ''),
-            revenue: Math.round(Number(value || 0) / 1000000),
             collected: Math.round(Number(value || 0) / 1000000),
-            aiCost: 0,
         };
     });
 }
@@ -515,15 +490,6 @@ function adaptParticipant(row) {
 }
 
 function adaptBillingOrder(row) {
-    if (row?.user && row?.amount) {
-        return {
-            ...row,
-            orderCode: row.orderCode || row.id,
-            provider: row.provider || 'PayOS',
-            premiumStatus: row.premiumStatus || row.status,
-        };
-    }
-
     const id = getField(row, 'id', 'Id', '');
     const currency = getField(row, 'currency', 'Currency', 'VND');
     const isDeleted = getField(row, 'isDeleted', 'IsDeleted', false);
@@ -566,8 +532,6 @@ function adaptWebhookEvent(row) {
 }
 
 function adaptAuditLog(row) {
-    if (row?.time && row?.actor) return row;
-
     const targetType = getField(row, 'targetType', 'TargetType', '');
     const targetId = getField(row, 'targetId', 'TargetId', '');
 
@@ -593,7 +557,7 @@ function splitContentRouteId(contentId) {
     if (String(contentId).startsWith('quiz-') || String(contentId).startsWith('flashcard-')) {
         return { type: 'quiz', id: String(contentId).replace('quiz-', '').replace('flashcard-', '') };
     }
-    return { type: 'mock', id: contentId };
+    return { type: 'invalid', id: contentId };
 }
 
 function AdminCommandModal({
@@ -746,7 +710,6 @@ function StatCard({ stat }) {
 }
 
 export function AdminOverviewPage() {
-    const base = useAdminBase();
     const overviewState = useAdminResource(
         (options) => getAdminOverview({ range: '30d' }, options),
         null,
@@ -782,62 +745,27 @@ export function AdminOverviewPage() {
                                         <stop offset="5%" stopColor="#2B7AB5" stopOpacity={0.28} />
                                         <stop offset="95%" stopColor="#2B7AB5" stopOpacity={0} />
                                     </linearGradient>
-                                    <linearGradient id="adminCost" x1="0" x2="0" y1="0" y2="1">
-                                        <stop offset="5%" stopColor="#FB923C" stopOpacity={0.24} />
-                                        <stop offset="95%" stopColor="#FB923C" stopOpacity={0} />
-                                    </linearGradient>
                                 </defs>
                                 <CartesianGrid stroke="#E5F0F8" vertical={false} />
                                 <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: '#7C91A8', fontSize: 12, fontWeight: 700 }} />
                                 <YAxis axisLine={false} tickLine={false} tick={{ fill: '#7C91A8', fontSize: 12, fontWeight: 700 }} />
-                                <Tooltip contentStyle={{ borderRadius: 18, border: '1px solid #D8E9F5', boxShadow: '0 18px 50px rgba(43,122,181,.16)' }} />
-                                <Area type="monotone" dataKey="revenue" stroke="#2B7AB5" strokeWidth={4} fill="url(#adminRevenue)" />
-                                <Line type="monotone" dataKey="collected" stroke="#1B3A6B" strokeWidth={3} dot={false} />
-                                <Area type="monotone" dataKey="aiCost" stroke="#FB923C" strokeWidth={3} fill="url(#adminCost)" />
+                                <Tooltip
+                                    formatter={(value) => [`${formatNumber(value)} triệu đồng`, 'Doanh thu đã thu']}
+                                    labelFormatter={(label) => `Kỳ: ${label}`}
+                                    contentStyle={{ borderRadius: 18, border: '1px solid #D8E9F5', boxShadow: '0 18px 50px rgba(43,122,181,.16)' }}
+                                />
+                                <Area
+                                    type="monotone"
+                                    dataKey="collected"
+                                    name="Doanh thu đã thu"
+                                    stroke="#2B7AB5"
+                                    strokeWidth={4}
+                                    fill="url(#adminRevenue)"
+                                />
                             </AreaChart>
                         </ResponsiveContainer>
                     </div>
                 </AdminCard>
-
-                <div className="grid gap-6 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-                    <AdminCard className="p-6">
-                        <AdminSectionHeader title="Giáo viên nổi bật" description="Xếp theo mức độ sử dụng lành mạnh, trạng thái gói trả phí và phiên học đã hoàn tất." />
-                        <div className="space-y-3">
-                            {topTeachers.map((teacher) => (
-                                <Link key={teacher.id} to={`${base}/users/${teacher.id}`} className="flex items-center gap-3 rounded-[18px] bg-[#F7FBFE] p-3 transition hover:-translate-y-0.5 hover:bg-[#EEF7FD]">
-                                    <span className="grid h-11 w-11 place-items-center rounded-full bg-[#DDF2FF] text-sm font-black text-[#2B7AB5]">{teacher.avatar}</span>
-                                    <span className="min-w-0 flex-1">
-                                        <span className="block truncate text-sm font-black text-[#102744]">{teacher.name}</span>
-                                        <span className="block truncate text-xs font-bold text-[#7C91A8]">{teacher.email}</span>
-                                    </span>
-                                    <span className="text-sm font-black text-[#102744]">{teacher.score}</span>
-                                </Link>
-                            ))}
-                        </div>
-                    </AdminCard>
-
-                    <AdminCard className="p-6">
-                        <AdminSectionHeader title="Việc cần xử lý" description="Các cảnh báo vận hành ưu tiên trong ngày." />
-                        <div className="space-y-3">
-                            {adminAlerts.map((alert) => (
-                                <div key={alert.id} className="rounded-[20px] border border-[#D8E9F5] bg-white p-4">
-                                    <div className="flex items-start gap-3">
-                                        <div className="grid h-10 w-10 place-items-center rounded-2xl bg-[#FFF4EA] text-[#CF5B1B]">
-                                            <AlertTriangle className="h-5 w-5" />
-                                        </div>
-                                        <div className="min-w-0 flex-1">
-                                            <p className="text-sm font-black text-[#102744]">{alert.title}</p>
-                                            <p className="mt-1 text-sm font-semibold leading-6 text-[#6C8098]">{alert.description}</p>
-                                            <div className="mt-3">
-                                                <StatusBadge value={alert.severity} />
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </AdminCard>
-                </div>
             </PageGrid>
         </PageGrid>
     );
@@ -849,13 +777,10 @@ export function AdminUsersPage() {
     const [draft, setDraft] = useState({ search: '', role: '', subscription: '' });
     const usersState = useAdminResource(
         (options) => getAdminUsers(query, options),
-        { items: adminUsers },
+        { items: [], total: 0 },
         [JSON.stringify(query)]
     );
-    const users = useMemo(() => getItems(usersState.data).map((user) => {
-        if (user.name) return user;
-        return adaptUser(user);
-    }), [usersState.data]);
+    const users = useMemo(() => getItems(usersState.data).map(adaptUser), [usersState.data]);
     const totalUsers = getTotal(usersState.data, users.length);
     const teacherCount = users.filter((user) => user.role === 'Teacher').length;
     const premiumCount = users.filter((user) => ['Premium', 'Active'].includes(user.plan) || user.status === 'Premium').length;
@@ -946,7 +871,6 @@ function UserCell({ row }) {
 export function AdminUserDetailPage() {
     const base = useAdminBase();
     const { userId } = useParams();
-    const fallbackUser = getUserById(userId);
     const [refreshKey, setRefreshKey] = useState(0);
     const [commandType, setCommandType] = useState('');
     const [commandValues, setCommandValues] = useState({});
@@ -954,37 +878,38 @@ export function AdminUserDetailPage() {
     const [toast, setToast] = useState(null);
     const userState = useAdminResource(
         (options) => fetchAdminUserById(userId, options),
-        fallbackUser,
+        null,
         [userId, refreshKey]
     );
     const user = useMemo(() => {
-        if (userState.data?.name) return userState.data;
+        if (!userState.data) return null;
         return adaptUser(userState.data);
     }, [userState.data]);
     const documentsState = useAdminResource(
         (options) => getAdminDocuments({ ownerId: userId, page: 1, pageSize: 8 }, options),
-        { items: adminDocuments.filter((item) => item.ownerId === fallbackUser.id && item.type === 'Document') },
+        { items: [], total: 0 },
         [userId]
     );
     const quizzesState = useAdminResource(
         (options) => getAdminQuizzes({ ownerId: userId, page: 1, pageSize: 8 }, options),
-        { items: adminDocuments.filter((item) => item.ownerId === fallbackUser.id && item.type !== 'Document') },
+        { items: [], total: 0 },
         [userId]
     );
     const sessionsState = useAdminResource(
         (options) => getAdminSessions({ teacherId: userId, page: 1, pageSize: 8 }, options),
-        { items: adminSessions.filter((session) => session.teacher === fallbackUser.name) },
+        { items: [], total: 0 },
         [userId]
     );
     const userContent = useMemo(() => [
-        ...getItems(documentsState.data).map((item) => (item.title ? item : adaptDocument(item))),
-        ...getItems(quizzesState.data).map((item) => (item.title ? item : adaptQuiz(item))),
+        ...getItems(documentsState.data).map(adaptDocument),
+        ...getItems(quizzesState.data).map(adaptQuiz),
     ], [documentsState.data, quizzesState.data]);
-    const userSessions = useMemo(() => getItems(sessionsState.data).map((session) => (
-        session.pin ? session : adaptSession(session)
-    )), [sessionsState.data]);
+    const userSessions = useMemo(
+        () => getItems(sessionsState.data).map(adaptSession),
+        [sessionsState.data]
+    );
     const userCommandConfig = useMemo(() => {
-        const currentStatus = user.status === 'Deleted' ? 'Deleted' : 'Active';
+        const currentStatus = user?.status === 'Deleted' ? 'Deleted' : 'Active';
         const configs = {
             role: {
                 title: 'Doi vai tro nguoi dung',
@@ -1035,7 +960,20 @@ export function AdminUserDetailPage() {
             },
         };
         return configs[commandType];
-    }, [commandType, user.status]);
+    }, [commandType, user?.status]);
+
+    if (!user) {
+        return (
+            <PageGrid>
+                <DataStateNotice state={userState} />
+                {!userState.isLoading && !userState.error && (
+                    <AdminCard className="p-6 text-sm font-bold text-[#52677F]">
+                        Không tìm thấy người dùng.
+                    </AdminCard>
+                )}
+            </PageGrid>
+        );
+    }
 
     function openUserCommand(type) {
         const premiumDefault = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 16);
@@ -1212,20 +1150,16 @@ export function AdminContentPage() {
     };
     const documentsState = useAdminResource(
         (options) => shouldFetchDocuments ? getAdminDocuments(documentParams, options) : Promise.resolve({ items: [], total: 0, page: query.page, pageSize: query.pageSize }),
-        { items: adminDocuments.filter((item) => item.type === 'Document') },
+        { items: [], total: 0 },
         [JSON.stringify(query)]
     );
     const quizzesState = useAdminResource(
         (options) => shouldFetchQuizzes ? getAdminQuizzes(quizParams, options) : Promise.resolve({ items: [], total: 0, page: query.page, pageSize: query.pageSize }),
-        { items: adminDocuments.filter((item) => item.type !== 'Document') },
+        { items: [], total: 0 },
         [JSON.stringify(query)]
     );
-    const documents = useMemo(() => getItems(documentsState.data).map((item) => (
-        item.title ? item : adaptDocument(item)
-    )), [documentsState.data]);
-    const quizzes = useMemo(() => getItems(quizzesState.data).map((item) => (
-        item.title ? item : adaptQuiz(item)
-    )), [quizzesState.data]);
+    const documents = useMemo(() => getItems(documentsState.data).map(adaptDocument), [documentsState.data]);
+    const quizzes = useMemo(() => getItems(quizzesState.data).map(adaptQuiz), [quizzesState.data]);
     const contentRows = useMemo(() => [...documents, ...quizzes], [documents, quizzes]);
     const flashcardCount = quizzes.filter((item) => item.type === 'Flashcards').length;
     const quizCount = quizzes.length - flashcardCount;
@@ -1239,7 +1173,7 @@ export function AdminContentPage() {
     return (
         <PageGrid>
             <DataStateNotice state={documentsState} />
-            <DataStateNotice state={quizzesState} fallbackLabel="Đang hiển thị dữ liệu nội dung mẫu vì chưa có phiên quản trị." />
+            <DataStateNotice state={quizzesState} />
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                 <MiniMetric icon={FileSearch} label="Tài liệu trong trang" value={formatNumber(documents.length)} />
                 <MiniMetric icon={BookOpenCheck} label="Bộ câu hỏi trong trang" value={formatNumber(quizCount)} tone="navy" />
@@ -1306,7 +1240,6 @@ export function AdminContentDetailPage() {
     const base = useAdminBase();
     const { contentId } = useParams();
     const routeTarget = splitContentRouteId(contentId);
-    const fallbackContent = getContentById(contentId);
     const [refreshKey, setRefreshKey] = useState(0);
     const [moderationOpen, setModerationOpen] = useState(false);
     const [moderationValues, setModerationValues] = useState({ reason: '' });
@@ -1316,19 +1249,19 @@ export function AdminContentDetailPage() {
         (options) => {
             if (routeTarget.type === 'document') return getAdminDocumentById(routeTarget.id, options);
             if (routeTarget.type === 'quiz') return getAdminQuizById(routeTarget.id, options);
-            return Promise.resolve(fallbackContent);
+            return Promise.resolve(null);
         },
-        fallbackContent,
+        null,
         [contentId, refreshKey]
     );
     const content = useMemo(() => {
-        if (contentState.data?.title) return contentState.data;
+        if (!contentState.data) return null;
         if (routeTarget.type === 'document') return adaptDocument(contentState.data);
         if (routeTarget.type === 'quiz') return adaptQuiz(contentState.data);
-        return fallbackContent;
-    }, [contentState.data, fallbackContent, routeTarget.type]);
+        return null;
+    }, [contentState.data, routeTarget.type]);
     const isDocument = routeTarget.type === 'document';
-    const shouldRestore = content.status === 'Deleted';
+    const shouldRestore = content?.status === 'Deleted';
     const moderationConfig = isDocument ? {
         title: shouldRestore ? 'Khôi phục tài liệu' : 'Ẩn tài liệu',
         description: shouldRestore
@@ -1353,6 +1286,19 @@ export function AdminContentDetailPage() {
     ];
     if (isDocument) {
         actionTimelineItems.splice(1, 0, ['Ẩn/khôi phục tài liệu', 'Đã hỗ trợ thao tác trực tiếp cho tài liệu.', 'Hoàn tất']);
+    }
+
+    if (!content) {
+        return (
+            <PageGrid>
+                <DataStateNotice state={contentState} />
+                {!contentState.isLoading && !contentState.error && (
+                    <AdminCard className="p-6 text-sm font-bold text-[#52677F]">
+                        Không tìm thấy nội dung.
+                    </AdminCard>
+                )}
+            </PageGrid>
+        );
     }
 
     function openModerationModal() {
@@ -1463,12 +1409,10 @@ export function AdminSessionsPage() {
     const [draft, setDraft] = useState({ search: '', status: '', deletion: 'Active' });
     const sessionsState = useAdminResource(
         (options) => getAdminSessions(query, options),
-        { items: adminSessions },
+        { items: [], total: 0 },
         [JSON.stringify(query)]
     );
-    const sessions = useMemo(() => getItems(sessionsState.data).map((session) => (
-        session.pin ? session : adaptSession(session)
-    )), [sessionsState.data]);
+    const sessions = useMemo(() => getItems(sessionsState.data).map(adaptSession), [sessionsState.data]);
     const activeCount = sessions.filter((session) => ['Active', 'Live'].includes(session.status)).length;
     const participantTotal = sessions.reduce((total, session) => total + Number(session.participants || 0), 0);
     const totalSessions = getTotal(sessionsState.data, sessions.length);
@@ -1547,30 +1491,37 @@ export function AdminSessionsPage() {
 export function AdminSessionDetailPage() {
     const base = useAdminBase();
     const { sessionId } = useParams();
-    const fallbackSession = getSessionById(sessionId);
     const sessionState = useAdminResource(
         (options) => getAdminSessionById(sessionId, options),
-        fallbackSession,
+        null,
         [sessionId]
     );
     const participantsState = useAdminResource(
         (options) => getAdminSessionParticipants(sessionId, { page: 1, pageSize: 30 }, options),
-        {
-            items: [
-                { id: 'p-1', name: 'Lan Anh', score: 920, answers: '12/14', status: 'Connected' },
-                { id: 'p-2', name: 'Minh Khang', score: 860, answers: '11/14', status: 'Connected' },
-                { id: 'p-3', name: 'Gia Huy', score: 640, answers: '8/14', status: 'Reconnected' },
-            ],
-        },
+        { items: [], total: 0 },
         [sessionId]
     );
     const session = useMemo(() => {
-        if (sessionState.data?.pin) return sessionState.data;
+        if (!sessionState.data) return null;
         return adaptSession(sessionState.data);
     }, [sessionState.data]);
-    const participants = useMemo(() => getItems(participantsState.data).map((participant) => (
-        participant.name ? participant : adaptParticipant(participant)
-    )), [participantsState.data]);
+    const participants = useMemo(
+        () => getItems(participantsState.data).map(adaptParticipant),
+        [participantsState.data]
+    );
+
+    if (!session) {
+        return (
+            <PageGrid>
+                <DataStateNotice state={sessionState} />
+                {!sessionState.isLoading && !sessionState.error && (
+                    <AdminCard className="p-6 text-sm font-bold text-[#52677F]">
+                        Không tìm thấy phiên trực tiếp.
+                    </AdminCard>
+                )}
+            </PageGrid>
+        );
+    }
 
     return (
         <PageGrid>
@@ -1629,7 +1580,7 @@ export function AdminBillingPage() {
     );
     const ordersState = useAdminResource(
         (options) => getAdminBillingOrders(ordersQuery, options),
-        { items: adminOrders },
+        { items: [], total: 0 },
         [JSON.stringify(ordersQuery)]
     );
     const webhookState = useAdminResource(
@@ -1639,12 +1590,14 @@ export function AdminBillingPage() {
     );
     const billingSeries = useMemo(() => adaptRevenueSeries(overviewState.data), [overviewState.data]);
     const collectedTotal = billingSeries.reduce((total, point) => total + Number(point.collected || 0), 0);
-    const orders = useMemo(() => getItems(ordersState.data).map((order) => (
-        order.orderCode ? order : adaptBillingOrder(order)
-    )), [ordersState.data]);
-    const webhookEvents = useMemo(() => getItems(webhookState.data).map((event) => (
-        event.processedAt ? event : adaptWebhookEvent(event)
-    )), [webhookState.data]);
+    const orders = useMemo(
+        () => getItems(ordersState.data).map(adaptBillingOrder),
+        [ordersState.data]
+    );
+    const webhookEvents = useMemo(
+        () => getItems(webhookState.data).map(adaptWebhookEvent),
+        [webhookState.data]
+    );
     const paidOrders = orders.filter((order) => order.status === 'Paid').length;
     const pendingOrders = orders.filter((order) => order.status === 'Pending').length;
     const webhookErrors = webhookEvents.filter((event) => event.status === 'Failed').length;
@@ -1664,7 +1617,7 @@ export function AdminBillingPage() {
     return (
         <PageGrid>
             <DataStateNotice state={overviewState} />
-            <DataStateNotice state={ordersState} fallbackLabel="Đang hiển thị dữ liệu đơn hàng mẫu vì chưa có phiên quản trị." />
+            <DataStateNotice state={ordersState} />
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                 <MiniMetric icon={CircleDollarSign} label="Doanh thu đã thu" value={formatCompactVnd(collectedTotal * 1000000)} />
                 <MiniMetric icon={CreditCard} label="Đơn đã thanh toán" value={formatNumber(paidOrders)} tone="green" />
@@ -1680,8 +1633,18 @@ export function AdminBillingPage() {
                                 <CartesianGrid stroke="#E5F0F8" vertical={false} />
                                 <XAxis dataKey="month" axisLine={false} tickLine={false} />
                                 <YAxis axisLine={false} tickLine={false} />
-                                <Tooltip />
-                                <Line type="monotone" dataKey="collected" stroke="#2B7AB5" strokeWidth={4} dot={false} />
+                                <Tooltip
+                                    formatter={(value) => [`${formatNumber(value)} triệu đồng`, 'Doanh thu đã thu']}
+                                    labelFormatter={(label) => `Kỳ: ${label}`}
+                                />
+                                <Line
+                                    type="monotone"
+                                    dataKey="collected"
+                                    name="Doanh thu đã thu"
+                                    stroke="#2B7AB5"
+                                    strokeWidth={4}
+                                    dot={false}
+                                />
                             </LineChart>
                         </ResponsiveContainer>
                     </div>
@@ -1806,98 +1769,6 @@ export function AdminBillingPage() {
     );
 }
 
-export function AdminAiUsagePage() {
-    return (
-        <PageGrid>
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                <MiniMetric icon={Sparkles} label="Lượt tạo bằng AI" value="4,082" />
-                <MiniMetric icon={CheckCircle2} label="Tỷ lệ thành công" value="96.1%" tone="green" />
-                <MiniMetric icon={Clock3} label="Độ trễ trung bình" value="18.4s" tone="navy" />
-                <MiniMetric icon={AlertTriangle} label="Tác vụ lỗi" value="162" tone="orange" />
-            </div>
-            <AdminCard className="p-6">
-                <AdminSectionHeader title="Mức dùng tuần này" />
-                <div className="h-[300px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={usageSeries}>
-                            <CartesianGrid stroke="#E5F0F8" vertical={false} />
-                            <XAxis dataKey="day" axisLine={false} tickLine={false} />
-                            <YAxis axisLine={false} tickLine={false} />
-                            <Tooltip />
-                            <Bar dataKey="documents" radius={[12, 12, 0, 0]} fill="#A8D8EA" />
-                            <Bar dataKey="quizzes" radius={[12, 12, 0, 0]} fill="#2B7AB5" />
-                            <Bar dataKey="sessions" radius={[12, 12, 0, 0]} fill="#1B3A6B" />
-                        </BarChart>
-                    </ResponsiveContainer>
-                </div>
-            </AdminCard>
-            <AdminCard className="p-5">
-                <AdminSectionHeader title="Luồng xử lý AI" description="Theo dõi tỷ lệ thành công, thời gian trung bình, chi phí ước tính và trạng thái luồng xử lý." />
-                <AdminTable
-                    columns={[
-                        { key: 'type', label: 'Luồng xử lý' },
-                        { key: 'requests', label: 'Lượt gọi' },
-                        { key: 'success', label: 'Thành công' },
-                        { key: 'avgTime', label: 'Thời gian TB' },
-                        { key: 'cost', label: 'Chi phí ước tính' },
-                        { key: 'status', label: 'Trạng thái', render: (row) => <StatusBadge value={row.status} /> },
-                    ]}
-                    rows={aiUsageRows}
-                />
-            </AdminCard>
-        </PageGrid>
-    );
-}
-
-export function AdminSupportPage() {
-    return (
-        <PageGrid>
-            <AdminCard className="p-6">
-                <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
-                    <div>
-                        <h2 className="text-2xl font-black text-[#071D35]">Tra cứu hỗ trợ</h2>
-                        <p className="mt-1 text-sm font-semibold text-[#6C8098]">Tìm người dùng bằng email, PIN phiên học, mã tài liệu hoặc mã đơn hàng.</p>
-                        <div className="relative mt-5">
-                            <Search className="pointer-events-none absolute left-5 top-1/2 h-5 w-5 -translate-y-1/2 text-[#7790A8]" />
-                            <input className="h-14 w-full rounded-full border border-[#D8E9F5] bg-white pl-12 pr-5 text-sm font-bold outline-none focus:border-[#5BAED4] focus:ring-4 focus:ring-[#A8D8EA]/30" placeholder="Ví dụ: huong.le@school.vn hoặc PIN 183650" />
-                        </div>
-                    </div>
-                    <div className="rounded-[24px] bg-[#102744] p-5 text-white">
-                        <LifeBuoy className="h-8 w-8 text-[#A8D8EA]" />
-                        <p className="mt-4 text-xl font-black">Tra cứu tập trung</p>
-                        <p className="mt-2 text-sm font-semibold leading-6 text-white/72">Tìm nhanh người dùng, phiên học, tài liệu và đơn hàng liên quan.</p>
-                    </div>
-                </div>
-            </AdminCard>
-            <div className="grid gap-6 xl:grid-cols-2">
-                <AdminCard className="p-6">
-                    <AdminSectionHeader title="Dòng thời gian sự cố hôm nay" />
-                    <div className="space-y-4">
-                        {supportTimeline.map((item) => (
-                            <div key={item.id} className="flex gap-4 rounded-[20px] bg-[#F7FBFE] p-4">
-                                <span className="text-sm font-black text-[#2B7AB5]">{item.time}</span>
-                                <div className="min-w-0">
-                                    <p className="text-sm font-black text-[#102744]">{item.title}</p>
-                                    <p className="mt-1 text-xs font-bold text-[#7C91A8]">{item.meta}</p>
-                                    <div className="mt-2"><StatusBadge value={item.status} /></div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </AdminCard>
-                <AdminCard className="p-6">
-                    <AdminSectionHeader title="Danh sách kiểm tra hỗ trợ" />
-                    <Timeline items={[
-                        ['Xác minh người dùng', 'Email, vai trò, gói đăng ký và hạn mức hiện tại.', 'Bắt buộc'],
-                        ['Xem nội dung/phiên liên quan', 'Ưu tiên xem thông tin tóm tắt trước, mở chi tiết khi cần.', 'Bắt buộc'],
-                        ['Ghi ghi chú kiểm tra', 'Mọi thao tác thanh toán, hạn mức, ẩn nội dung đều cần ghi nhật ký.', 'Bắt buộc'],
-                    ]} />
-                </AdminCard>
-            </div>
-        </PageGrid>
-    );
-}
-
 export function AdminAuditLogsPage() {
     const [query, setQuery] = useState({ page: 1, pageSize: 50 });
     const [draft, setDraft] = useState({ search: '', action: '', targetType: '', riskLevel: '' });
@@ -1906,7 +1777,7 @@ export function AdminAuditLogsPage() {
     const [detailLoading, setDetailLoading] = useState(false);
     const logsState = useAdminResource(
         (options) => getAdminAuditLogs(query, options),
-        { items: auditLogs },
+        { items: [], total: 0 },
         [JSON.stringify(query)]
     );
     const logs = useMemo(() => getItems(logsState.data).map(adaptAuditLog), [logsState.data]);
@@ -1981,7 +1852,7 @@ export function AdminAuditLogsPage() {
                     <ActionButton type="submit">Lọc</ActionButton>
                 </form>
             </AdminCard>
-            <DataStateNotice state={logsState} fallbackLabel="Đang hiển thị audit log mẫu vì chưa có phiên quản trị." />
+            <DataStateNotice state={logsState} />
             <AdminCard className="p-5">
                 <AdminSectionHeader title="Nhật ký thao tác" description="Mọi hành động quản trị có tác động đến người dùng, thanh toán, nội dung, hạn mức đều cần được ghi lại." />
                 <AdminTable
@@ -2014,40 +1885,6 @@ export function AdminAuditLogsPage() {
                 </div>
             )}
             <AuditLogDetailModal log={detailLog} onClose={() => setDetailLog(null)} />
-        </PageGrid>
-    );
-}
-
-export function AdminSettingsPage() {
-    const settings = [
-        { id: 'set-1', title: 'Giới hạn sử dụng gói miễn phí', description: 'Quy định tài khoản miễn phí được tải lên bao nhiêu tài liệu, tạo bao nhiêu bộ câu hỏi, thẻ ghi nhớ và phiên học.', icon: Database },
-        { id: 'set-2', title: 'Bật/tắt tính năng', description: 'Quản lý tính năng nào đang mở cho giáo viên và học sinh: thẻ ghi nhớ, trò chơi phiêu lưu, phân tích dữ liệu hoặc thử nghiệm mới.', icon: Flag },
-        { id: 'set-3', title: 'Điều kiện gửi cảnh báo', description: 'Thiết lập khi nào hệ thống cần báo cho quản trị viên: lỗi xử lý tăng cao, đơn đã thanh toán chưa kích hoạt gói hoặc lỗi kết nối thời gian thực.', icon: ShieldAlert },
-        { id: 'set-4', title: 'Phân quyền quản trị', description: 'Quy định ai được xem dữ liệu, hỗ trợ người dùng, kiểm duyệt nội dung, quản lý thanh toán hoặc thay đổi cấu hình hệ thống.', icon: LockKeyhole },
-    ];
-
-    return (
-        <PageGrid className="xl:grid-cols-2">
-            {settings.map((item) => {
-                const Icon = item.icon;
-                return (
-                    <AdminCard key={item.id} className="p-6">
-                        <div className="flex items-start gap-4">
-                            <div className="grid h-14 w-14 place-items-center rounded-[20px] bg-[#DDF2FF] text-[#2B7AB5]">
-                                <Icon className="h-7 w-7" />
-                            </div>
-                            <div className="min-w-0 flex-1">
-                                <h2 className="text-xl font-black text-[#071D35]">{item.title}</h2>
-                                <p className="mt-2 text-sm font-semibold leading-6 text-[#6C8098]">{item.description}</p>
-                            </div>
-                        </div>
-                        <div className="mt-6 flex flex-wrap gap-3">
-                            <ActionButton>Cập nhật thiết lập</ActionButton>
-                            <ActionButton tone="ghost">Lịch sử thay đổi</ActionButton>
-                        </div>
-                    </AdminCard>
-                );
-            })}
         </PageGrid>
     );
 }

@@ -5,11 +5,8 @@ import {
     CreditCard,
     FileSearch,
     LayoutDashboard,
-    LifeBuoy,
     ListChecks,
     Search,
-    Settings,
-    Sparkles,
     UsersRound,
 } from 'lucide-react';
 
@@ -19,10 +16,7 @@ const navItems = [
     { label: 'Nội dung', path: '/admin/content', icon: FileSearch },
     { label: 'Phiên trực tiếp', path: '/admin/sessions', icon: CalendarClock },
     { label: 'Thanh toán', path: '/admin/billing', icon: CreditCard },
-    { label: 'Mức dùng AI', path: '/admin/ai-usage', icon: Sparkles },
-    { label: 'Hỗ trợ', path: '/admin/support', icon: LifeBuoy },
     { label: 'Nhật ký thao tác', path: '/admin/audit-logs', icon: ListChecks },
-    { label: 'Cài đặt', path: '/admin/settings', icon: Settings },
 ];
 
 const devNavItems = navItems.map((item) => ({
@@ -36,10 +30,7 @@ const pageMeta = {
     '/admin/content': { title: 'Nội dung học tập', eyebrow: 'Theo dõi nội dung', description: 'Theo dõi tài liệu, bộ câu hỏi, thẻ ghi nhớ và trạng thái xử lý nội dung.' },
     '/admin/sessions': { title: 'Phiên trực tiếp', eyebrow: 'Theo dõi phiên trực tiếp', description: 'Theo dõi phiên đang chạy, PIN, học sinh tham gia và lỗi thời gian thực.' },
     '/admin/billing': { title: 'Thanh toán', eyebrow: 'Vận hành thanh toán', description: 'Theo dõi đơn hàng, doanh thu, trạng thái gói trả phí và các đơn cần đối soát.' },
-    '/admin/ai-usage': { title: 'Mức dùng AI', eyebrow: 'Vận hành AI', description: 'Theo dõi lượt tạo nội dung, lỗi xử lý, chi phí và hạn mức người dùng.' },
-    '/admin/support': { title: 'Trung tâm hỗ trợ', eyebrow: 'Hỗ trợ khách hàng', description: 'Tra cứu người dùng, dòng thời gian sự cố và các trường hợp cần xử lý.' },
     '/admin/audit-logs': { title: 'Nhật ký thao tác', eyebrow: 'Theo dõi thay đổi', description: 'Ghi nhận các thao tác quan trọng trên người dùng, thanh toán, nội dung và hạn mức.' },
-    '/admin/settings': { title: 'Cài đặt quản trị', eyebrow: 'Cấu hình hệ thống', description: 'Bật/tắt tính năng, ngưỡng cảnh báo, quyền quản trị và hạn mức mặc định.' },
 };
 
 function getMeta(pathname) {
