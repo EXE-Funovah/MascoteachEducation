@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
 import {
     AlertTriangle,
@@ -9,12 +9,10 @@ import {
     Clock3,
     CreditCard,
     FileSearch,
-    Filter,
     Gamepad2,
     HardDrive,
     ReceiptText,
     RotateCw,
-    Search,
     ShieldAlert,
     ShieldCheck,
     Sparkles,
@@ -74,30 +72,6 @@ function PageGrid({ children, className = '' }) {
     return <div className={`grid gap-6 ${className}`}>{children}</div>;
 }
 
-function FilterBar({ placeholder = 'Tìm kiếm', filters = [] }) {
-    return (
-        <AdminCard className="p-4">
-            <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-                <div className="relative min-w-0 flex-1">
-                    <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[#7790A8]" />
-                    <input
-                        className="h-12 w-full rounded-full border border-[#D8E9F5] bg-white pl-11 pr-4 text-sm font-bold text-[#102744] outline-none placeholder:text-[#8EA1B4] focus:border-[#5BAED4] focus:ring-4 focus:ring-[#A8D8EA]/30"
-                        placeholder={placeholder}
-                    />
-                </div>
-                <div className="flex flex-wrap gap-2">
-                    {filters.map((filter) => (
-                        <button key={filter} className="inline-flex h-11 items-center gap-2 rounded-full border border-[#D8E9F5] bg-white px-4 text-sm font-black text-[#52677F] transition hover:border-[#A8D8EA] hover:text-[#102744]">
-                            <Filter className="h-4 w-4" />
-                            {filter}
-                        </button>
-                    ))}
-                </div>
-            </div>
-        </AdminCard>
-    );
-}
-
 const pageSizeOptions = [10, 20, 30, 50];
 
 function getTotal(response, fallback = 0) {
@@ -105,9 +79,27 @@ function getTotal(response, fallback = 0) {
 }
 
 function AdminQueryToolbar({ draft, onDraftChange, onSubmit, searchPlaceholder = 'Tìm kiếm...', fields = [], embedded = false }) {
+    const onSubmitRef = useRef(onSubmit);
+    const serializedDraft = JSON.stringify(draft);
+    const previousDraftRef = useRef(serializedDraft);
+
+    useEffect(() => {
+        onSubmitRef.current = onSubmit;
+    }, [onSubmit]);
+
+    useEffect(() => {
+        if (previousDraftRef.current === serializedDraft) return undefined;
+
+        previousDraftRef.current = serializedDraft;
+        const timeoutId = window.setTimeout(() => {
+            onSubmitRef.current?.();
+        }, 350);
+
+        return () => window.clearTimeout(timeoutId);
+    }, [serializedDraft]);
+
     const content = (
-        <form className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-end" onSubmit={onSubmit}>
-            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                 <label className="grid gap-2 md:col-span-2 xl:col-span-1">
                     <span className="text-xs font-black uppercase tracking-[0.1em] text-[#60758D]">Tìm kiếm</span>
                     <input
@@ -141,9 +133,7 @@ function AdminQueryToolbar({ draft, onDraftChange, onSubmit, searchPlaceholder =
                         )}
                     </label>
                 ))}
-            </div>
-            <ActionButton type="submit">Lọc</ActionButton>
-        </form>
+        </div>
     );
 
     if (embedded) {
@@ -373,7 +363,7 @@ function adaptRevenueSeries(overview) {
         const value = getField(point, 'value', 'Value', 0);
         return {
             month: getField(point, 'label', 'Label', ''),
-            collected: Math.round(Number(value || 0) / 1000000),
+            collected: Number(value || 0),
         };
     });
 }
@@ -734,7 +724,7 @@ export function AdminOverviewPage() {
                             <p className="mt-1 text-sm font-semibold text-[#6C8098]">Theo dõi doanh thu đã thanh toán theo tháng.</p>
                         </div>
                         <div className="rounded-full bg-[#102744] px-4 py-2 text-sm font-black text-white">
-                            Đã thu: {formatCompactVnd(collectedTotal * 1000000)}
+                            Đã thu: {formatMoney(collectedTotal)}
                         </div>
                     </div>
                     <div className="mt-6 h-[330px]">
@@ -748,9 +738,14 @@ export function AdminOverviewPage() {
                                 </defs>
                                 <CartesianGrid stroke="#E5F0F8" vertical={false} />
                                 <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: '#7C91A8', fontSize: 12, fontWeight: 700 }} />
-                                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#7C91A8', fontSize: 12, fontWeight: 700 }} />
+                                <YAxis
+                                    axisLine={false}
+                                    tickLine={false}
+                                    tickFormatter={formatCompactVnd}
+                                    tick={{ fill: '#7C91A8', fontSize: 12, fontWeight: 700 }}
+                                />
                                 <Tooltip
-                                    formatter={(value) => [`${formatNumber(value)} triệu đồng`, 'Doanh thu đã thu']}
+                                    formatter={(value) => [formatMoney(value), 'Doanh thu đã thu']}
                                     labelFormatter={(label) => `Kỳ: ${label}`}
                                     contentStyle={{ borderRadius: 18, border: '1px solid #D8E9F5', boxShadow: '0 18px 50px rgba(43,122,181,.16)' }}
                                 />
@@ -795,7 +790,7 @@ export function AdminUsersPage() {
     ];
 
     function applyUsersFilters(event) {
-        event.preventDefault();
+        event?.preventDefault();
         setQuery((current) => ({ ...current, ...draft, page: 1 }));
     }
 
@@ -1166,7 +1161,7 @@ export function AdminContentPage() {
     const totalContent = getTotal(documentsState.data, documents.length) + getTotal(quizzesState.data, quizzes.length);
 
     function applyContentFilters(event) {
-        event.preventDefault();
+        event?.preventDefault();
         setQuery((current) => ({ ...current, ...draft, page: 1 }));
     }
 
@@ -1418,7 +1413,7 @@ export function AdminSessionsPage() {
     const totalSessions = getTotal(sessionsState.data, sessions.length);
 
     function applySessionFilters(event) {
-        event.preventDefault();
+        event?.preventDefault();
         setQuery((current) => ({ ...current, ...draft, page: 1 }));
     }
 
@@ -1605,12 +1600,12 @@ export function AdminBillingPage() {
     const totalWebhookEvents = getTotal(webhookState.data, webhookEvents.length);
 
     function applyOrderFilters(event) {
-        event.preventDefault();
+        event?.preventDefault();
         setOrdersQuery((current) => ({ ...current, ...ordersDraft, page: 1 }));
     }
 
     function applyWebhookFilters(event) {
-        event.preventDefault();
+        event?.preventDefault();
         setWebhookQuery((current) => ({ ...current, ...webhookDraft, page: 1 }));
     }
 
@@ -1619,7 +1614,7 @@ export function AdminBillingPage() {
             <DataStateNotice state={overviewState} />
             <DataStateNotice state={ordersState} />
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                <MiniMetric icon={CircleDollarSign} label="Doanh thu đã thu" value={formatCompactVnd(collectedTotal * 1000000)} />
+                <MiniMetric icon={CircleDollarSign} label="Doanh thu đã thu" value={formatMoney(collectedTotal)} />
                 <MiniMetric icon={CreditCard} label="Đơn đã thanh toán" value={formatNumber(paidOrders)} tone="green" />
                 <MiniMetric icon={ReceiptText} label="Đang chờ" value={formatNumber(pendingOrders)} tone="orange" />
                 <MiniMetric icon={AlertTriangle} label="Lỗi thanh toán" value={formatNumber(webhookErrors)} tone="red" />
@@ -1632,9 +1627,9 @@ export function AdminBillingPage() {
                             <LineChart data={billingSeries}>
                                 <CartesianGrid stroke="#E5F0F8" vertical={false} />
                                 <XAxis dataKey="month" axisLine={false} tickLine={false} />
-                                <YAxis axisLine={false} tickLine={false} />
+                                <YAxis axisLine={false} tickLine={false} tickFormatter={formatCompactVnd} />
                                 <Tooltip
-                                    formatter={(value) => [`${formatNumber(value)} triệu đồng`, 'Doanh thu đã thu']}
+                                    formatter={(value) => [formatMoney(value), 'Doanh thu đã thu']}
                                     labelFormatter={(label) => `Kỳ: ${label}`}
                                 />
                                 <Line
@@ -1784,7 +1779,7 @@ export function AdminAuditLogsPage() {
     const totalLogs = getTotal(logsState.data, logs.length);
 
     function applyAuditFilters(event) {
-        event.preventDefault();
+        event?.preventDefault();
         setQuery({ page: 1, pageSize: 50, ...draft });
     }
 
@@ -1807,51 +1802,27 @@ export function AdminAuditLogsPage() {
 
     return (
         <PageGrid>
-            <AdminCard className="p-4">
-                <form className="grid gap-3 xl:grid-cols-[minmax(0,1.2fr)_repeat(3,minmax(160px,0.4fr))_auto] xl:items-end" onSubmit={applyAuditFilters}>
-                    <label className="grid gap-2">
-                        <span className="text-xs font-black uppercase tracking-[0.1em] text-[#60758D]">Tìm kiếm</span>
-                        <input
-                            className="h-12 rounded-[16px] border border-[#D8E9F5] bg-white px-4 text-sm font-bold text-[#102744] outline-none focus:border-[#5BAED4] focus:ring-4 focus:ring-[#A8D8EA]/30"
-                            value={draft.search}
-                            onChange={(event) => setDraft((current) => ({ ...current, search: event.target.value }))}
-                            placeholder="Email, action, target..."
-                        />
-                    </label>
-                    <label className="grid gap-2">
-                        <span className="text-xs font-black uppercase tracking-[0.1em] text-[#60758D]">Rủi ro</span>
-                        <select
-                            className="h-12 rounded-[16px] border border-[#D8E9F5] bg-white px-4 text-sm font-bold text-[#102744] outline-none focus:border-[#5BAED4] focus:ring-4 focus:ring-[#A8D8EA]/30"
-                            value={draft.riskLevel}
-                            onChange={(event) => setDraft((current) => ({ ...current, riskLevel: event.target.value }))}
-                        >
-                            <option value="">Tất cả</option>
-                            <option value="Low">Low</option>
-                            <option value="Medium">Medium</option>
-                            <option value="High">High</option>
-                        </select>
-                    </label>
-                    <label className="grid gap-2">
-                        <span className="text-xs font-black uppercase tracking-[0.1em] text-[#60758D]">Action</span>
-                        <input
-                            className="h-12 rounded-[16px] border border-[#D8E9F5] bg-white px-4 text-sm font-bold text-[#102744] outline-none focus:border-[#5BAED4] focus:ring-4 focus:ring-[#A8D8EA]/30"
-                            value={draft.action}
-                            onChange={(event) => setDraft((current) => ({ ...current, action: event.target.value }))}
-                            placeholder="User.RoleChanged"
-                        />
-                    </label>
-                    <label className="grid gap-2">
-                        <span className="text-xs font-black uppercase tracking-[0.1em] text-[#60758D]">Target</span>
-                        <input
-                            className="h-12 rounded-[16px] border border-[#D8E9F5] bg-white px-4 text-sm font-bold text-[#102744] outline-none focus:border-[#5BAED4] focus:ring-4 focus:ring-[#A8D8EA]/30"
-                            value={draft.targetType}
-                            onChange={(event) => setDraft((current) => ({ ...current, targetType: event.target.value }))}
-                            placeholder="User"
-                        />
-                    </label>
-                    <ActionButton type="submit">Lọc</ActionButton>
-                </form>
-            </AdminCard>
+            <AdminQueryToolbar
+                draft={draft}
+                onDraftChange={(name, value) => setDraft((current) => ({ ...current, [name]: value }))}
+                onSubmit={applyAuditFilters}
+                searchPlaceholder="Email, action, target..."
+                fields={[
+                    {
+                        name: 'riskLevel',
+                        label: 'Rủi ro',
+                        type: 'select',
+                        options: [
+                            { value: '', label: 'Tất cả' },
+                            { value: 'Low', label: 'Low' },
+                            { value: 'Medium', label: 'Medium' },
+                            { value: 'High', label: 'High' },
+                        ],
+                    },
+                    { name: 'action', label: 'Action', placeholder: 'User.RoleChanged' },
+                    { name: 'targetType', label: 'Target', placeholder: 'User' },
+                ]}
+            />
             <DataStateNotice state={logsState} />
             <AdminCard className="p-5">
                 <AdminSectionHeader title="Nhật ký thao tác" description="Mọi hành động quản trị có tác động đến người dùng, thanh toán, nội dung, hạn mức đều cần được ghi lại." />

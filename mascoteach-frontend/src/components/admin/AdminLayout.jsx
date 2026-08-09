@@ -6,7 +6,6 @@ import {
     FileSearch,
     LayoutDashboard,
     ListChecks,
-    Search,
     UsersRound,
 } from 'lucide-react';
 
@@ -170,13 +169,6 @@ export default function AdminLayout() {
                         </div>
 
                         <div className="flex flex-col gap-3 sm:flex-row xl:justify-end">
-                            <div className="relative">
-                                <Search className="pointer-events-none absolute left-5 top-1/2 h-5 w-5 -translate-y-1/2 text-[#7790A8]" />
-                                <input
-                                    className="h-14 w-full rounded-full border border-[#E0EEF8] bg-white pl-12 pr-5 text-sm font-bold text-[#102744] outline-none shadow-[0_12px_28px_rgba(43,122,181,0.08)] placeholder:text-[#8EA1B4] focus:border-[#5BAED4] focus:ring-4 focus:ring-[#A8D8EA]/30 sm:w-[320px] xl:w-[360px]"
-                                    placeholder="Tìm người dùng, tài liệu, PIN, đơn hàng..."
-                                />
-                            </div>
                             <button className="grid h-14 w-14 shrink-0 place-items-center rounded-full border border-[#E0EEF8] bg-white text-[#102744] shadow-[0_12px_28px_rgba(43,122,181,0.08)] transition hover:-translate-y-0.5">
                                 <Bell className="h-5 w-5" />
                             </button>
