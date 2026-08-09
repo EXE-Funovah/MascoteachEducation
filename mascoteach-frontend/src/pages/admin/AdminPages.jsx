@@ -69,7 +69,26 @@ function useAdminBase() {
 }
 
 function PageGrid({ children, className = '' }) {
-    return <div className={`grid gap-6 ${className}`}>{children}</div>;
+    return <div className={`admin-page-enter grid gap-6 ${className}`}>{children}</div>;
+}
+
+function AdminPageLoader({ label = 'Đang tải dữ liệu quản trị...' }) {
+    return (
+        <div className="grid min-h-[420px] place-items-center" role="status" aria-live="polite">
+            <div className="w-full max-w-4xl space-y-5">
+                <div className="flex items-center justify-center gap-3 text-sm font-black text-[#52677F]">
+                    <span className="h-6 w-6 animate-spin rounded-full border-2 border-[#B9DFF3] border-t-[#2B7AB5]" />
+                    {label}
+                </div>
+                <div className="grid animate-pulse gap-4 md:grid-cols-3" aria-hidden="true">
+                    {[0, 1, 2].map((item) => (
+                        <div key={item} className="h-28 rounded-[24px] border border-[#E0EEF8] bg-white/80" />
+                    ))}
+                </div>
+                <div className="h-52 animate-pulse rounded-[28px] border border-[#E0EEF8] bg-white/80" aria-hidden="true" />
+            </div>
+        </div>
+    );
 }
 
 const pageSizeOptions = [10, 20, 30, 50];
@@ -220,6 +239,33 @@ function formatCompactVnd(value) {
     return new Intl.NumberFormat('vi-VN').format(numeric);
 }
 
+function formatRevenueAxis(value) {
+    const numeric = Number(value || 0);
+    const absolute = Math.abs(numeric);
+    const compact = (divisor, suffix) => `${new Intl.NumberFormat('vi-VN', {
+        maximumFractionDigits: 1,
+    }).format(numeric / divisor)}${suffix}`;
+
+    if (absolute >= 1000000000) return compact(1000000000, ' tỷ');
+    if (absolute >= 1000000) return compact(1000000, ' tr');
+    if (absolute >= 1000) return compact(1000, 'K');
+    return formatNumber(numeric);
+}
+
+function usePrefersReducedMotion() {
+    const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+
+    useEffect(() => {
+        const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+        const updatePreference = () => setPrefersReducedMotion(mediaQuery.matches);
+        updatePreference();
+        mediaQuery.addEventListener('change', updatePreference);
+        return () => mediaQuery.removeEventListener('change', updatePreference);
+    }, []);
+
+    return prefersReducedMotion;
+}
+
 function formatMoney(value, currency = 'VND') {
     const numeric = Number(value || 0);
     if (String(currency).toUpperCase() === 'VND') {
@@ -270,31 +316,54 @@ function useAdminResource(fetcher, fallback, deps = []) {
     const [state, setState] = useState({
         data: fallback,
         error: '',
-        isLoading: false,
+        isLoading: hasAdminApiToken(),
+        isRefreshing: false,
         isFallback: true,
+        hasLoaded: false,
     });
 
     useEffect(() => {
         if (!hasAdminApiToken()) {
-            setState({ data: fallback, error: '', isLoading: false, isFallback: true });
+            setState({
+                data: fallback,
+                error: '',
+                isLoading: false,
+                isRefreshing: false,
+                isFallback: true,
+                hasLoaded: true,
+            });
             return undefined;
         }
 
         const controller = new AbortController();
-        setState((current) => ({ ...current, isLoading: true, error: '' }));
+        setState((current) => ({
+            ...current,
+            error: '',
+            isLoading: !current.hasLoaded,
+            isRefreshing: current.hasLoaded,
+        }));
 
         fetcher({ signal: controller.signal })
             .then((data) => {
-                setState({ data, error: '', isLoading: false, isFallback: false });
+                setState({
+                    data,
+                    error: '',
+                    isLoading: false,
+                    isRefreshing: false,
+                    isFallback: false,
+                    hasLoaded: true,
+                });
             })
             .catch((error) => {
                 if (controller.signal.aborted) return;
-                setState({
-                    data: fallback,
+                setState((current) => ({
+                    data: current.hasLoaded ? current.data : fallback,
                     error: error?.message || 'Không thể tải dữ liệu admin.',
                     isLoading: false,
-                    isFallback: true,
-                });
+                    isRefreshing: false,
+                    isFallback: current.hasLoaded ? current.isFallback : true,
+                    hasLoaded: true,
+                }));
             });
 
         return () => controller.abort();
@@ -304,16 +373,27 @@ function useAdminResource(fetcher, fallback, deps = []) {
     return state;
 }
 
-function DataStateNotice({ state }) {
-    if (state?.isLoading) {
+function DataStateNotice({ state, states }) {
+    const resources = (states || [state]).filter(Boolean);
+    const isLoading = resources.some((resource) => resource.isLoading);
+    const isRefreshing = resources.some((resource) => resource.isRefreshing);
+    const error = resources.find((resource) => resource.error)?.error || '';
+    const isFallback = resources.length > 0 && resources.every((resource) => resource.isFallback);
+
+    if (isLoading) {
+        return <AdminPageLoader />;
+    }
+
+    if (isRefreshing) {
         return (
-            <div className="rounded-[18px] border border-[#D8E9F5] bg-white px-4 py-3 text-sm font-bold text-[#52677F]">
-                Đang tải dữ liệu...
+            <div className="fixed bottom-6 right-6 z-[70] flex items-center gap-3 rounded-full border border-[#B9DFF3] bg-white/95 px-4 py-3 text-sm font-black text-[#2B7AB5] shadow-[0_18px_45px_rgba(43,122,181,0.18)] backdrop-blur" role="status" aria-live="polite">
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-[#B9DFF3] border-t-[#2B7AB5]" />
+                Đang cập nhật dữ liệu...
             </div>
         );
     }
 
-    if (state?.error) {
+    if (error) {
         return (
             <div className="rounded-[18px] border border-[#FFE2B8] bg-[#FFF8EC] px-4 py-3 text-sm font-bold text-[#9B5A00]">
                 Không thể tải dữ liệu từ hệ thống. Vui lòng thử lại sau.
@@ -321,7 +401,7 @@ function DataStateNotice({ state }) {
         );
     }
 
-    if (state?.isFallback && !hasAdminApiToken()) {
+    if (isFallback && !hasAdminApiToken()) {
         return (
             <div className="rounded-[18px] border border-[#D8E9F5] bg-[#F7FCFF] px-4 py-3 text-sm font-bold text-[#52677F]">
                 Vui lòng đăng nhập bằng tài khoản quản trị để tải dữ liệu.
@@ -700,6 +780,7 @@ function StatCard({ stat }) {
 }
 
 export function AdminOverviewPage() {
+    const prefersReducedMotion = usePrefersReducedMotion();
     const overviewState = useAdminResource(
         (options) => getAdminOverview({ range: '30d' }, options),
         null,
@@ -708,6 +789,10 @@ export function AdminOverviewPage() {
     const overviewStats = useMemo(() => adaptOverviewStats(overviewState.data), [overviewState.data]);
     const chartSeries = useMemo(() => adaptRevenueSeries(overviewState.data), [overviewState.data]);
     const collectedTotal = chartSeries.reduce((total, point) => total + Number(point.collected || 0), 0);
+
+    if (overviewState.isLoading) {
+        return <AdminPageLoader label="Đang tải tổng quan quản trị..." />;
+    }
 
     return (
         <PageGrid>
@@ -727,9 +812,9 @@ export function AdminOverviewPage() {
                             Đã thu: {formatMoney(collectedTotal)}
                         </div>
                     </div>
-                    <div className="mt-6 h-[330px]">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={chartSeries}>
+                    <div className="admin-chart mt-6 h-[330px] min-w-0">
+                        <ResponsiveContainer width="100%" height="100%" minWidth={0} debounce={80}>
+                            <AreaChart data={chartSeries} margin={{ top: 18, right: 24, bottom: 8, left: 12 }}>
                                 <defs>
                                     <linearGradient id="adminRevenue" x1="0" x2="0" y1="0" y2="1">
                                         <stop offset="5%" stopColor="#2B7AB5" stopOpacity={0.28} />
@@ -737,11 +822,14 @@ export function AdminOverviewPage() {
                                     </linearGradient>
                                 </defs>
                                 <CartesianGrid stroke="#E5F0F8" vertical={false} />
-                                <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: '#7C91A8', fontSize: 12, fontWeight: 700 }} />
+                                <XAxis dataKey="month" axisLine={false} tickLine={false} padding={{ left: 12, right: 12 }} tick={{ fill: '#7C91A8', fontSize: 12, fontWeight: 700 }} />
                                 <YAxis
                                     axisLine={false}
                                     tickLine={false}
-                                    tickFormatter={formatCompactVnd}
+                                    width={76}
+                                    allowDecimals={false}
+                                    domain={[0, (dataMax) => (dataMax > 0 ? Math.ceil(dataMax * 1.12) : 1)]}
+                                    tickFormatter={formatRevenueAxis}
                                     tick={{ fill: '#7C91A8', fontSize: 12, fontWeight: 700 }}
                                 />
                                 <Tooltip
@@ -756,6 +844,9 @@ export function AdminOverviewPage() {
                                     stroke="#2B7AB5"
                                     strokeWidth={4}
                                     fill="url(#adminRevenue)"
+                                    isAnimationActive={!prefersReducedMotion}
+                                    animationDuration={550}
+                                    animationEasing="ease-out"
                                 />
                             </AreaChart>
                         </ResponsiveContainer>
@@ -792,6 +883,10 @@ export function AdminUsersPage() {
     function applyUsersFilters(event) {
         event?.preventDefault();
         setQuery((current) => ({ ...current, ...draft, page: 1 }));
+    }
+
+    if (usersState.isLoading) {
+        return <AdminPageLoader label="Đang tải danh sách người dùng..." />;
     }
 
     return (
@@ -903,6 +998,10 @@ export function AdminUserDetailPage() {
         () => getItems(sessionsState.data).map(adaptSession),
         [sessionsState.data]
     );
+    const isInitialLoading = userState.isLoading
+        || documentsState.isLoading
+        || quizzesState.isLoading
+        || sessionsState.isLoading;
     const userCommandConfig = useMemo(() => {
         const currentStatus = user?.status === 'Deleted' ? 'Deleted' : 'Active';
         const configs = {
@@ -957,11 +1056,15 @@ export function AdminUserDetailPage() {
         return configs[commandType];
     }, [commandType, user?.status]);
 
+    if (isInitialLoading) {
+        return <AdminPageLoader label="Đang tải hồ sơ người dùng..." />;
+    }
+
     if (!user) {
         return (
             <PageGrid>
                 <DataStateNotice state={userState} />
-                {!userState.isLoading && !userState.error && (
+                {!userState.error && !userState.isFallback && (
                     <AdminCard className="p-6 text-sm font-bold text-[#52677F]">
                         Không tìm thấy người dùng.
                     </AdminCard>
@@ -1034,7 +1137,7 @@ export function AdminUserDetailPage() {
 
     return (
         <PageGrid>
-            <DataStateNotice state={userState} />
+            <DataStateNotice states={[userState, documentsState, quizzesState, sessionsState]} />
             <DetailHero
                 backTo={`${base}/users`}
                 title={user.name}
@@ -1165,10 +1268,13 @@ export function AdminContentPage() {
         setQuery((current) => ({ ...current, ...draft, page: 1 }));
     }
 
+    if (documentsState.isLoading || quizzesState.isLoading) {
+        return <AdminPageLoader label="Đang tải nội dung học tập..." />;
+    }
+
     return (
         <PageGrid>
-            <DataStateNotice state={documentsState} />
-            <DataStateNotice state={quizzesState} />
+            <DataStateNotice states={[documentsState, quizzesState]} />
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                 <MiniMetric icon={FileSearch} label="Tài liệu trong trang" value={formatNumber(documents.length)} />
                 <MiniMetric icon={BookOpenCheck} label="Bộ câu hỏi trong trang" value={formatNumber(quizCount)} tone="navy" />
@@ -1283,11 +1389,15 @@ export function AdminContentDetailPage() {
         actionTimelineItems.splice(1, 0, ['Ẩn/khôi phục tài liệu', 'Đã hỗ trợ thao tác trực tiếp cho tài liệu.', 'Hoàn tất']);
     }
 
+    if (contentState.isLoading) {
+        return <AdminPageLoader label="Đang tải chi tiết nội dung..." />;
+    }
+
     if (!content) {
         return (
             <PageGrid>
                 <DataStateNotice state={contentState} />
-                {!contentState.isLoading && !contentState.error && (
+                {!contentState.error && !contentState.isFallback && (
                     <AdminCard className="p-6 text-sm font-bold text-[#52677F]">
                         Không tìm thấy nội dung.
                     </AdminCard>
@@ -1417,6 +1527,10 @@ export function AdminSessionsPage() {
         setQuery((current) => ({ ...current, ...draft, page: 1 }));
     }
 
+    if (sessionsState.isLoading) {
+        return <AdminPageLoader label="Đang tải danh sách phiên trực tiếp..." />;
+    }
+
     return (
         <PageGrid>
             <DataStateNotice state={sessionsState} />
@@ -1505,11 +1619,15 @@ export function AdminSessionDetailPage() {
         [participantsState.data]
     );
 
+    if (sessionState.isLoading || participantsState.isLoading) {
+        return <AdminPageLoader label="Đang tải chi tiết phiên trực tiếp..." />;
+    }
+
     if (!session) {
         return (
             <PageGrid>
                 <DataStateNotice state={sessionState} />
-                {!sessionState.isLoading && !sessionState.error && (
+                {!sessionState.error && !sessionState.isFallback && (
                     <AdminCard className="p-6 text-sm font-bold text-[#52677F]">
                         Không tìm thấy phiên trực tiếp.
                     </AdminCard>
@@ -1520,7 +1638,7 @@ export function AdminSessionDetailPage() {
 
     return (
         <PageGrid>
-            <DataStateNotice state={sessionState} />
+            <DataStateNotice states={[sessionState, participantsState]} />
             <DetailHero
                 backTo={`${base}/sessions`}
                 title={session.title}
@@ -1564,6 +1682,7 @@ export function AdminSessionDetailPage() {
 }
 
 export function AdminBillingPage() {
+    const prefersReducedMotion = usePrefersReducedMotion();
     const [ordersQuery, setOrdersQuery] = useState({ page: 1, pageSize: 20, search: '', status: '', plan: '', deletion: 'Active' });
     const [ordersDraft, setOrdersDraft] = useState({ search: '', status: '', plan: '', deletion: 'Active' });
     const [webhookQuery, setWebhookQuery] = useState({ page: 1, pageSize: 10, search: '', processed: '', hasError: '' });
@@ -1609,10 +1728,13 @@ export function AdminBillingPage() {
         setWebhookQuery((current) => ({ ...current, ...webhookDraft, page: 1 }));
     }
 
+    if (overviewState.isLoading || ordersState.isLoading || webhookState.isLoading) {
+        return <AdminPageLoader label="Đang tải dữ liệu thanh toán..." />;
+    }
+
     return (
         <PageGrid>
-            <DataStateNotice state={overviewState} />
-            <DataStateNotice state={ordersState} />
+            <DataStateNotice states={[overviewState, ordersState, webhookState]} />
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                 <MiniMetric icon={CircleDollarSign} label="Doanh thu đã thu" value={formatMoney(collectedTotal)} />
                 <MiniMetric icon={CreditCard} label="Đơn đã thanh toán" value={formatNumber(paidOrders)} tone="green" />
@@ -1622,12 +1744,19 @@ export function AdminBillingPage() {
             <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
                 <AdminCard className="p-6">
                     <AdminSectionHeader title="Xu hướng doanh thu" description="Theo dõi doanh thu đã thanh toán theo tháng và đối soát cùng danh sách đơn hàng." />
-                    <div className="h-[280px]">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <LineChart data={billingSeries}>
+                    <div className="admin-chart h-[280px] min-w-0">
+                        <ResponsiveContainer width="100%" height="100%" minWidth={0} debounce={80}>
+                            <LineChart data={billingSeries} margin={{ top: 18, right: 24, bottom: 8, left: 12 }}>
                                 <CartesianGrid stroke="#E5F0F8" vertical={false} />
-                                <XAxis dataKey="month" axisLine={false} tickLine={false} />
-                                <YAxis axisLine={false} tickLine={false} tickFormatter={formatCompactVnd} />
+                                <XAxis dataKey="month" axisLine={false} tickLine={false} padding={{ left: 12, right: 12 }} />
+                                <YAxis
+                                    axisLine={false}
+                                    tickLine={false}
+                                    width={76}
+                                    allowDecimals={false}
+                                    domain={[0, (dataMax) => (dataMax > 0 ? Math.ceil(dataMax * 1.12) : 1)]}
+                                    tickFormatter={formatRevenueAxis}
+                                />
                                 <Tooltip
                                     formatter={(value) => [formatMoney(value), 'Doanh thu đã thu']}
                                     labelFormatter={(label) => `Kỳ: ${label}`}
@@ -1639,6 +1768,9 @@ export function AdminBillingPage() {
                                     stroke="#2B7AB5"
                                     strokeWidth={4}
                                     dot={false}
+                                    isAnimationActive={!prefersReducedMotion}
+                                    animationDuration={550}
+                                    animationEasing="ease-out"
                                 />
                             </LineChart>
                         </ResponsiveContainer>
@@ -1798,6 +1930,10 @@ export function AdminAuditLogsPage() {
         } finally {
             setDetailLoading(false);
         }
+    }
+
+    if (logsState.isLoading) {
+        return <AdminPageLoader label="Đang tải nhật ký thao tác..." />;
     }
 
     return (
