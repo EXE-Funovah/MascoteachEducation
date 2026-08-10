@@ -99,6 +99,15 @@ function getTotal(response, fallback = 0) {
     return Number(getField(response, 'total', 'Total', fallback) || 0);
 }
 
+function countActiveFilters(values, defaults = {}) {
+    return Object.entries(values).filter(([key, value]) => (
+        value !== undefined
+        && value !== null
+        && value !== ''
+        && value !== defaults[key]
+    )).length;
+}
+
 function AdminQueryToolbar({
     draft,
     onDraftChange,
@@ -107,6 +116,8 @@ function AdminQueryToolbar({
     fields = [],
     embedded = false,
     isRefreshing = false,
+    activeFilterCount = 0,
+    onClear,
 }) {
     const onSubmitRef = useRef(onSubmit);
     const serializedDraft = JSON.stringify(draft);
@@ -167,6 +178,26 @@ function AdminQueryToolbar({
 
     const toolbarContent = (
         <div className="relative overflow-hidden" aria-busy={isRefreshing}>
+            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                    <p className="text-sm font-black text-[#102744]">Bộ lọc dữ liệu</p>
+                    <p className="mt-0.5 text-xs font-semibold text-[#6C8098]">
+                        {activeFilterCount > 0
+                            ? `${activeFilterCount} điều kiện đang được áp dụng tự động.`
+                            : 'Đang dùng điều kiện mặc định.'}
+                    </p>
+                </div>
+                {onClear && (
+                    <button
+                        type="button"
+                        className="inline-flex h-9 items-center justify-center rounded-full border border-[#D8E9F5] bg-white px-4 text-xs font-black text-[#52677F] transition hover:border-[#B9DFF3] hover:bg-[#F3FAFF] hover:text-[#1B3A6B] disabled:cursor-not-allowed disabled:opacity-45"
+                        disabled={activeFilterCount === 0 || isRefreshing}
+                        onClick={onClear}
+                    >
+                        Xóa bộ lọc
+                    </button>
+                )}
+            </div>
             {content}
             {isRefreshing && (
                 <div className="absolute inset-x-0 bottom-0 h-0.5 overflow-hidden bg-[#D8E9F5]" aria-hidden="true">
@@ -318,6 +349,111 @@ function getRevenueExportParams(filters) {
         to: toExclusive.toISOString(),
         plan: filters.plan,
     };
+}
+
+function parseCsv(text) {
+    const rows = [];
+    let row = [];
+    let cell = '';
+    let quoted = false;
+
+    for (let index = 0; index < text.length; index += 1) {
+        const character = text[index];
+
+        if (quoted) {
+            if (character === '"' && text[index + 1] === '"') {
+                cell += '"';
+                index += 1;
+            } else if (character === '"') {
+                quoted = false;
+            } else {
+                cell += character;
+            }
+        } else if (character === '"') {
+            quoted = true;
+        } else if (character === ',') {
+            row.push(cell);
+            cell = '';
+        } else if (character === '\n') {
+            row.push(cell.replace(/\r$/, ''));
+            rows.push(row);
+            row = [];
+            cell = '';
+        } else {
+            cell += character;
+        }
+    }
+
+    if (cell || row.length) {
+        row.push(cell.replace(/\r$/, ''));
+        rows.push(row);
+    }
+
+    return rows;
+}
+
+async function parseRevenueCsvBlob(blob) {
+    const csvRows = parseCsv((await blob.text()).replace(/^\uFEFF/, ''));
+    if (csvRows.length < 2) return [];
+
+    const headers = csvRows[0];
+    const amountIndex = headers.indexOf('Amount');
+    const paidAtIndex = headers.indexOf('PaidAt');
+    if (amountIndex < 0 || paidAtIndex < 0) return [];
+
+    return csvRows.slice(1).flatMap((row) => {
+        const paidAt = new Date(row[paidAtIndex]);
+        const amount = Number(row[amountIndex]);
+        if (Number.isNaN(paidAt.getTime()) || !Number.isFinite(amount)) return [];
+        return [{ amount, paidAt }];
+    });
+}
+
+function buildRevenueChartSeries(rows, filters, granularity) {
+    const from = getLocalDayBoundary(filters.from);
+    const to = getLocalDayBoundary(filters.to);
+    if (!from || !to) return [];
+
+    const totals = new Map();
+    rows.forEach(({ amount, paidAt }) => {
+        const key = granularity === 'month'
+            ? `${paidAt.getFullYear()}-${String(paidAt.getMonth() + 1).padStart(2, '0')}`
+            : formatDateInputValue(paidAt);
+        totals.set(key, (totals.get(key) || 0) + Number(amount || 0));
+    });
+
+    const series = [];
+    if (granularity === 'month') {
+        const cursor = new Date(from.getFullYear(), from.getMonth(), 1);
+        const lastMonth = new Date(to.getFullYear(), to.getMonth(), 1);
+        while (cursor <= lastMonth) {
+            const key = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}`;
+            series.push({
+                label: `T${cursor.getMonth() + 1}/${String(cursor.getFullYear()).slice(-2)}`,
+                collected: totals.get(key) || 0,
+            });
+            cursor.setMonth(cursor.getMonth() + 1);
+        }
+        return series;
+    }
+
+    const cursor = new Date(from);
+    while (cursor <= to) {
+        const key = formatDateInputValue(cursor);
+        series.push({
+            label: `${String(cursor.getDate()).padStart(2, '0')}/${String(cursor.getMonth() + 1).padStart(2, '0')}`,
+            collected: totals.get(key) || 0,
+        });
+        cursor.setDate(cursor.getDate() + 1);
+    }
+    return series;
+}
+
+function formatRevenueFilterPeriod(filters) {
+    const from = getLocalDayBoundary(filters.from);
+    const to = getLocalDayBoundary(filters.to);
+    if (!from || !to) return 'Chưa chọn khoảng thời gian';
+    return `${new Intl.DateTimeFormat('vi-VN').format(from)} – ${new Intl.DateTimeFormat('vi-VN').format(to)}`;
 }
 
 function usePrefersReducedMotion() {
@@ -962,6 +1098,12 @@ export function AdminUsersPage() {
             <AdminQueryToolbar
                 draft={draft}
                 isRefreshing={usersState.isRefreshing}
+                activeFilterCount={countActiveFilters(draft)}
+                onClear={() => {
+                    const defaults = { search: '', role: '', subscription: '' };
+                    setDraft(defaults);
+                    setQuery((current) => ({ ...current, ...defaults, page: 1 }));
+                }}
                 onDraftChange={(name, value) => setDraft((current) => ({ ...current, [name]: value }))}
                 onSubmit={applyUsersFilters}
                 searchPlaceholder="Tìm theo tên hoặc email..."
@@ -1353,6 +1495,12 @@ export function AdminContentPage() {
             <AdminQueryToolbar
                 draft={draft}
                 isRefreshing={documentsState.isRefreshing || quizzesState.isRefreshing}
+                activeFilterCount={countActiveFilters(draft, { deletion: 'Active' })}
+                onClear={() => {
+                    const defaults = { search: '', deletion: 'Active', contentType: '' };
+                    setDraft(defaults);
+                    setQuery((current) => ({ ...current, ...defaults, page: 1 }));
+                }}
                 onDraftChange={(name, value) => setDraft((current) => ({ ...current, [name]: value }))}
                 onSubmit={applyContentFilters}
                 searchPlaceholder="Tìm tài liệu, quiz, flashcard, giáo viên..."
@@ -1616,6 +1764,12 @@ export function AdminSessionsPage() {
             <AdminQueryToolbar
                 draft={draft}
                 isRefreshing={sessionsState.isRefreshing}
+                activeFilterCount={countActiveFilters(draft, { deletion: 'Active' })}
+                onClear={() => {
+                    const defaults = { search: '', status: '', deletion: 'Active' };
+                    setDraft(defaults);
+                    setQuery((current) => ({ ...current, ...defaults, page: 1 }));
+                }}
                 onDraftChange={(name, value) => setDraft((current) => ({ ...current, [name]: value }))}
                 onSubmit={applySessionFilters}
                 searchPlaceholder="Tìm theo PIN, giáo viên, bộ câu hỏi..."
@@ -1760,17 +1914,23 @@ export function AdminSessionDetailPage() {
 
 export function AdminBillingPage() {
     const prefersReducedMotion = usePrefersReducedMotion();
-    const [exportFilters, setExportFilters] = useState(getDefaultRevenueExportFilters);
+    const [revenueDraft, setRevenueDraft] = useState(getDefaultRevenueExportFilters);
+    const [revenueQuery, setRevenueQuery] = useState(getDefaultRevenueExportFilters);
+    const [revenueGranularity, setRevenueGranularity] = useState('day');
+    const [revenueRefreshKey, setRevenueRefreshKey] = useState(0);
     const [isExporting, setIsExporting] = useState(false);
     const [toast, setToast] = useState(null);
     const [ordersQuery, setOrdersQuery] = useState({ page: 1, pageSize: 20, search: '', status: '', plan: '', deletion: 'Active' });
     const [ordersDraft, setOrdersDraft] = useState({ search: '', status: '', plan: '', deletion: 'Active' });
     const [webhookQuery, setWebhookQuery] = useState({ page: 1, pageSize: 10, search: '', processed: '', hasError: '' });
     const [webhookDraft, setWebhookDraft] = useState({ search: '', processed: '', hasError: '' });
-    const overviewState = useAdminResource(
-        (options) => getAdminOverview({ range: '30d' }, options),
-        null,
-        []
+    const revenueState = useAdminResource(
+        async (options) => {
+            const blob = await exportAdminBillingRevenue(getRevenueExportParams(revenueQuery), options);
+            return { blob, rows: await parseRevenueCsvBlob(blob), filters: revenueQuery };
+        },
+        { blob: null, rows: [], filters: revenueQuery },
+        [JSON.stringify(revenueQuery), revenueRefreshKey]
     );
     const ordersState = useAdminResource(
         (options) => getAdminBillingOrders(ordersQuery, options),
@@ -1782,8 +1942,13 @@ export function AdminBillingPage() {
         { items: [] },
         [JSON.stringify(webhookQuery)]
     );
-    const billingSeries = useMemo(() => adaptRevenueSeries(overviewState.data), [overviewState.data]);
-    const collectedTotal = billingSeries.reduce((total, point) => total + Number(point.collected || 0), 0);
+    const revenueRows = revenueState.data?.rows || [];
+    const revenueDataFilters = revenueState.data?.filters || revenueQuery;
+    const billingSeries = useMemo(
+        () => buildRevenueChartSeries(revenueRows, revenueDataFilters, revenueGranularity),
+        [revenueRows, revenueDataFilters, revenueGranularity]
+    );
+    const collectedTotal = revenueRows.reduce((total, row) => total + Number(row.amount || 0), 0);
     const orders = useMemo(
         () => getItems(ordersState.data).map(adaptBillingOrder),
         [ordersState.data]
@@ -1792,7 +1957,11 @@ export function AdminBillingPage() {
         () => getItems(webhookState.data).map(adaptWebhookEvent),
         [webhookState.data]
     );
-    const paidOrders = orders.filter((order) => order.status === 'Paid').length;
+    const paidOrders = revenueRows.length;
+    const averagePaidOrder = paidOrders > 0 ? collectedTotal / paidOrders : 0;
+    const revenueDefaultFilters = getDefaultRevenueExportFilters();
+    const revenueActiveFilterCount = countActiveFilters(revenueDraft, revenueDefaultFilters);
+    const isRevenueDraftDirty = JSON.stringify(revenueDraft) !== JSON.stringify(revenueQuery);
     const pendingOrders = orders.filter((order) => order.status === 'Pending').length;
     const webhookErrors = webhookEvents.filter((event) => event.status === 'Failed').length;
     const totalOrders = getTotal(ordersState.data, orders.length);
@@ -1808,12 +1977,33 @@ export function AdminBillingPage() {
         setWebhookQuery((current) => ({ ...current, ...webhookDraft, page: 1 }));
     }
 
+    function applyRevenueFilters(event) {
+        event?.preventDefault();
+        try {
+            getRevenueExportParams(revenueDraft);
+            setRevenueQuery({ ...revenueDraft });
+            setRevenueRefreshKey((value) => value + 1);
+            setToast(null);
+        } catch (error) {
+            setToast({ type: 'error', message: error.message });
+        }
+    }
+
+    function clearRevenueFilters() {
+        const defaults = getDefaultRevenueExportFilters();
+        setRevenueDraft(defaults);
+        setRevenueQuery(defaults);
+        setRevenueRefreshKey((value) => value + 1);
+        setRevenueGranularity('day');
+        setToast(null);
+    }
+
     async function handleRevenueExport(event) {
         event?.preventDefault();
 
         let params;
         try {
-            params = getRevenueExportParams(exportFilters);
+            params = getRevenueExportParams(revenueQuery);
         } catch (error) {
             setToast({ type: 'error', message: error.message });
             return;
@@ -1823,11 +2013,14 @@ export function AdminBillingPage() {
         setToast(null);
 
         try {
-            const blob = await exportAdminBillingRevenue(params);
+            const cachedFiltersMatch = JSON.stringify(revenueState.data?.filters) === JSON.stringify(revenueQuery);
+            const blob = cachedFiltersMatch && revenueState.data?.blob
+                ? revenueState.data.blob
+                : await exportAdminBillingRevenue(params);
             const objectUrl = URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = objectUrl;
-            link.download = `mascoteach-revenue-${exportFilters.from.replaceAll('-', '')}-${exportFilters.to.replaceAll('-', '')}.csv`;
+            link.download = `mascoteach-revenue-${revenueQuery.from.replaceAll('-', '')}-${revenueQuery.to.replaceAll('-', '')}.csv`;
             link.hidden = true;
             document.body.appendChild(link);
             link.click();
@@ -1844,67 +2037,73 @@ export function AdminBillingPage() {
         }
     }
 
-    if (overviewState.isLoading || ordersState.isLoading || webhookState.isLoading) {
+    if (revenueState.isLoading || ordersState.isLoading || webhookState.isLoading) {
         return <AdminPageLoader label="Đang tải dữ liệu thanh toán..." />;
     }
 
     return (
         <PageGrid>
-            <DataStateNotice states={[overviewState, ordersState, webhookState]} />
+            <DataStateNotice states={[revenueState, ordersState, webhookState]} />
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                <MiniMetric icon={CircleDollarSign} label="Doanh thu đã thu" value={formatMoney(collectedTotal)} />
-                <MiniMetric icon={CreditCard} label="Đơn đã thanh toán" value={formatNumber(paidOrders)} tone="green" />
-                <MiniMetric icon={ReceiptText} label="Đang chờ" value={formatNumber(pendingOrders)} tone="orange" />
-                <MiniMetric icon={AlertTriangle} label="Lỗi thanh toán" value={formatNumber(webhookErrors)} tone="red" />
+                <MiniMetric icon={CircleDollarSign} label="Doanh thu trong kỳ" value={formatMoney(collectedTotal)} />
+                <MiniMetric icon={CreditCard} label="Đơn đã trả trong kỳ" value={formatNumber(paidOrders)} tone="green" />
+                <MiniMetric icon={ReceiptText} label="Trung bình mỗi đơn" value={formatMoney(averagePaidOrder)} tone="navy" />
+                <MiniMetric icon={AlertTriangle} label={`Đang chờ / lỗi trong trang`} value={`${formatNumber(pendingOrders)} / ${formatNumber(webhookErrors)}`} tone="orange" />
             </div>
             <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
                 <AdminCard className="p-6">
-                    <AdminSectionHeader title="Xu hướng doanh thu" description="Theo dõi doanh thu đã thanh toán theo tháng và đối soát cùng danh sách đơn hàng." />
-                    <div className="admin-chart h-[280px] min-w-0">
-                        <ResponsiveContainer width="100%" height="100%" minWidth={0} debounce={80}>
-                            <LineChart data={billingSeries} margin={{ top: 18, right: 24, bottom: 8, left: 12 }}>
-                                <CartesianGrid stroke="#E5F0F8" vertical={false} />
-                                <XAxis dataKey="month" axisLine={false} tickLine={false} padding={{ left: 12, right: 12 }} />
-                                <YAxis
-                                    axisLine={false}
-                                    tickLine={false}
-                                    width={76}
-                                    allowDecimals={false}
-                                    domain={[0, (dataMax) => (dataMax > 0 ? Math.ceil(dataMax * 1.12) : 1)]}
-                                    tickFormatter={formatRevenueAxis}
-                                />
-                                <Tooltip
-                                    formatter={(value) => [formatMoney(value), 'Doanh thu đã thu']}
-                                    labelFormatter={(label) => `Kỳ: ${label}`}
-                                />
-                                <Line
-                                    type="monotone"
-                                    dataKey="collected"
-                                    name="Doanh thu đã thu"
-                                    stroke="#2B7AB5"
-                                    strokeWidth={4}
-                                    dot={false}
-                                    isAnimationActive={!prefersReducedMotion}
-                                    animationDuration={550}
-                                    animationEasing="ease-out"
-                                />
-                            </LineChart>
-                        </ResponsiveContainer>
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                        <div>
+                            <h2 className="text-2xl font-black text-[#071D35]">Xu hướng doanh thu</h2>
+                            <p className="mt-1 text-sm font-semibold leading-6 text-[#6C8098]">
+                                {formatRevenueFilterPeriod(revenueDataFilters)} · {revenueDataFilters.plan ? formatAdminValue(revenueDataFilters.plan) : 'Tất cả gói'}
+                            </p>
+                        </div>
+                        <div className="inline-flex rounded-full border border-[#D8E9F5] bg-[#F8FCFF] p-1" aria-label="Cách nhóm biểu đồ">
+                            {[
+                                { value: 'day', label: 'Theo ngày' },
+                                { value: 'month', label: 'Theo tháng' },
+                            ].map((option) => (
+                                <button
+                                    key={option.value}
+                                    type="button"
+                                    className={`rounded-full px-4 py-2 text-xs font-black transition ${revenueGranularity === option.value ? 'bg-[#173154] text-white shadow-[0_8px_20px_rgba(23,49,84,0.16)]' : 'text-[#60758D] hover:text-[#102744]'}`}
+                                    aria-pressed={revenueGranularity === option.value}
+                                    onClick={() => setRevenueGranularity(option.value)}
+                                >
+                                    {option.label}
+                                </button>
+                            ))}
+                        </div>
                     </div>
-                </AdminCard>
-                <AdminCard className="p-6">
-                    <AdminSectionHeader title="Xuất doanh thu" description="Tải các đơn đã thanh toán theo thời điểm thanh toán." />
-                    <form className="grid gap-4" onSubmit={handleRevenueExport}>
-                        <div className="grid grid-cols-2 gap-3">
+
+                    <form className="mt-5 rounded-[20px] border border-[#D8E9F5] bg-[#F8FCFF] p-4" onSubmit={applyRevenueFilters}>
+                        <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                            <div>
+                                <p className="text-sm font-black text-[#102744]">Lọc dữ liệu biểu đồ</p>
+                                <p className="mt-0.5 text-xs font-semibold text-[#6C8098]">
+                                    {isRevenueDraftDirty ? 'Có thay đổi chưa áp dụng.' : `${revenueActiveFilterCount || 0} điều kiện tùy chỉnh.`}
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                className="text-xs font-black text-[#52677F] transition hover:text-[#1B3A6B] disabled:cursor-not-allowed disabled:opacity-40"
+                                disabled={(revenueActiveFilterCount === 0 && revenueGranularity === 'day') || revenueState.isRefreshing}
+                                onClick={clearRevenueFilters}
+                            >
+                                Xóa bộ lọc
+                            </button>
+                        </div>
+                        <div className="grid gap-3 sm:grid-cols-2">
                             <label className="grid min-w-0 gap-2">
                                 <span className="text-xs font-black uppercase tracking-[0.1em] text-[#60758D]">Từ ngày</span>
                                 <input
                                     required
                                     type="date"
-                                    className="h-11 min-w-0 rounded-[14px] border border-[#D8E9F5] bg-[#F8FCFF] px-3 text-sm font-bold text-[#102744] outline-none transition focus:border-[#5BAED4] focus:ring-4 focus:ring-[#A8D8EA]/30"
-                                    value={exportFilters.from}
-                                    max={exportFilters.to || undefined}
-                                    onChange={(event) => setExportFilters((current) => ({ ...current, from: event.target.value }))}
+                                    className="h-11 min-w-0 rounded-[14px] border border-[#D8E9F5] bg-white px-3 text-sm font-bold text-[#102744] outline-none transition focus:border-[#5BAED4] focus:ring-4 focus:ring-[#A8D8EA]/30"
+                                    value={revenueDraft.from}
+                                    max={revenueDraft.to || undefined}
+                                    onChange={(event) => setRevenueDraft((current) => ({ ...current, from: event.target.value }))}
                                 />
                             </label>
                             <label className="grid min-w-0 gap-2">
@@ -1912,42 +2111,121 @@ export function AdminBillingPage() {
                                 <input
                                     required
                                     type="date"
-                                    className="h-11 min-w-0 rounded-[14px] border border-[#D8E9F5] bg-[#F8FCFF] px-3 text-sm font-bold text-[#102744] outline-none transition focus:border-[#5BAED4] focus:ring-4 focus:ring-[#A8D8EA]/30"
-                                    value={exportFilters.to}
-                                    min={exportFilters.from || undefined}
-                                    onChange={(event) => setExportFilters((current) => ({ ...current, to: event.target.value }))}
+                                    className="h-11 min-w-0 rounded-[14px] border border-[#D8E9F5] bg-white px-3 text-sm font-bold text-[#102744] outline-none transition focus:border-[#5BAED4] focus:ring-4 focus:ring-[#A8D8EA]/30"
+                                    value={revenueDraft.to}
+                                    min={revenueDraft.from || undefined}
+                                    onChange={(event) => setRevenueDraft((current) => ({ ...current, to: event.target.value }))}
                                 />
                             </label>
+                            <label className="grid gap-2">
+                                <span className="text-xs font-black uppercase tracking-[0.1em] text-[#60758D]">Gói thanh toán</span>
+                                <select
+                                    className="h-11 rounded-[14px] border border-[#D8E9F5] bg-white px-3 text-sm font-bold text-[#102744] outline-none transition focus:border-[#5BAED4] focus:ring-4 focus:ring-[#A8D8EA]/30"
+                                    value={revenueDraft.plan}
+                                    onChange={(event) => setRevenueDraft((current) => ({ ...current, plan: event.target.value }))}
+                                >
+                                    <option value="">Tất cả gói</option>
+                                    <option value="PRO_MONTHLY">{formatAdminValue('PRO_MONTHLY')}</option>
+                                    <option value="PRO_YEARLY">{formatAdminValue('PRO_YEARLY')}</option>
+                                </select>
+                            </label>
+                            <ActionButton type="submit" className="self-end" disabled={!isRevenueDraftDirty || revenueState.isRefreshing}>
+                                {revenueState.isRefreshing ? 'Đang lọc...' : 'Áp dụng bộ lọc'}
+                            </ActionButton>
                         </div>
-                        <label className="grid gap-2">
-                            <span className="text-xs font-black uppercase tracking-[0.1em] text-[#60758D]">Gói thanh toán</span>
-                            <select
-                                className="h-11 rounded-[14px] border border-[#D8E9F5] bg-[#F8FCFF] px-3 text-sm font-bold text-[#102744] outline-none transition focus:border-[#5BAED4] focus:ring-4 focus:ring-[#A8D8EA]/30"
-                                value={exportFilters.plan}
-                                onChange={(event) => setExportFilters((current) => ({ ...current, plan: event.target.value }))}
-                            >
-                                <option value="">Tất cả gói</option>
-                                <option value="PRO_MONTHLY">{formatAdminValue('PRO_MONTHLY')}</option>
-                                <option value="PRO_YEARLY">{formatAdminValue('PRO_YEARLY')}</option>
-                            </select>
-                        </label>
-                        <p className="text-xs font-semibold leading-5 text-[#6C8098]">
-                            Báo cáo tính trọn cả ngày kết thúc và tối đa 366 ngày.
-                        </p>
-                        <ActionButton type="submit" className="w-full gap-2" disabled={isExporting}>
-                            {isExporting ? (
-                                <>
-                                    <RotateCw className="h-4 w-4 animate-spin" />
-                                    Đang tạo CSV...
-                                </>
-                            ) : (
-                                <>
-                                    <Download className="h-4 w-4" />
-                                    Xuất doanh thu
-                                </>
-                            )}
-                        </ActionButton>
                     </form>
+
+                    <div className="relative mt-5 overflow-hidden rounded-[18px]" aria-busy={revenueState.isRefreshing}>
+                        {revenueState.isRefreshing && (
+                            <div className="pointer-events-none absolute inset-0 z-10 grid place-items-center bg-white/55 backdrop-blur-[1px]" role="status" aria-live="polite">
+                                <div className="admin-table-loading-enter inline-flex items-center gap-2 rounded-full border border-[#B9DFF3] bg-white px-4 py-2 text-xs font-black text-[#2B7AB5] shadow-[0_14px_34px_rgba(43,122,181,0.16)]">
+                                    <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-[#B9DFF3] border-t-[#2B7AB5]" />
+                                    Đang cập nhật biểu đồ...
+                                </div>
+                            </div>
+                        )}
+                        <div className={`admin-chart h-[300px] min-w-0 transition duration-200 ${revenueState.isRefreshing ? 'opacity-45' : 'opacity-100'}`}>
+                            <ResponsiveContainer width="100%" height="100%" minWidth={0} debounce={80}>
+                                <LineChart data={billingSeries} margin={{ top: 18, right: 24, bottom: 8, left: 12 }}>
+                                    <CartesianGrid stroke="#E5F0F8" vertical={false} />
+                                    <XAxis dataKey="label" axisLine={false} tickLine={false} minTickGap={24} padding={{ left: 12, right: 12 }} />
+                                    <YAxis
+                                        axisLine={false}
+                                        tickLine={false}
+                                        width={76}
+                                        allowDecimals={false}
+                                        domain={[0, (dataMax) => (dataMax > 0 ? Math.ceil(dataMax * 1.12) : 1)]}
+                                        tickFormatter={formatRevenueAxis}
+                                    />
+                                    <Tooltip
+                                        formatter={(value) => [formatMoney(value), 'Doanh thu đã thu']}
+                                        labelFormatter={(label) => `Kỳ: ${label}`}
+                                    />
+                                    <Line
+                                        type="monotone"
+                                        dataKey="collected"
+                                        name="Doanh thu đã thu"
+                                        stroke="#2B7AB5"
+                                        strokeWidth={4}
+                                        dot={billingSeries.length <= 31 ? { r: 3, fill: '#2B7AB5', strokeWidth: 0 } : false}
+                                        isAnimationActive={!prefersReducedMotion}
+                                        animationDuration={550}
+                                        animationEasing="ease-out"
+                                    />
+                                </LineChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+                </AdminCard>
+                <AdminCard className="p-6">
+                    <AdminSectionHeader title="Báo cáo đang áp dụng" description="CSV dùng cùng điều kiện với KPI và biểu đồ." />
+                    <div className="grid gap-3 rounded-[20px] border border-[#D8E9F5] bg-[#F8FCFF] p-4">
+                        <div>
+                            <p className="text-xs font-black uppercase tracking-[0.1em] text-[#7C91A8]">Khoảng thời gian</p>
+                            <p className="mt-1 text-sm font-black text-[#102744]">{formatRevenueFilterPeriod(revenueDataFilters)}</p>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3 border-t border-[#E5F0F8] pt-3">
+                            <div>
+                                <p className="text-xs font-bold text-[#7C91A8]">Gói</p>
+                                <p className="mt-1 text-sm font-black text-[#102744]">{revenueDataFilters.plan ? formatAdminValue(revenueDataFilters.plan) : 'Tất cả'}</p>
+                            </div>
+                            <div>
+                                <p className="text-xs font-bold text-[#7C91A8]">Nhóm biểu đồ</p>
+                                <p className="mt-1 text-sm font-black text-[#102744]">{revenueGranularity === 'day' ? 'Theo ngày' : 'Theo tháng'}</p>
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3 border-t border-[#E5F0F8] pt-3">
+                            <div>
+                                <p className="text-xs font-bold text-[#7C91A8]">Đơn đã trả</p>
+                                <p className="mt-1 text-lg font-black tabular-nums text-[#102744]">{formatNumber(paidOrders)}</p>
+                            </div>
+                            <div>
+                                <p className="text-xs font-bold text-[#7C91A8]">Doanh thu</p>
+                                <p className="mt-1 text-lg font-black tabular-nums text-[#102744]">{formatMoney(collectedTotal)}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <p className="mt-4 text-xs font-semibold leading-5 text-[#6C8098]">
+                        Khoảng ngày được tính trọn ngày kết thúc và tối đa 366 ngày.
+                    </p>
+                    <ActionButton
+                        type="button"
+                        className="mt-4 w-full gap-2"
+                        disabled={isExporting || revenueState.isRefreshing || !hasAdminApiToken()}
+                        onClick={handleRevenueExport}
+                    >
+                        {isExporting ? (
+                            <>
+                                <RotateCw className="h-4 w-4 animate-spin" />
+                                Đang tạo CSV...
+                            </>
+                        ) : (
+                            <>
+                                <Download className="h-4 w-4" />
+                                Xuất doanh thu
+                            </>
+                        )}
+                    </ActionButton>
                     <div className="mt-5 grid gap-2 border-t border-[#E5F0F8] pt-5">
                         <ActionButton type="button" tone="ghost" disabled>Chưa hỗ trợ đồng bộ đơn</ActionButton>
                         <ActionButton type="button" tone="ghost" disabled>Chưa hỗ trợ gia hạn gói</ActionButton>
@@ -1961,6 +2239,12 @@ export function AdminBillingPage() {
                         embedded
                         draft={ordersDraft}
                         isRefreshing={ordersState.isRefreshing}
+                        activeFilterCount={countActiveFilters(ordersDraft, { deletion: 'Active' })}
+                        onClear={() => {
+                            const defaults = { search: '', status: '', plan: '', deletion: 'Active' };
+                            setOrdersDraft(defaults);
+                            setOrdersQuery((current) => ({ ...current, ...defaults, page: 1 }));
+                        }}
                         onDraftChange={(name, value) => setOrdersDraft((current) => ({ ...current, [name]: value }))}
                         onSubmit={applyOrderFilters}
                         searchPlaceholder="Tìm mã đơn, email, người dùng..."
@@ -1976,7 +2260,16 @@ export function AdminBillingPage() {
                                     { value: 'Cancelled', label: formatAdminValue('Cancelled') },
                                 ],
                             },
-                            { name: 'plan', label: 'Mã gói', placeholder: 'PRO_MONTHLY' },
+                            {
+                                name: 'plan',
+                                label: 'Gói thanh toán',
+                                type: 'select',
+                                options: [
+                                    { value: '', label: 'Tất cả gói' },
+                                    { value: 'PRO_MONTHLY', label: formatAdminValue('PRO_MONTHLY') },
+                                    { value: 'PRO_YEARLY', label: formatAdminValue('PRO_YEARLY') },
+                                ],
+                            },
                             {
                                 name: 'deletion',
                                 label: 'Ẩn/xóa',
@@ -2020,6 +2313,12 @@ export function AdminBillingPage() {
                         embedded
                         draft={webhookDraft}
                         isRefreshing={webhookState.isRefreshing}
+                        activeFilterCount={countActiveFilters(webhookDraft)}
+                        onClear={() => {
+                            const defaults = { search: '', processed: '', hasError: '' };
+                            setWebhookDraft(defaults);
+                            setWebhookQuery((current) => ({ ...current, ...defaults, page: 1 }));
+                        }}
                         onDraftChange={(name, value) => setWebhookDraft((current) => ({ ...current, [name]: value }))}
                         onSubmit={applyWebhookFilters}
                         searchPlaceholder="Tìm order code, reference..."
@@ -2119,6 +2418,12 @@ export function AdminAuditLogsPage() {
             <AdminQueryToolbar
                 draft={draft}
                 isRefreshing={logsState.isRefreshing}
+                activeFilterCount={countActiveFilters(draft)}
+                onClear={() => {
+                    const defaults = { search: '', action: '', targetType: '', riskLevel: '' };
+                    setDraft(defaults);
+                    setQuery((current) => ({ ...current, ...defaults, page: 1 }));
+                }}
                 onDraftChange={(name, value) => setDraft((current) => ({ ...current, [name]: value }))}
                 onSubmit={applyAuditFilters}
                 searchPlaceholder="Email, action, target..."
