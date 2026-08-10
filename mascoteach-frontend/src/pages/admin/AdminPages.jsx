@@ -8,6 +8,7 @@ import {
     CircleDollarSign,
     Clock3,
     CreditCard,
+    Download,
     FileSearch,
     Gamepad2,
     HardDrive,
@@ -41,6 +42,7 @@ import {
     StatusBadge,
 } from '@/components/admin/AdminLayout';
 import {
+    exportAdminBillingRevenue,
     getAdminBillingOrders,
     getAdminBillingWebhookEvents,
     getAdminAuditLogById,
@@ -97,7 +99,15 @@ function getTotal(response, fallback = 0) {
     return Number(getField(response, 'total', 'Total', fallback) || 0);
 }
 
-function AdminQueryToolbar({ draft, onDraftChange, onSubmit, searchPlaceholder = 'Tìm kiếm...', fields = [], embedded = false }) {
+function AdminQueryToolbar({
+    draft,
+    onDraftChange,
+    onSubmit,
+    searchPlaceholder = 'Tìm kiếm...',
+    fields = [],
+    embedded = false,
+    isRefreshing = false,
+}) {
     const onSubmitRef = useRef(onSubmit);
     const serializedDraft = JSON.stringify(draft);
     const previousDraftRef = useRef(serializedDraft);
@@ -155,23 +165,34 @@ function AdminQueryToolbar({ draft, onDraftChange, onSubmit, searchPlaceholder =
         </div>
     );
 
+    const toolbarContent = (
+        <div className="relative overflow-hidden" aria-busy={isRefreshing}>
+            {content}
+            {isRefreshing && (
+                <div className="absolute inset-x-0 bottom-0 h-0.5 overflow-hidden bg-[#D8E9F5]" aria-hidden="true">
+                    <span className="admin-filter-progress absolute inset-y-0 left-0 w-1/3 rounded-full bg-[#2B7AB5]" />
+                </div>
+            )}
+        </div>
+    );
+
     if (embedded) {
-        return <div className="rounded-[22px] border border-[#D8E9F5] bg-[#F8FCFF] p-4">{content}</div>;
+        return <div className="rounded-[22px] border border-[#D8E9F5] bg-[#F8FCFF] p-4">{toolbarContent}</div>;
     }
 
     return (
         <AdminCard className="p-4">
-            {content}
+            {toolbarContent}
         </AdminCard>
     );
 }
 
-function AdminPagination({ page = 1, pageSize = 20, total = 0, onPageChange, onPageSizeChange }) {
+function AdminPagination({ page = 1, pageSize = 20, total = 0, onPageChange, onPageSizeChange, isRefreshing = false }) {
     const totalPages = Math.max(1, Math.ceil(Number(total || 0) / Number(pageSize || 20)));
     const currentPage = Math.min(Math.max(1, Number(page || 1)), totalPages);
 
     return (
-        <div className="mt-4 flex flex-col gap-3 rounded-[20px] border border-[#D8E9F5] bg-[#F8FCFF] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mt-4 flex flex-col gap-3 rounded-[20px] border border-[#D8E9F5] bg-[#F8FCFF] px-4 py-3 sm:flex-row sm:items-center sm:justify-between" aria-busy={isRefreshing}>
             <p className="text-sm font-bold text-[#60758D]">
                 Trang <span className="font-black text-[#102744]">{currentPage}</span> / {totalPages} · {formatNumber(total)} dòng
             </p>
@@ -179,14 +200,15 @@ function AdminPagination({ page = 1, pageSize = 20, total = 0, onPageChange, onP
                 <select
                     className="h-10 rounded-full border border-[#D8E9F5] bg-white px-3 text-sm font-black text-[#102744] outline-none"
                     value={pageSize}
+                    disabled={isRefreshing}
                     onChange={(event) => onPageSizeChange(Number(event.target.value))}
                 >
                     {pageSizeOptions.map((size) => (
                         <option key={size} value={size}>{size}/trang</option>
                     ))}
                 </select>
-                <ActionButton type="button" tone="ghost" disabled={currentPage <= 1} onClick={() => onPageChange(currentPage - 1)}>Trước</ActionButton>
-                <ActionButton type="button" tone="ghost" disabled={currentPage >= totalPages} onClick={() => onPageChange(currentPage + 1)}>Sau</ActionButton>
+                <ActionButton type="button" tone="ghost" disabled={isRefreshing || currentPage <= 1} onClick={() => onPageChange(currentPage - 1)}>Trước</ActionButton>
+                <ActionButton type="button" tone="ghost" disabled={isRefreshing || currentPage >= totalPages} onClick={() => onPageChange(currentPage + 1)}>Sau</ActionButton>
             </div>
         </div>
     );
@@ -250,6 +272,52 @@ function formatRevenueAxis(value) {
     if (absolute >= 1000000) return compact(1000000, ' tr');
     if (absolute >= 1000) return compact(1000, 'K');
     return formatNumber(numeric);
+}
+
+function formatDateInputValue(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+function getDefaultRevenueExportFilters() {
+    const to = new Date();
+    const from = new Date(to.getFullYear(), to.getMonth(), to.getDate() - 29);
+    return {
+        from: formatDateInputValue(from),
+        to: formatDateInputValue(to),
+        plan: '',
+    };
+}
+
+function getLocalDayBoundary(dateValue, dayOffset = 0) {
+    const [year, month, day] = String(dateValue).split('-').map(Number);
+    if (!year || !month || !day) return null;
+
+    const date = new Date(year, month - 1, day + dayOffset);
+    return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function getRevenueExportParams(filters) {
+    const from = getLocalDayBoundary(filters.from);
+    const toExclusive = getLocalDayBoundary(filters.to, 1);
+
+    if (!from || !toExclusive) {
+        throw new Error('Vui lòng chọn đầy đủ ngày bắt đầu và ngày kết thúc.');
+    }
+    if (from >= toExclusive) {
+        throw new Error('Ngày bắt đầu phải trước hoặc bằng ngày kết thúc.');
+    }
+    if (toExclusive - from > 366 * 24 * 60 * 60 * 1000) {
+        throw new Error('Khoảng xuất doanh thu không được vượt quá 366 ngày.');
+    }
+
+    return {
+        from: from.toISOString(),
+        to: toExclusive.toISOString(),
+        plan: filters.plan,
+    };
 }
 
 function usePrefersReducedMotion() {
@@ -320,6 +388,7 @@ function useAdminResource(fetcher, fallback, deps = []) {
         isRefreshing: false,
         isFallback: true,
         hasLoaded: false,
+        dataVersion: 0,
     });
 
     useEffect(() => {
@@ -331,6 +400,7 @@ function useAdminResource(fetcher, fallback, deps = []) {
                 isRefreshing: false,
                 isFallback: true,
                 hasLoaded: true,
+                dataVersion: 0,
             });
             return undefined;
         }
@@ -345,14 +415,15 @@ function useAdminResource(fetcher, fallback, deps = []) {
 
         fetcher({ signal: controller.signal })
             .then((data) => {
-                setState({
+                setState((current) => ({
                     data,
                     error: '',
                     isLoading: false,
                     isRefreshing: false,
                     isFallback: false,
                     hasLoaded: true,
-                });
+                    dataVersion: current.dataVersion + 1,
+                }));
             })
             .catch((error) => {
                 if (controller.signal.aborted) return;
@@ -376,21 +447,11 @@ function useAdminResource(fetcher, fallback, deps = []) {
 function DataStateNotice({ state, states }) {
     const resources = (states || [state]).filter(Boolean);
     const isLoading = resources.some((resource) => resource.isLoading);
-    const isRefreshing = resources.some((resource) => resource.isRefreshing);
     const error = resources.find((resource) => resource.error)?.error || '';
     const isFallback = resources.length > 0 && resources.every((resource) => resource.isFallback);
 
     if (isLoading) {
         return <AdminPageLoader />;
-    }
-
-    if (isRefreshing) {
-        return (
-            <div className="fixed bottom-6 right-6 z-[70] flex items-center gap-3 rounded-full border border-[#B9DFF3] bg-white/95 px-4 py-3 text-sm font-black text-[#2B7AB5] shadow-[0_18px_45px_rgba(43,122,181,0.18)] backdrop-blur" role="status" aria-live="polite">
-                <span className="h-4 w-4 animate-spin rounded-full border-2 border-[#B9DFF3] border-t-[#2B7AB5]" />
-                Đang cập nhật dữ liệu...
-            </div>
-        );
     }
 
     if (error) {
@@ -900,6 +961,7 @@ export function AdminUsersPage() {
             </div>
             <AdminQueryToolbar
                 draft={draft}
+                isRefreshing={usersState.isRefreshing}
                 onDraftChange={(name, value) => setDraft((current) => ({ ...current, [name]: value }))}
                 onSubmit={applyUsersFilters}
                 searchPlaceholder="Tìm theo tên hoặc email..."
@@ -931,11 +993,18 @@ export function AdminUsersPage() {
             />
             <AdminCard className="p-5">
                 <AdminSectionHeader title="Danh sách người dùng" description="Theo dõi tài khoản, vai trò, gói đăng ký và hoạt động gần đây." />
-                <AdminTable columns={columns} rows={users} rowHref={(row) => `${base}/users/${row.id}`} />
+                <AdminTable
+                    columns={columns}
+                    rows={users}
+                    rowHref={(row) => `${base}/users/${row.id}`}
+                    isRefreshing={usersState.isRefreshing}
+                    dataVersion={usersState.dataVersion}
+                />
                 <AdminPagination
                     page={query.page}
                     pageSize={query.pageSize}
                     total={totalUsers}
+                    isRefreshing={usersState.isRefreshing}
                     onPageChange={(page) => setQuery((current) => ({ ...current, page }))}
                     onPageSizeChange={(pageSize) => setQuery((current) => ({ ...current, page: 1, pageSize }))}
                 />
@@ -1283,6 +1352,7 @@ export function AdminContentPage() {
             </div>
             <AdminQueryToolbar
                 draft={draft}
+                isRefreshing={documentsState.isRefreshing || quizzesState.isRefreshing}
                 onDraftChange={(name, value) => setDraft((current) => ({ ...current, [name]: value }))}
                 onSubmit={applyContentFilters}
                 searchPlaceholder="Tìm tài liệu, quiz, flashcard, giáo viên..."
@@ -1323,12 +1393,15 @@ export function AdminContentPage() {
                         { key: 'createdAt', label: 'Ngày tạo' },
                     ]}
                     rows={contentRows}
+                    isRefreshing={documentsState.isRefreshing || quizzesState.isRefreshing}
+                    dataVersion={documentsState.dataVersion + quizzesState.dataVersion}
                     rowHref={(row) => `${base}/content/${row.id}`}
                 />
                 <AdminPagination
                     page={query.page}
                     pageSize={query.pageSize}
                     total={totalContent}
+                    isRefreshing={documentsState.isRefreshing || quizzesState.isRefreshing}
                     onPageChange={(page) => setQuery((current) => ({ ...current, page }))}
                     onPageSizeChange={(pageSize) => setQuery((current) => ({ ...current, page: 1, pageSize }))}
                 />
@@ -1542,6 +1615,7 @@ export function AdminSessionsPage() {
             </div>
             <AdminQueryToolbar
                 draft={draft}
+                isRefreshing={sessionsState.isRefreshing}
                 onDraftChange={(name, value) => setDraft((current) => ({ ...current, [name]: value }))}
                 onSubmit={applySessionFilters}
                 searchPlaceholder="Tìm theo PIN, giáo viên, bộ câu hỏi..."
@@ -1583,12 +1657,15 @@ export function AdminSessionsPage() {
                         { key: 'startedAt', label: 'Bắt đầu' },
                     ]}
                     rows={sessions}
+                    isRefreshing={sessionsState.isRefreshing}
+                    dataVersion={sessionsState.dataVersion}
                     rowHref={(row) => `${base}/sessions/${row.id}`}
                 />
                 <AdminPagination
                     page={query.page}
                     pageSize={query.pageSize}
                     total={totalSessions}
+                    isRefreshing={sessionsState.isRefreshing}
                     onPageChange={(page) => setQuery((current) => ({ ...current, page }))}
                     onPageSizeChange={(pageSize) => setQuery((current) => ({ ...current, page: 1, pageSize }))}
                 />
@@ -1683,6 +1760,9 @@ export function AdminSessionDetailPage() {
 
 export function AdminBillingPage() {
     const prefersReducedMotion = usePrefersReducedMotion();
+    const [exportFilters, setExportFilters] = useState(getDefaultRevenueExportFilters);
+    const [isExporting, setIsExporting] = useState(false);
+    const [toast, setToast] = useState(null);
     const [ordersQuery, setOrdersQuery] = useState({ page: 1, pageSize: 20, search: '', status: '', plan: '', deletion: 'Active' });
     const [ordersDraft, setOrdersDraft] = useState({ search: '', status: '', plan: '', deletion: 'Active' });
     const [webhookQuery, setWebhookQuery] = useState({ page: 1, pageSize: 10, search: '', processed: '', hasError: '' });
@@ -1726,6 +1806,42 @@ export function AdminBillingPage() {
     function applyWebhookFilters(event) {
         event?.preventDefault();
         setWebhookQuery((current) => ({ ...current, ...webhookDraft, page: 1 }));
+    }
+
+    async function handleRevenueExport(event) {
+        event?.preventDefault();
+
+        let params;
+        try {
+            params = getRevenueExportParams(exportFilters);
+        } catch (error) {
+            setToast({ type: 'error', message: error.message });
+            return;
+        }
+
+        setIsExporting(true);
+        setToast(null);
+
+        try {
+            const blob = await exportAdminBillingRevenue(params);
+            const objectUrl = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = objectUrl;
+            link.download = `mascoteach-revenue-${exportFilters.from.replaceAll('-', '')}-${exportFilters.to.replaceAll('-', '')}.csv`;
+            link.hidden = true;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.setTimeout(() => URL.revokeObjectURL(objectUrl), 0);
+            setToast({ type: 'success', message: 'Đã tải báo cáo doanh thu CSV.' });
+        } catch (error) {
+            setToast({
+                type: 'error',
+                message: formatAdminActionError(error, 'Không thể tải báo cáo doanh thu.'),
+            });
+        } finally {
+            setIsExporting(false);
+        }
     }
 
     if (overviewState.isLoading || ordersState.isLoading || webhookState.isLoading) {
@@ -1777,11 +1893,64 @@ export function AdminBillingPage() {
                     </div>
                 </AdminCard>
                 <AdminCard className="p-6">
-                    <AdminSectionHeader title="Thao tác thanh toán" description="Phiên bản hiện tại chỉ hỗ trợ xem và đối soát dữ liệu thanh toán." />
-                    <div className="grid gap-3">
-                        <ActionButton tone="ghost">Chưa hỗ trợ đồng bộ đơn</ActionButton>
-                        <ActionButton tone="ghost">Chưa hỗ trợ gia hạn gói</ActionButton>
-                        <ActionButton tone="ghost">Xuất doanh thu</ActionButton>
+                    <AdminSectionHeader title="Xuất doanh thu" description="Tải các đơn đã thanh toán theo thời điểm thanh toán." />
+                    <form className="grid gap-4" onSubmit={handleRevenueExport}>
+                        <div className="grid grid-cols-2 gap-3">
+                            <label className="grid min-w-0 gap-2">
+                                <span className="text-xs font-black uppercase tracking-[0.1em] text-[#60758D]">Từ ngày</span>
+                                <input
+                                    required
+                                    type="date"
+                                    className="h-11 min-w-0 rounded-[14px] border border-[#D8E9F5] bg-[#F8FCFF] px-3 text-sm font-bold text-[#102744] outline-none transition focus:border-[#5BAED4] focus:ring-4 focus:ring-[#A8D8EA]/30"
+                                    value={exportFilters.from}
+                                    max={exportFilters.to || undefined}
+                                    onChange={(event) => setExportFilters((current) => ({ ...current, from: event.target.value }))}
+                                />
+                            </label>
+                            <label className="grid min-w-0 gap-2">
+                                <span className="text-xs font-black uppercase tracking-[0.1em] text-[#60758D]">Đến ngày</span>
+                                <input
+                                    required
+                                    type="date"
+                                    className="h-11 min-w-0 rounded-[14px] border border-[#D8E9F5] bg-[#F8FCFF] px-3 text-sm font-bold text-[#102744] outline-none transition focus:border-[#5BAED4] focus:ring-4 focus:ring-[#A8D8EA]/30"
+                                    value={exportFilters.to}
+                                    min={exportFilters.from || undefined}
+                                    onChange={(event) => setExportFilters((current) => ({ ...current, to: event.target.value }))}
+                                />
+                            </label>
+                        </div>
+                        <label className="grid gap-2">
+                            <span className="text-xs font-black uppercase tracking-[0.1em] text-[#60758D]">Gói thanh toán</span>
+                            <select
+                                className="h-11 rounded-[14px] border border-[#D8E9F5] bg-[#F8FCFF] px-3 text-sm font-bold text-[#102744] outline-none transition focus:border-[#5BAED4] focus:ring-4 focus:ring-[#A8D8EA]/30"
+                                value={exportFilters.plan}
+                                onChange={(event) => setExportFilters((current) => ({ ...current, plan: event.target.value }))}
+                            >
+                                <option value="">Tất cả gói</option>
+                                <option value="PRO_MONTHLY">{formatAdminValue('PRO_MONTHLY')}</option>
+                                <option value="PRO_YEARLY">{formatAdminValue('PRO_YEARLY')}</option>
+                            </select>
+                        </label>
+                        <p className="text-xs font-semibold leading-5 text-[#6C8098]">
+                            Báo cáo tính trọn cả ngày kết thúc và tối đa 366 ngày.
+                        </p>
+                        <ActionButton type="submit" className="w-full gap-2" disabled={isExporting}>
+                            {isExporting ? (
+                                <>
+                                    <RotateCw className="h-4 w-4 animate-spin" />
+                                    Đang tạo CSV...
+                                </>
+                            ) : (
+                                <>
+                                    <Download className="h-4 w-4" />
+                                    Xuất doanh thu
+                                </>
+                            )}
+                        </ActionButton>
+                    </form>
+                    <div className="mt-5 grid gap-2 border-t border-[#E5F0F8] pt-5">
+                        <ActionButton type="button" tone="ghost" disabled>Chưa hỗ trợ đồng bộ đơn</ActionButton>
+                        <ActionButton type="button" tone="ghost" disabled>Chưa hỗ trợ gia hạn gói</ActionButton>
                     </div>
                 </AdminCard>
             </div>
@@ -1791,6 +1960,7 @@ export function AdminBillingPage() {
                     <AdminQueryToolbar
                         embedded
                         draft={ordersDraft}
+                        isRefreshing={ordersState.isRefreshing}
                         onDraftChange={(name, value) => setOrdersDraft((current) => ({ ...current, [name]: value }))}
                         onSubmit={applyOrderFilters}
                         searchPlaceholder="Tìm mã đơn, email, người dùng..."
@@ -1831,11 +2001,14 @@ export function AdminBillingPage() {
                         { key: 'expiresAt', label: 'Hết hạn' },
                     ]}
                     rows={orders}
+                    isRefreshing={ordersState.isRefreshing}
+                    dataVersion={ordersState.dataVersion}
                 />
                 <AdminPagination
                     page={ordersQuery.page}
                     pageSize={ordersQuery.pageSize}
                     total={totalOrders}
+                    isRefreshing={ordersState.isRefreshing}
                     onPageChange={(page) => setOrdersQuery((current) => ({ ...current, page }))}
                     onPageSizeChange={(pageSize) => setOrdersQuery((current) => ({ ...current, page: 1, pageSize }))}
                 />
@@ -1846,6 +2019,7 @@ export function AdminBillingPage() {
                     <AdminQueryToolbar
                         embedded
                         draft={webhookDraft}
+                        isRefreshing={webhookState.isRefreshing}
                         onDraftChange={(name, value) => setWebhookDraft((current) => ({ ...current, [name]: value }))}
                         onSubmit={applyWebhookFilters}
                         searchPlaceholder="Tìm order code, reference..."
@@ -1883,15 +2057,19 @@ export function AdminBillingPage() {
                         { key: 'error', label: 'Lỗi' },
                     ]}
                     rows={webhookEvents}
+                    isRefreshing={webhookState.isRefreshing}
+                    dataVersion={webhookState.dataVersion}
                 />
                 <AdminPagination
                     page={webhookQuery.page}
                     pageSize={webhookQuery.pageSize}
                     total={totalWebhookEvents}
+                    isRefreshing={webhookState.isRefreshing}
                     onPageChange={(page) => setWebhookQuery((current) => ({ ...current, page }))}
                     onPageSizeChange={(pageSize) => setWebhookQuery((current) => ({ ...current, page: 1, pageSize }))}
                 />
             </AdminCard>
+            <AdminToast toast={toast} onClose={() => setToast(null)} />
         </PageGrid>
     );
 }
@@ -1940,6 +2118,7 @@ export function AdminAuditLogsPage() {
         <PageGrid>
             <AdminQueryToolbar
                 draft={draft}
+                isRefreshing={logsState.isRefreshing}
                 onDraftChange={(name, value) => setDraft((current) => ({ ...current, [name]: value }))}
                 onSubmit={applyAuditFilters}
                 searchPlaceholder="Email, action, target..."
@@ -1972,11 +2151,14 @@ export function AdminAuditLogsPage() {
                         { key: 'detail', label: 'Chi tiết', render: (row) => <button type="button" className="text-sm font-black text-[#2B7AB5] hover:text-[#1B3A6B]" onClick={() => openAuditDetail(row)}>Xem</button> },
                     ]}
                     rows={logs}
+                    isRefreshing={logsState.isRefreshing}
+                    dataVersion={logsState.dataVersion}
                 />
                 <AdminPagination
                     page={query.page}
                     pageSize={query.pageSize}
                     total={totalLogs}
+                    isRefreshing={logsState.isRefreshing}
                     onPageChange={(page) => setQuery((current) => ({ ...current, page }))}
                     onPageSizeChange={(pageSize) => setQuery((current) => ({ ...current, page: 1, pageSize }))}
                 />

@@ -54,7 +54,8 @@ export function clearAuth() {
  * @param {object} [options.body] - Request body (will be JSON.stringify'd)
  * @param {object} [options.headers] - Additional headers
  * @param {boolean} [options.skipAuth=false] - Skip auth header
- * @returns {Promise<any>} Parsed JSON response
+ * @param {'json'|'blob'} [options.responseType='json'] - Successful response parsing mode
+ * @returns {Promise<any>} Parsed response
  */
 export async function apiRequest(endpoint, options = {}) {
     const {
@@ -63,6 +64,7 @@ export async function apiRequest(endpoint, options = {}) {
         headers = {},
         skipAuth = false,
         signal,
+        responseType = 'json',
     } = options;
 
     const config = {
@@ -132,10 +134,13 @@ export async function apiRequest(endpoint, options = {}) {
             return null;
         }
 
-        // Try to parse JSON
+        // Parse successful file responses as Blob. Error responses still use
+        // JSON/text parsing below so callers receive the backend error message.
         let data;
         const contentType = response.headers.get('content-type');
-        if (contentType && contentType.includes('application/json')) {
+        if (response.ok && responseType === 'blob') {
+            data = await response.blob();
+        } else if (contentType && contentType.includes('application/json')) {
             data = await response.json();
         } else {
             data = await response.text();

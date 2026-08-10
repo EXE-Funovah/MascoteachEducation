@@ -1464,6 +1464,49 @@ img {
   animation: admin-page-enter 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+@keyframes admin-table-data-enter {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes admin-table-loading-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-5px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes admin-filter-progress {
+  from {
+    transform: translateX(-120%);
+  }
+  to {
+    transform: translateX(320%);
+  }
+}
+
+.admin-table-data-enter > tr {
+  animation: admin-table-data-enter 300ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.admin-table-loading-enter {
+  animation: admin-table-loading-enter 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.admin-filter-progress {
+  animation: admin-filter-progress 1s ease-in-out infinite;
+}
+
 .admin-chart .recharts-surface:focus-visible {
   outline: 2px solid #2b7ab5;
   outline-offset: -2px;
@@ -1471,6 +1514,12 @@ img {
 
 @media (prefers-reduced-motion: reduce) {
   .admin-page-enter {
+    animation: none;
+  }
+
+  .admin-table-data-enter > tr,
+  .admin-table-loading-enter,
+  .admin-filter-progress {
     animation: none;
   }
 

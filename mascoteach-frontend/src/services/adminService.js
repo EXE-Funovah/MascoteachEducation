@@ -64,6 +64,14 @@ export function getAdminBillingOrderById(id, options = {}) {
     return api.get(`/api/Admin/billing/orders/${id}`, options);
 }
 
+export function exportAdminBillingRevenue(params = {}, options = {}) {
+    const { from, to, plan } = params;
+    return api.get(
+        `/api/Admin/billing/revenue/export${buildQuery({ from, to, plan })}`,
+        { ...options, responseType: 'blob' }
+    );
+}
+
 export function getAdminBillingWebhookEvents(params = {}, options = {}) {
     return api.get(`/api/Admin/billing/webhook-events${buildQuery({ page: 1, pageSize: 20, ...params })}`, options);
 }

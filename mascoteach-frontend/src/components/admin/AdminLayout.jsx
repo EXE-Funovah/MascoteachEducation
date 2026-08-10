@@ -226,10 +226,28 @@ export function StatusBadge({ value }) {
     );
 }
 
-export function AdminTable({ columns, rows, rowHref, emptyLabel = 'Chưa có dữ liệu' }) {
+export function AdminTable({
+    columns,
+    rows,
+    rowHref,
+    emptyLabel = 'Chưa có dữ liệu',
+    isRefreshing = false,
+    dataVersion = 0,
+}) {
     return (
-        <div className="overflow-hidden rounded-[24px] border border-[#D8E9F5] bg-white">
-            <div className="overflow-x-auto">
+        <div
+            className="relative min-h-[220px] overflow-hidden rounded-[24px] border border-[#D8E9F5] bg-white"
+            aria-busy={isRefreshing}
+        >
+            {isRefreshing && (
+                <div className="pointer-events-none absolute inset-x-0 top-[70px] z-20 flex justify-center px-4" role="status" aria-live="polite">
+                    <div className="admin-table-loading-enter inline-flex items-center gap-2 rounded-full border border-[#B9DFF3] bg-white/95 px-4 py-2 text-xs font-black text-[#2B7AB5] shadow-[0_14px_34px_rgba(43,122,181,0.16)] backdrop-blur-md">
+                        <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-[#B9DFF3] border-t-[#2B7AB5]" />
+                        Đang cập nhật kết quả...
+                    </div>
+                </div>
+            )}
+            <div className={`overflow-x-auto transition duration-200 ease-out ${isRefreshing ? 'scale-[0.998] opacity-45' : 'scale-100 opacity-100'}`}>
                 <table className="min-w-full border-separate border-spacing-0">
                     <thead>
                         <tr className="bg-[#F8FCFF]">
@@ -240,7 +258,7 @@ export function AdminTable({ columns, rows, rowHref, emptyLabel = 'Chưa có d�
                             ))}
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody key={dataVersion} className="admin-table-data-enter">
                         {rows.length === 0 ? (
                             <tr>
                                 <td className="px-5 py-10 text-center text-sm font-bold text-[#6C8098]" colSpan={columns.length}>{emptyLabel}</td>
