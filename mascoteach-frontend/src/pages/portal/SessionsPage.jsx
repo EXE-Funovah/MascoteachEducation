@@ -49,6 +49,21 @@ function getStatusMeta(status) {
     return STATUS_META[status] || { label: status || 'Chưa rõ', tab: 'all', className: 'bg-slate-50 text-slate-600 border-slate-200' };
 }
 
+function isRunningSession(status) {
+    return status === 'Active' || status === 'Running';
+}
+
+function isWaitingSession(status) {
+    return status === 'Waiting' || status === 'Scheduled';
+}
+
+function getSessionActionLabel(session) {
+    if (!session?.quizId) return 'Chưa có quiz';
+    if (isRunningSession(session.status)) return 'Tiếp tục phiên';
+    if (isWaitingSession(session.status)) return 'Vào phòng chờ';
+    return 'Xem lại';
+}
+
 function formatDate(value) {
     if (!value) return 'Chưa có ngày';
     return new Date(value).toLocaleDateString('vi-VN', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -112,6 +127,25 @@ export default function SessionsPage() {
 
     function handleOpenSession(session) {
         if (!session?.quizId) return;
+
+        if (isRunningSession(session.status)) {
+            navigate('/teacher/treasure-hunt', {
+                state: {
+                    sessionId: session.id,
+                    quizId: session.quizId,
+                    quizTitle: getSessionTitle(session),
+                    gamePin: session.gamePin || session.pin,
+                    hostMode: true,
+                    resumeSession: true,
+                },
+            });
+            return;
+        }
+
+        if (isWaitingSession(session.status)) {
+            navigate(`/teacher/live-session/${session.id}`);
+            return;
+        }
 
         goToLibrary({
             activeTab: 'quizzes',
@@ -322,7 +356,7 @@ function ErrorState({ message, onRetry }) {
 function ReportsTable({ sessions, onOpenSession }) {
     return (
         <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_18px_46px_rgba(15,23,42,0.05)]">
-            <div className="hidden grid-cols-[minmax(0,1fr)_160px_150px_130px_auto] items-center gap-5 px-6 py-4 text-[13px] font-extrabold uppercase tracking-[0.08em] text-slate-500 lg:grid">
+            <div className="hidden grid-cols-[minmax(0,1fr)_160px_150px_130px_180px] items-center gap-5 px-6 py-4 text-[13px] font-extrabold uppercase tracking-[0.08em] text-slate-500 lg:grid">
                 <span>Tên báo cáo</span>
                 <span>Trạng thái</span>
                 <span>Ngày tạo</span>
@@ -340,7 +374,7 @@ function ReportsTable({ sessions, onOpenSession }) {
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.22, delay: Math.min(index * 0.035, 0.18) }}
                             onClick={() => onOpenSession(session)}
-                            className="grid cursor-pointer grid-cols-1 gap-4 border-t border-slate-200 px-6 py-4 transition-all duration-200 hover:bg-brand-light/10 lg:grid-cols-[minmax(0,1fr)_160px_150px_130px_auto] lg:items-center lg:gap-5"
+                            className="grid cursor-pointer grid-cols-1 gap-4 border-t border-slate-200 px-6 py-4 transition-all duration-200 hover:bg-brand-light/10 lg:grid-cols-[minmax(0,1fr)_160px_150px_130px_180px] lg:items-center lg:gap-5"
                         >
                             <div className="flex min-w-0 items-center gap-4">
                                 <div className="grid h-12 w-12 flex-none place-items-center rounded-lg border border-slate-200 bg-slate-50 text-brand-blue">
@@ -375,8 +409,10 @@ function ReportsTable({ sessions, onOpenSession }) {
                                     disabled={!session.quizId}
                                     className="inline-flex h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-[14px] font-bold text-slate-800 transition-all duration-200 hover:border-brand-mid hover:bg-brand-light/20 hover:text-brand-blue disabled:cursor-not-allowed disabled:opacity-50"
                                 >
-                                    <Eye className="h-4 w-4" />
-                                    {session.quizId ? 'Xem lại' : 'Chưa có quiz'}
+                                    {isRunningSession(session.status)
+                                        ? <Gamepad2 className="h-4 w-4" />
+                                        : <Eye className="h-4 w-4" />}
+                                    {getSessionActionLabel(session)}
                                 </button>
                             </div>
                         </motion.article>

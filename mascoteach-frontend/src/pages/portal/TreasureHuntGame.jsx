@@ -149,6 +149,7 @@ export default function TreasureHuntGame() {
     const hostMode = location.state?.hostMode || false;
     const sessionId = location.state?.sessionId;
     const gamePin = location.state?.gamePin;
+    const resumeSession = location.state?.resumeSession || false;
 
     /* ── State ── */
     const [questions, setQuestions] = useState([]);
@@ -160,10 +161,11 @@ export default function TreasureHuntGame() {
     const [isCorrect, setIsCorrect] = useState(null);
     const [shaking, setShaking] = useState(false);
     const [completed, setCompleted] = useState(false);
+    const [endingSession, setEndingSession] = useState(false);
     const [score, setScore] = useState(0);
     const [streak, setStreak] = useState(0);
     const [answeredNodes, setAnsweredNodes] = useState([]);
-    const [showIntro, setShowIntro] = useState(true);
+    const [showIntro, setShowIntro] = useState(!resumeSession);
 
     /* ── Host mode: student answer stats ── */
     const [answerStats, setAnswerStats] = useState({ total: 0, correct: 0 });
@@ -215,6 +217,15 @@ export default function TreasureHuntGame() {
             sessionId,
             role: 'host',
             onEvent: (eventName, payload) => {
+                if (eventName === 'NewQuestion') {
+                    const position = payload?.position ?? payload?.Position ?? 0;
+                    setCurrentNode(Math.max(0, position));
+                    setShowIntro(false);
+                    setShowQuestion(true);
+                    setSelectedOption(null);
+                    setIsCorrect(null);
+                }
+
                 if (eventName === 'AnswerSubmitted') {
                     setAnswerStats((prev) => ({
                         total: prev.total + 1,
@@ -229,16 +240,24 @@ export default function TreasureHuntGame() {
 
         realtimeRef.current = realtime;
 
+        if (resumeSession) {
+            realtime.startPromise?.then((connection) => {
+                connection?.invoke('RequestCurrentQuestion', gamePin).catch((requestError) => {
+                    console.warn('[TreasureHunt Host] Failed to restore current question:', requestError);
+                });
+            });
+        }
+
         return () => {
             realtime?.stop();
         };
-    }, [hostMode, gamePin, sessionId]);
+    }, [hostMode, gamePin, sessionId, resumeSession]);
 
     /* Normalize different question formats */
     function normalizeQuestions(raw) {
         if (!Array.isArray(raw)) return [];
         return raw.map((q, i) => ({
-            id: q.id || q.Id || i,
+            id: q.id ?? q.Id ?? i,
             text: q.questionText || q.question || q.QuestionText || `Câu ${i + 1}`,
             options: (q.options || q.questionOptions || q.Options || q.QuestionOptions || []).map((o) => {
                 const isCorrectVal = o.isCorrect ?? o.IsCorrect ?? false;
@@ -264,15 +283,7 @@ export default function TreasureHuntGame() {
         /* HOST MODE: Broadcast question to students via SignalR */
         if (hostMode && realtimeRef.current && questions[index]) {
             const q = questions[index];
-            const correctOptionIndex = q.options.findIndex(o => o.isCorrect);
-            // Backend: SendQuestion(gamePin, questionData) → sends "NewQuestion" to group
-            realtimeRef.current.invoke('SendQuestion', gamePin, {
-                questionIndex: index,
-                questionText: q.text,
-                options: q.options.map((o) => ({ text: o.text, isCorrect: o.isCorrect })),
-                totalQuestions: questions.length,
-                correctOptionIndex,
-            }).catch((err) => {
+            realtimeRef.current.invoke('SendQuestion', gamePin, q.id).catch((err) => {
                 console.warn('[TreasureHunt Host] Failed to broadcast question:', err);
             });
         }
@@ -298,6 +309,28 @@ export default function TreasureHuntGame() {
             setCurrentNode((n) => n + 1);
         }
     }, [currentNode, questions.length, hostMode, gamePin]);
+
+    const handleManualEnd = useCallback(async () => {
+        if (!hostMode || !gamePin || endingSession || completed) return;
+
+        const confirmed = window.confirm(
+            'Bạn có chắc muốn kết thúc phiên ngay? Học sinh sẽ không thể trả lời thêm.'
+        );
+        if (!confirmed) return;
+
+        try {
+            setEndingSession(true);
+            if (!realtimeRef.current) throw new Error('SignalR chưa sẵn sàng.');
+            await realtimeRef.current.invoke('EndGame', gamePin);
+            setShowQuestion(false);
+            setCompleted(true);
+        } catch (endError) {
+            console.error('[TreasureHunt Host] Failed to end session:', endError);
+            setError(endError.message || 'Không thể kết thúc phiên lúc này.');
+        } finally {
+            setEndingSession(false);
+        }
+    }, [hostMode, gamePin, endingSession, completed]);
 
     /* ── Handle answering (solo mode only) ── */
     const handleAnswer = useCallback((optIdx) => {
@@ -457,6 +490,25 @@ export default function TreasureHuntGame() {
                     )}
                 </div>
                 <div className="th-hud-stats">
+                    {hostMode && (
+                        <button
+                            type="button"
+                            onClick={handleManualEnd}
+                            disabled={endingSession || completed}
+                            style={{
+                                border: '1px solid rgba(248,113,113,0.65)',
+                                borderRadius: 10,
+                                padding: '7px 12px',
+                                background: 'rgba(127,29,29,0.78)',
+                                color: '#fee2e2',
+                                fontWeight: 800,
+                                cursor: endingSession ? 'wait' : 'pointer',
+                                opacity: endingSession || completed ? 0.6 : 1,
+                            }}
+                        >
+                            {endingSession ? 'Đang kết thúc…' : '⏹ Kết thúc phiên'}
+                        </button>
+                    )}
                     {!hostMode && (
                         <>
                             <div className="th-hud-stat">
