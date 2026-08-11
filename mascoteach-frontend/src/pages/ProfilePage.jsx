@@ -23,6 +23,7 @@ import {
   uploadAvatarToS3,
 } from '@/services/userService';
 import { isPremiumActive } from '@/lib/billingUi';
+import { getMyDocuments } from '@/services/documentService';
 
 const MAX_AVATAR_SIZE_BYTES = 1024 * 1024;
 const ACCEPTED_AVATAR_TYPES = ['image/jpeg', 'image/png'];
@@ -63,7 +64,7 @@ function formatSubscriptionTier(value) {
   return value || '—';
 }
 
-function getInfoItems(profile) {
+function getInfoItems(profile, activeDocumentCount) {
   return [
     { label: 'Tên hiển thị', value: profile?.fullName || '—', icon: User },
     { label: 'Email', value: profile?.email || '—', icon: Mail },
@@ -71,8 +72,8 @@ function getInfoItems(profile) {
     { label: 'Gói đăng ký', value: formatSubscriptionTier(profile?.subscriptionTier), icon: Crown },
     { label: 'Ngày tạo tài khoản', value: formatDate(profile?.createdAt), icon: CalendarDays },
     {
-      label: 'Tài liệu đã xử lý',
-      value: profile?.documentsProcessed ?? 0,
+      label: 'Tài liệu hiện có',
+      value: activeDocumentCount ?? '—',
       icon: FileText,
     },
   ];
@@ -94,6 +95,7 @@ export default function ProfilePage() {
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [reloadKey, setReloadKey] = useState(0);
+  const [activeDocumentCount, setActiveDocumentCount] = useState(null);
 
   useEffect(() => {
     if (user) {
@@ -122,6 +124,14 @@ export default function ProfilePage() {
         if (!cancelled) {
           setProfile(nextProfile);
         }
+        try {
+          const activeDocuments = await getMyDocuments();
+          if (!cancelled) {
+            setActiveDocumentCount(Array.isArray(activeDocuments) ? activeDocuments.length : 0);
+          }
+        } catch {
+          if (!cancelled) setActiveDocumentCount(null);
+        }
       } catch (err) {
         if (!cancelled) {
           setError(err.message || 'Không thể tải hồ sơ người dùng.');
@@ -141,7 +151,7 @@ export default function ProfilePage() {
   }, [authLoading, refreshUser, reloadKey, user]);
 
   const avatarInitial = useMemo(() => formatAvatarInitial(profile), [profile]);
-  const infoItems = useMemo(() => getInfoItems(profile), [profile]);
+  const infoItems = useMemo(() => getInfoItems(profile, activeDocumentCount), [profile, activeDocumentCount]);
   const premiumActive = useMemo(() => isPremiumActive(profile), [profile]);
 
   async function syncProfile() {
@@ -428,9 +438,9 @@ export default function ProfilePage() {
                   <article className="rounded-[18px] border border-brand-light/60 bg-white p-5 shadow-[0_18px_48px_rgba(43,122,181,0.08)]">
                     <FileText className="h-7 w-7 text-[#24A148]" />
                     <p className="mt-4 text-xs font-black uppercase tracking-[0.08em] text-[#64748B]">
-                      Số tài liệu đã xử lý
+                      Tài liệu hiện có
                     </p>
-                    <p className="mt-1 text-2xl font-black">{profile.documentsProcessed ?? 0}</p>
+                    <p className="mt-1 text-2xl font-black">{activeDocumentCount ?? '—'}</p>
                   </article>
                 </section>
 

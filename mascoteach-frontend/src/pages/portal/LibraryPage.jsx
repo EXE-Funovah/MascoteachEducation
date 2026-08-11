@@ -11,7 +11,6 @@ import {
     ChevronLeft,
     ChevronRight,
     Copy,
-    Edit3,
     Eye,
     EyeOff,
     FileText,
@@ -23,6 +22,7 @@ import {
     MoreVertical,
     Play,
     Plus,
+    RotateCcw,
     Search,
     Share2,
     Trash2,
@@ -30,7 +30,12 @@ import {
     X,
 } from 'lucide-react';
 import CreateFlowModal from '@/components/portal/create/CreateFlowModal';
-import { getMyDocuments, deleteDocument } from '@/services/documentService';
+import {
+    deleteDocument,
+    getMyDeletedDocuments,
+    getMyDocuments,
+    toggleDeleteDocument,
+} from '@/services/documentService';
 import {
     deleteQuiz,
     getMyQuizzes,
@@ -48,9 +53,9 @@ const ACTIVITY_FILTERS = [
 ];
 
 const COLLECTIONS = [
-    { id: 'created', label: 'Đã tạo', icon: Edit3 },
+    { id: 'all', label: 'Tất cả nội dung', icon: Library },
     { id: 'previous', label: 'Đã dùng gần đây', icon: Play },
-    { id: 'all', label: 'Tất cả hoạt động', icon: Library },
+    { id: 'trash', label: 'Thùng rác', icon: Trash2 },
 ];
 
 function formatDate(value) {
@@ -82,6 +87,11 @@ export default function LibraryPage() {
     const [documents, setDocuments] = useState([]);
     const [loadingDocs, setLoadingDocs] = useState(true);
     const [docError, setDocError] = useState(null);
+    const [deletedDocuments, setDeletedDocuments] = useState([]);
+    const [loadingTrash, setLoadingTrash] = useState(true);
+    const [trashError, setTrashError] = useState(null);
+    const [restoringDocumentId, setRestoringDocumentId] = useState(null);
+    const [documentActionMessage, setDocumentActionMessage] = useState(null);
     const [quizzes, setQuizzes] = useState([]);
     const [loadingQuizzes, setLoadingQuizzes] = useState(false);
     const [quizError, setQuizError] = useState(null);
@@ -93,9 +103,10 @@ export default function LibraryPage() {
     const [successMessage, setSuccessMessage] = useState(location.state?.successMessage || null);
     const autoExpandedRef = useRef(false);
     const [docPage, setDocPage] = useState(1);
+    const [trashPage, setTrashPage] = useState(1);
     const [quizPage, setQuizPage] = useState(1);
     const [searchQuery, setSearchQuery] = useState('');
-    const [activeCollection, setActiveCollection] = useState('created');
+    const [activeCollection, setActiveCollection] = useState('all');
     const [activityFilter, setActivityFilter] = useState('all');
     const [openMenu, setOpenMenu] = useState(null);
     const [openShareMenu, setOpenShareMenu] = useState(null);
@@ -103,6 +114,7 @@ export default function LibraryPage() {
 
     useEffect(() => {
         fetchDocuments();
+        fetchDeletedDocuments();
         fetchQuizzes();
         fetchRecentSessions();
     }, []);
@@ -137,6 +149,19 @@ export default function LibraryPage() {
         }
     }
 
+    async function fetchDeletedDocuments() {
+        try {
+            setLoadingTrash(true);
+            setTrashError(null);
+            const data = await getMyDeletedDocuments();
+            setDeletedDocuments(Array.isArray(data) ? data : []);
+        } catch (err) {
+            setTrashError(err.message || 'Không thể tải thùng rác');
+        } finally {
+            setLoadingTrash(false);
+        }
+    }
+
     async function fetchQuizzes() {
         try {
             setLoadingQuizzes(true);
@@ -160,12 +185,37 @@ export default function LibraryPage() {
     }
 
     async function handleDeleteDoc(id) {
-        if (!confirm('Bạn có chắc chắn muốn xóa tài liệu này?')) return;
+        if (!confirm('Tài liệu sẽ được chuyển vào thùng rác và có thể khôi phục sau. Bạn có muốn tiếp tục?')) return;
         try {
             await deleteDocument(id);
             setDocuments((prev) => prev.filter((doc) => doc.id !== id));
+            await fetchDeletedDocuments();
+            setDocumentActionMessage({ type: 'success', text: 'Đã chuyển tài liệu vào thùng rác.' });
         } catch (err) {
             alert(err.message || 'Xóa thất bại');
+        }
+    }
+
+    async function handleRestoreDocument(document) {
+        if (restoringDocumentId) return;
+
+        setRestoringDocumentId(document.id);
+        setDocumentActionMessage(null);
+        try {
+            const restoredDocument = await toggleDeleteDocument(document.id);
+            setDeletedDocuments((current) => current.filter((item) => item.id !== document.id));
+            setDocuments((current) => sortByNewest([restoredDocument, ...current.filter((item) => item.id !== restoredDocument.id)]));
+            setDocumentActionMessage({ type: 'success', text: `Đã khôi phục ${getDocumentFileName(restoredDocument) || 'tài liệu'}.` });
+        } catch (err) {
+            const quotaReached = err?.status === 400 && /limit|freemium|premium/i.test(err?.message || '');
+            setDocumentActionMessage({
+                type: 'error',
+                text: quotaReached
+                    ? 'Bạn đang có đủ 5 tài liệu hoạt động của gói Freemium. Hãy xóa bớt một tài liệu hoặc nâng cấp Premium để khôi phục.'
+                    : err.message || 'Không thể khôi phục tài liệu.',
+            });
+        } finally {
+            setRestoringDocumentId(null);
         }
     }
 
@@ -232,7 +282,7 @@ export default function LibraryPage() {
     }
 
     const collectionDocuments = useMemo(() => {
-        if (activeCollection === 'previous') return [];
+        if (activeCollection !== 'all') return [];
         return sortByNewest(documents);
     }, [activeCollection, documents]);
 
@@ -282,21 +332,31 @@ export default function LibraryPage() {
         });
     }, [activityFilter, collectionQuizzes, searchQuery, documents]);
 
+    const filteredDeletedDocuments = useMemo(() => {
+        const query = normalizeText(searchQuery);
+        return sortByNewest(deletedDocuments).filter((document) => {
+            const title = normalizeText(document.title || getDocumentFileName(document) || document.fileUrl || document.s3Key);
+            return !query || title.includes(query);
+        });
+    }, [deletedDocuments, searchQuery]);
+
     const docTotalPages = Math.ceil(filteredDocuments.length / ITEMS_PER_PAGE);
     const quizTotalPages = Math.ceil(filteredQuizzes.length / ITEMS_PER_PAGE);
+    const trashTotalPages = Math.ceil(filteredDeletedDocuments.length / ITEMS_PER_PAGE);
     const paginatedDocs = filteredDocuments.slice((docPage - 1) * ITEMS_PER_PAGE, docPage * ITEMS_PER_PAGE);
     const paginatedQuizzes = filteredQuizzes.slice((quizPage - 1) * ITEMS_PER_PAGE, quizPage * ITEMS_PER_PAGE);
+    const paginatedDeletedDocuments = filteredDeletedDocuments.slice((trashPage - 1) * ITEMS_PER_PAGE, trashPage * ITEMS_PER_PAGE);
     const activeFilterLabel = ACTIVITY_FILTERS.find((item) => item.id === activityFilter)?.label || 'Tất cả loại';
     const collectionCounts = {
-        created: documents.length + quizzes.length,
-        previous: new Set(recentSessions.map((session) => session.quizId).filter(Boolean)).size,
         all: documents.length + quizzes.length,
+        previous: new Set(recentSessions.map((session) => session.quizId).filter(Boolean)).size,
+        trash: deletedDocuments.length,
     };
-    const collectionTitle = activeCollection === 'previous'
-        ? 'Đã dùng gần đây'
-        : activeCollection === 'all'
-            ? 'Tất cả hoạt động'
-            : 'Bài giảng đã tạo';
+    const collectionTitle = activeCollection === 'trash'
+        ? 'Thùng rác tài liệu'
+        : activeCollection === 'previous'
+            ? 'Đã dùng gần đây'
+            : 'Tất cả nội dung';
 
     function EmptyState({ icon: Icon, title, description, action }) {
         return (
@@ -503,6 +563,44 @@ export default function LibraryPage() {
         );
     }
 
+    function renderDeletedDocumentRow(doc, index) {
+        const fileName = getDocumentFileName(doc);
+        const title = doc.title || fileName || `Tài liệu #${doc.id}`;
+        const isRestoring = restoringDocumentId === doc.id;
+
+        return (
+            <motion.article
+                key={doc.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.22, delay: Math.min(index * 0.035, 0.18) }}
+                className="grid grid-cols-[minmax(0,1fr)] items-center gap-5 border-t border-slate-200/80 bg-white px-6 py-4 transition-all duration-200 hover:bg-slate-50 lg:grid-cols-[minmax(0,1fr)_180px_280px]"
+            >
+                <div className="flex min-w-0 items-center gap-4">
+                    <div className="grid h-12 w-12 flex-none place-items-center rounded-lg border border-slate-200 bg-slate-100 text-slate-500">
+                        <Trash2 className="h-6 w-6" />
+                    </div>
+                    <div className="min-w-0">
+                        <h3 className="truncate text-[16px] font-extrabold text-slate-900">{title}</h3>
+                        <p className="mt-1 truncate text-[13px] font-semibold text-slate-500">Tài liệu đã xóa · {fileName || 'Mascoteach'}</p>
+                    </div>
+                </div>
+                <span className="hidden text-center text-[14px] font-semibold text-slate-500 lg:block">{formatDate(getItemDate(doc))}</span>
+                <div className="flex w-full items-center justify-end">
+                    <button
+                        type="button"
+                        onClick={() => handleRestoreDocument(doc)}
+                        disabled={Boolean(restoringDocumentId)}
+                        className="inline-flex h-10 items-center gap-2 rounded-lg border border-brand-light bg-white px-4 text-[14px] font-extrabold text-brand-blue transition-all duration-200 hover:border-brand-mid hover:bg-brand-light/20 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                        {isRestoring ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
+                        {isRestoring ? 'Đang khôi phục...' : 'Khôi phục'}
+                    </button>
+                </div>
+            </motion.article>
+        );
+    }
+
     function renderQuizRow(quiz, index) {
         const isExpanded = expandedQuizId === quiz.id;
         const statusLabel = quiz.status === 'AI_Drafted' ? 'Bản nháp' : quiz.status === 'Teacher_Approved' || quiz.status === 'Published' ? 'Đã duyệt' : 'Bản nháp';
@@ -623,7 +721,13 @@ export default function LibraryPage() {
     }
 
     const isDocuments = activeTab === 'documents';
-    const activeCount = isDocuments ? filteredDocuments.length : filteredQuizzes.length;
+    const isQuizzes = activeTab === 'quizzes';
+    const isTrash = activeTab === 'trash';
+    const activeCount = isDocuments
+        ? filteredDocuments.length
+        : isQuizzes
+            ? filteredQuizzes.length
+            : filteredDeletedDocuments.length;
 
     return (
         <>
@@ -648,9 +752,18 @@ export default function LibraryPage() {
                                     key={item.id}
                                     onClick={() => {
                                         setActiveCollection(item.id);
+                                        if (item.id === 'trash') {
+                                            setActiveTab('trash');
+                                        } else if (item.id === 'previous') {
+                                            setActiveTab('quizzes');
+                                        } else if (activeTab === 'trash') {
+                                            setActiveTab('documents');
+                                        }
                                         setDocPage(1);
                                         setQuizPage(1);
+                                        setTrashPage(1);
                                         setFilterOpen(false);
+                                        setDocumentActionMessage(null);
                                     }}
                                     className={`flex w-full items-center justify-between rounded-lg px-3 py-3 text-left text-[15px] font-bold transition-all duration-200 ${
                                         isActive
@@ -668,12 +781,6 @@ export default function LibraryPage() {
                         })}
                     </nav>
 
-                    <div className="mt-auto px-2 pb-1 pt-8">
-                        <p className="text-[13px] font-extrabold text-slate-800">{documents.length + quizzes.length}/20 nội dung đã tạo</p>
-                        <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100">
-                            <div className="h-full rounded-full bg-brand-blue" style={{ width: `${Math.min(((documents.length + quizzes.length) / 20) * 100, 100)}%` }} />
-                        </div>
-                    </div>
                 </motion.aside>
 
                 <main className="min-w-0 flex-1">
@@ -688,7 +795,7 @@ export default function LibraryPage() {
                                         setDocPage(1);
                                         setQuizPage(1);
                                     }}
-                                    placeholder="Tìm theo tên bài giảng hoặc bộ câu hỏi"
+                                    placeholder={isTrash ? 'Tìm trong thùng rác' : 'Tìm theo tên bài giảng hoặc bộ câu hỏi'}
                                     className="h-12 w-full rounded-full border border-slate-200 bg-white pl-12 pr-12 text-[15px] font-semibold text-slate-800 outline-none transition-all duration-200 placeholder:text-slate-400 hover:border-brand-light focus:border-brand-mid focus:ring-4 focus:ring-brand-light/30"
                                 />
                                 {searchQuery && (
@@ -709,8 +816,9 @@ export default function LibraryPage() {
                             <div>
                                 <h2 className="text-[28px] font-extrabold leading-tight text-slate-950 sm:text-[32px]">{collectionTitle}</h2>
                             </div>
-                            <div className="flex flex-wrap items-center gap-3">
-                                <div className="relative">
+                            {activeCollection === 'all' && (
+                                <div className="flex flex-wrap items-center gap-3">
+                                    <div className="relative">
                                     <button
                                         onClick={() => setFilterOpen((value) => !value)}
                                         className="inline-flex h-11 items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-[14px] font-extrabold text-slate-800 shadow-sm transition-all duration-200 hover:border-brand-mid hover:bg-brand-light/20"
@@ -747,14 +855,16 @@ export default function LibraryPage() {
                                             </motion.div>
                                         )}
                                     </AnimatePresence>
+                                    </div>
+                                    <PrimaryButton onClick={() => setShowCreateModal(true)}>
+                                        <Plus className="h-4 w-4" />
+                                        Thêm
+                                    </PrimaryButton>
                                 </div>
-                                <PrimaryButton onClick={() => setShowCreateModal(true)}>
-                                    <Plus className="h-4 w-4" />
-                                    Thêm
-                                </PrimaryButton>
-                            </div>
+                            )}
                         </div>
 
+                        {activeCollection === 'all' && (
                         <div className="mt-8 flex items-center gap-3">
                             {[
                                 { id: 'documents', label: 'Tài liệu', count: filteredDocuments.length },
@@ -764,7 +874,13 @@ export default function LibraryPage() {
                                 return (
                                     <button
                                         key={tab.id}
-                                        onClick={() => setActiveTab(tab.id)}
+                                        onClick={() => {
+                                            setActiveTab(tab.id);
+                                            setDocPage(1);
+                                            setQuizPage(1);
+                                            setTrashPage(1);
+                                            setDocumentActionMessage(null);
+                                        }}
                                         className={`relative h-12 rounded-full px-5 text-[15px] font-extrabold transition-all duration-200 ${
                                             isActive
                                                 ? 'bg-white text-brand-navy shadow-[0_10px_28px_rgba(15,23,42,0.09)] ring-1 ring-slate-200'
@@ -776,6 +892,18 @@ export default function LibraryPage() {
                                 );
                             })}
                         </div>
+                        )}
+
+                        {documentActionMessage && (
+                            <div className={`mt-5 flex items-start justify-between gap-3 rounded-xl border px-4 py-3 ${
+                                documentActionMessage.type === 'error'
+                                    ? 'border-rose-200 bg-rose-50 text-rose-700'
+                                    : 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                            }`}>
+                                <p className="text-[14px] font-bold">{documentActionMessage.text}</p>
+                                <button onClick={() => setDocumentActionMessage(null)} className="text-[13px] font-extrabold">Đóng</button>
+                            </div>
+                        )}
 
                         {successMessage && (
                             <div className="mt-5 flex items-start justify-between gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
@@ -811,23 +939,28 @@ export default function LibraryPage() {
                         <div className="mt-6 overflow-visible rounded-xl border border-slate-200 bg-white shadow-[0_18px_46px_rgba(15,23,42,0.05)]">
                             <div className="grid grid-cols-[minmax(0,1fr)] items-center gap-5 px-6 py-4 text-[13px] font-extrabold uppercase tracking-[0.08em] text-slate-500 lg:grid-cols-[minmax(0,1fr)_180px_260px]">
                                 <span>Chi tiết nội dung</span>
-                                <span className="hidden text-center lg:block">Ngày tạo</span>
+                                <span className="hidden text-center lg:block">{isTrash ? 'Ngày tải lên' : 'Ngày tạo'}</span>
                                 <span className="hidden text-center lg:block">Thao tác</span>
                             </div>
 
                             {isDocuments && loadingDocs && <LoadingRows label="Đang tải tài liệu..." />}
-                            {!isDocuments && (loadingDocs || loadingQuizzes) && <LoadingRows label="Đang tải bộ câu hỏi..." />}
+                            {isQuizzes && (loadingDocs || loadingQuizzes) && <LoadingRows label="Đang tải bộ câu hỏi..." />}
+                            {isTrash && loadingTrash && <LoadingRows label="Đang tải thùng rác..." />}
 
                             {isDocuments && !loadingDocs && docError && (
                                 <ErrorState message={docError} onRetry={fetchDocuments} />
                             )}
-                            {!isDocuments && !loadingDocs && !loadingQuizzes && quizError && (
+                            {isQuizzes && !loadingDocs && !loadingQuizzes && quizError && (
                                 <ErrorState message={quizError} onRetry={fetchQuizzes} />
+                            )}
+                            {isTrash && !loadingTrash && trashError && (
+                                <ErrorState message={trashError} onRetry={fetchDeletedDocuments} />
                             )}
 
                             {isDocuments && !loadingDocs && !docError && paginatedDocs.map((doc, index) => renderDocumentRow(doc, index))}
 
-                            {!isDocuments && !loadingDocs && !loadingQuizzes && !quizError && paginatedQuizzes.map((quiz, index) => renderQuizRow(quiz, index))}
+                            {isQuizzes && !loadingDocs && !loadingQuizzes && !quizError && paginatedQuizzes.map((quiz, index) => renderQuizRow(quiz, index))}
+                            {isTrash && !loadingTrash && !trashError && paginatedDeletedDocuments.map((doc, index) => renderDeletedDocumentRow(doc, index))}
                         </div>
 
                         {isDocuments && !loadingDocs && !docError && filteredDocuments.length === 0 && (
@@ -841,7 +974,7 @@ export default function LibraryPage() {
                             </div>
                         )}
 
-                        {!isDocuments && !loadingDocs && !loadingQuizzes && !quizError && filteredQuizzes.length === 0 && (
+                        {isQuizzes && !loadingDocs && !loadingQuizzes && !quizError && filteredQuizzes.length === 0 && (
                             <div className="mt-6">
                                 <EmptyState
                                     icon={BookOpen}
@@ -852,15 +985,27 @@ export default function LibraryPage() {
                             </div>
                         )}
 
+                        {isTrash && !loadingTrash && !trashError && filteredDeletedDocuments.length === 0 && (
+                            <div className="mt-6">
+                                <EmptyState
+                                    icon={Trash2}
+                                    title="Thùng rác đang trống"
+                                    description="Những tài liệu bạn xóa sẽ xuất hiện tại đây và có thể được khôi phục sau."
+                                />
+                            </div>
+                        )}
+
                         <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                             <p className="text-[14px] font-semibold text-slate-500">
-                                Đang hiển thị {activeCount === 0 ? 0 : (isDocuments ? (docPage - 1) : (quizPage - 1)) * ITEMS_PER_PAGE + 1}
-                                -{Math.min((isDocuments ? docPage : quizPage) * ITEMS_PER_PAGE, activeCount)} / {activeCount} nội dung
+                                Đang hiển thị {activeCount === 0 ? 0 : (isDocuments ? (docPage - 1) : isQuizzes ? (quizPage - 1) : (trashPage - 1)) * ITEMS_PER_PAGE + 1}
+                                -{Math.min((isDocuments ? docPage : isQuizzes ? quizPage : trashPage) * ITEMS_PER_PAGE, activeCount)} / {activeCount} nội dung
                             </p>
                             {isDocuments ? (
                                 <Pagination currentPage={docPage} totalPages={docTotalPages} onPageChange={setDocPage} />
-                            ) : (
+                            ) : isQuizzes ? (
                                 <Pagination currentPage={quizPage} totalPages={quizTotalPages} onPageChange={setQuizPage} />
+                            ) : (
+                                <Pagination currentPage={trashPage} totalPages={trashTotalPages} onPageChange={setTrashPage} />
                             )}
                         </div>
                     </section>
