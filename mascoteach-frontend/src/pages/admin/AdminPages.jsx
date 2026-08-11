@@ -43,6 +43,7 @@ import {
 } from '@/components/admin/AdminLayout';
 import {
     exportAdminBillingRevenue,
+    endAdminSession,
     getAdminBillingOrders,
     getAdminBillingRevenueSeries,
     getAdminBillingWebhookEvents,
@@ -1792,15 +1793,19 @@ export function AdminSessionsPage() {
 export function AdminSessionDetailPage() {
     const base = useAdminBase();
     const { sessionId } = useParams();
+    const [refreshKey, setRefreshKey] = useState(0);
+    const [endModalOpen, setEndModalOpen] = useState(false);
+    const [endValues, setEndValues] = useState({ reason: '' });
+    const [endState, setEndState] = useState({ pending: false, error: '', success: '' });
     const sessionState = useAdminResource(
         (options) => getAdminSessionById(sessionId, options),
         null,
-        [sessionId]
+        [sessionId, refreshKey]
     );
     const participantsState = useAdminResource(
         (options) => getAdminSessionParticipants(sessionId, { page: 1, pageSize: 30 }, options),
         { items: [], total: 0 },
-        [sessionId]
+        [sessionId, refreshKey]
     );
     const session = useMemo(() => {
         if (!sessionState.data) return null;
@@ -1810,6 +1815,41 @@ export function AdminSessionDetailPage() {
         () => getItems(participantsState.data).map(adaptParticipant),
         [participantsState.data]
     );
+    const canEndSession = session && ['Waiting', 'Active', 'Live'].includes(session.status);
+
+    function openEndModal() {
+        setEndModalOpen(true);
+        setEndValues({ reason: '' });
+        setEndState({ pending: false, error: '', success: '' });
+    }
+
+    function closeEndModal() {
+        if (endState.pending) return;
+        setEndModalOpen(false);
+        setEndValues({ reason: '' });
+        setEndState({ pending: false, error: '', success: '' });
+    }
+
+    async function submitEndSession(event) {
+        event.preventDefault();
+        setEndState({ pending: true, error: '', success: '' });
+
+        try {
+            await endAdminSession(sessionId, { reason: endValues.reason });
+            setEndState({
+                pending: false,
+                error: '',
+                success: 'Đã kết thúc phiên và thông báo tới người đang tham gia.',
+            });
+            setRefreshKey((value) => value + 1);
+        } catch (error) {
+            setEndState({
+                pending: false,
+                error: formatAdminActionError(error, 'Không thể kết thúc phiên.'),
+                success: '',
+            });
+        }
+    }
 
     if (sessionState.isLoading || participantsState.isLoading) {
         return <AdminPageLoader label="Đang tải chi tiết phiên trực tiếp..." />;
@@ -1837,7 +1877,16 @@ export function AdminSessionDetailPage() {
                 subtitle={`PIN ${session.pin} • ${session.teacher}`}
                 status={session.status}
                 icon={Gamepad2}
-                actions={<><ActionButton tone="ghost">Làm mới dữ liệu</ActionButton><ActionButton tone="danger">Chưa hỗ trợ kết thúc phiên</ActionButton></>}
+                actions={(
+                    <>
+                        <ActionButton tone="ghost" onClick={() => setRefreshKey((value) => value + 1)}>
+                            Làm mới dữ liệu
+                        </ActionButton>
+                        <ActionButton tone="danger" onClick={openEndModal} disabled={!canEndSession}>
+                            {canEndSession ? 'Kết thúc phiên' : 'Phiên đã kết thúc'}
+                        </ActionButton>
+                    </>
+                )}
             />
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
                 <MiniMetric icon={UsersRound} label="Người tham gia" value={session.participants} />
@@ -1865,10 +1914,26 @@ export function AdminSessionDetailPage() {
                         ['Giáo viên', session.teacher],
                         ['Chế độ', session.mode],
                         ['Người tham gia', session.participants],
-                        ['Thao tác kết thúc phiên', 'Chưa hỗ trợ'],
+                        ['Thao tác kết thúc phiên', canEndSession ? 'Sẵn sàng' : 'Đã kết thúc'],
                     ]} />
                 </AdminCard>
             </div>
+            {endModalOpen && (
+                <AdminCommandModal
+                    title="Kết thúc phiên trực tiếp"
+                    description={`Phiên PIN ${session.pin} sẽ dừng ngay. Giáo viên và người chơi đang kết nối sẽ nhận thông báo kết thúc phiên.`}
+                    fields={[{ name: 'reason', label: 'Lý do kết thúc', type: 'textarea', required: true, maxLength: 500 }]}
+                    values={endValues}
+                    onChange={(name, value) => setEndValues((current) => ({ ...current, [name]: value }))}
+                    onClose={closeEndModal}
+                    onSubmit={submitEndSession}
+                    pending={endState.pending}
+                    error={endState.error}
+                    success={endState.success}
+                    submitLabel="Xác nhận kết thúc phiên"
+                    tone="danger"
+                />
+            )}
         </PageGrid>
     );
 }
