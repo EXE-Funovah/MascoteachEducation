@@ -1,8 +1,10 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import {
     ArrowUpRight,
+    BookOpenCheck,
     CreditCard,
     Crown,
+    GraduationCap,
     History,
     Home,
     Library,
@@ -12,23 +14,41 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { isPremiumActive } from '@/lib/billingUi';
 
-const mainItems = [
-    { to: '/teacher', icon: Home, label: 'Trang chủ', end: true },
-    { to: '/teacher/library', icon: Library, label: 'Thư viện của tôi' },
-    { to: '/teacher/sessions', icon: History, label: 'Lịch sử phiên chơi' },
-    { to: '/teacher/billing', icon: CreditCard, label: 'Thanh toán' },
+const teacherItems = [
+    { path: '', icon: Home, label: 'Trang chủ', end: true },
+    { path: '/library', icon: Library, label: 'Thư viện của tôi' },
+    { path: '/classes', icon: GraduationCap, label: 'Lớp & Flashcard' },
+    { path: '/sessions', icon: History, label: 'Lịch sử phiên chơi' },
+    { path: '/billing', icon: CreditCard, label: 'Thanh toán' },
+];
+
+const studentItems = [
+    { path: '/flashcards', icon: BookOpenCheck, label: 'Lớp & Flashcard' },
+];
+
+const parentItems = [
+    { path: '', icon: Home, label: 'Trang chủ', end: true },
 ];
 
 export default function Sidebar() {
     const { logout, user } = useAuth();
     const location = useLocation();
-    const basePath = location.pathname.startsWith('/dev/teacher') ? '/dev/teacher' : '/teacher';
+    const role = String(user?.role || user?.roleName || 'Teacher').toLowerCase();
+    const isTeacher = role === 'teacher';
+    const basePath = location.pathname.startsWith('/dev/teacher')
+        ? '/dev/teacher'
+        : role === 'student'
+            ? '/student'
+            : role === 'parent'
+                ? '/parent'
+                : '/teacher';
     const isPremiumTeacher = isPremiumActive(user);
     const avatarInitial = (user?.fullName || user?.email || 'M').trim().charAt(0).toUpperCase() || 'M';
     const checkoutBackState = { checkoutBackTo: `${location.pathname}${location.search}${location.hash}` };
-    const scopedNavItems = mainItems.map((item) => ({
+    const roleItems = role === 'student' ? studentItems : role === 'parent' ? parentItems : teacherItems;
+    const scopedNavItems = roleItems.map((item) => ({
         ...item,
-        to: item.to.replace('/teacher', basePath),
+        to: `${basePath}${item.path}`,
     }));
 
     return (
@@ -67,7 +87,7 @@ export default function Sidebar() {
                     ))}
                 </nav>
 
-                {isPremiumTeacher ? (
+                {isTeacher && (isPremiumTeacher ? (
                     <div className="absolute bottom-[154px] left-5 right-5 rounded-[20px] border border-emerald-200 bg-emerald-50 px-4 py-4 shadow-[0_16px_36px_rgba(34,197,94,0.12)]">
                         <div className="flex items-center justify-between gap-3">
                             <div>
@@ -102,7 +122,7 @@ export default function Sidebar() {
                             <ArrowUpRight className="h-5 w-5" strokeWidth={3} />
                         </span>
                     </NavLink>
-                )}
+                ))}
 
                 <NavLink
                     to={`${basePath}/profile`}

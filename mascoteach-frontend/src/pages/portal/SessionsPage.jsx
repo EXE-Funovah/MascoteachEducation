@@ -178,7 +178,7 @@ export default function SessionsPage() {
                 <div>
                     <h1 className="text-[28px] font-extrabold leading-tight text-slate-950">Lịch sử phiên chơi</h1>
                     <p className="mt-2 text-[15px] font-semibold text-slate-500">
-                        Quản lý các phiên quiz và flashcard đã mở cho người chơi tham gia bằng mã PIN.
+                        Quản lý các phiên quiz đã mở cho người chơi tham gia bằng mã PIN.
                     </p>
                 </div>
 

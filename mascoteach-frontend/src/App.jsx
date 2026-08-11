@@ -39,6 +39,7 @@ import QuizPreviewPage from '@/pages/portal/QuizPreviewPage';
 import GameTemplateSelectionPage from '@/pages/portal/GameTemplateSelectionPage';
 import TreasureHuntGame from '@/pages/portal/TreasureHuntGame';
 import TreasureHuntHostPage from '@/pages/portal/TreasureHuntHostPage';
+import ClassesPage from '@/pages/portal/ClassesPage';
 
 import StudentGamePage from '@/pages/portal/StudentGamePage';
 
@@ -47,6 +48,8 @@ import LiveSessionWaitingPage from '@/pages/student/LiveSessionWaitingPage';
 import StudentLiveGamePage from '@/pages/student/StudentLiveGamePage';
 import AdventureGamePage from '@/pages/student/games/AdventureGame';
 import AdventureDemoPage from '@/pages/student/games/AdventureGame/DemoPage';
+import StudentFlashcardsPage from '@/pages/student/StudentFlashcardsPage';
+import FlashcardStudyPage from '@/pages/student/FlashcardStudyPage';
 
 export default function App() {
   return (
@@ -136,6 +139,7 @@ export default function App() {
           <Route index element={<HomePage />} />
           <Route path="profile" element={<ProfilePage />} />
           <Route path="library" element={<LibraryPage />} />
+          <Route path="classes" element={<ClassesPage />} />
           <Route path="sessions" element={<SessionsPage />} />
           <Route path="sessions/:sessionId/report" element={<SessionReportPage />} />
           <Route path="billing" element={<AccountBillingPage />} />
@@ -149,6 +153,7 @@ export default function App() {
               <Route index element={<HomePage />} />
               <Route path="profile" element={<ProfilePage />} />
               <Route path="library" element={<LibraryPage />} />
+              <Route path="classes" element={<ClassesPage />} />
               <Route path="sessions" element={<SessionsPage />} />
               <Route path="sessions/:sessionId/report" element={<SessionReportPage />} />
               <Route path="billing" element={<AccountBillingPage />} />
@@ -205,8 +210,10 @@ export default function App() {
             </ProtectedRoute>
           }
         >
-          <Route index element={<HomePage />} />
+          <Route index element={<Navigate to="/student/flashcards" replace />} />
           <Route path="profile" element={<ProfilePage />} />
+          <Route path="flashcards" element={<StudentFlashcardsPage />} />
+          <Route path="flashcards/:assignmentId" element={<FlashcardStudyPage />} />
         </Route>
 
         <Route
