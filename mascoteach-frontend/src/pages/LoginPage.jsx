@@ -33,6 +33,15 @@ export default function LoginPage() {
 
     const redirectTarget = getRedirectTarget(location.state?.from);
 
+    function getDashboard(user) {
+        const role = String(user?.role || user?.roleName || '').toLowerCase();
+        if (role === 'admin') return '/admin';
+        if (role === 'student') return '/student/flashcards';
+        if (role === 'parent') return '/parent';
+        if (role === 'teacher') return '/teacher';
+        return '/';
+    }
+
     async function handleSubmit(e) {
         e.preventDefault();
         clearError();
@@ -42,8 +51,8 @@ export default function LoginPage() {
 
         setSubmitting(true);
         try {
-            await login(email, password, remember);
-            navigate(redirectTarget.path || '/', { replace: true, state: redirectTarget.state });
+            const profile = await login(email, password, remember);
+            navigate(redirectTarget.path || getDashboard(profile), { replace: true, state: redirectTarget.state });
         } catch {
             // AuthContext owns the visible error message.
         } finally {
@@ -56,8 +65,8 @@ export default function LoginPage() {
         setGoogleError('');
         setGoogleSubmitting(true);
         try {
-            await googleLogin(credential, remember);
-            navigate(redirectTarget.path || '/', { replace: true, state: redirectTarget.state });
+            const profile = await googleLogin(credential, remember);
+            navigate(redirectTarget.path || getDashboard(profile), { replace: true, state: redirectTarget.state });
         } catch (err) {
             setGoogleError(err.message || 'Đăng nhập Google thất bại. Vui lòng thử lại.');
         } finally {

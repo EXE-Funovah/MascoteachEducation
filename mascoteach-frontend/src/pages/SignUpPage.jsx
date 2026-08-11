@@ -9,7 +9,7 @@ import { useAuth } from '@/contexts/AuthContext';
 
 const roles = [
   { value: 'Teacher', label: 'Giáo viên', available: true },
-  { value: 'Student', label: 'Học sinh', available: false },
+  { value: 'Student', label: 'Học sinh', available: true },
   { value: 'Parent', label: 'Phụ huynh', available: false },
 ];
 
@@ -83,8 +83,9 @@ export default function SignUpPage() {
     setGoogleSubmitting(true);
 
     try {
-      await googleLogin(credential, true);
-      navigate('/', { replace: true });
+      const profile = await googleLogin(credential, true);
+      const role = String(profile?.role || profile?.roleName || 'Teacher').toLowerCase();
+      navigate(role === 'teacher' ? '/teacher' : '/', { replace: true });
     } catch (err) {
       setLocalError(err.message || 'Đăng nhập Google thất bại. Vui lòng thử lại.');
     } finally {
@@ -196,9 +197,15 @@ export default function SignUpPage() {
 
       <GoogleSignInButton
         onCredential={handleGoogleCredential}
-        disabled={googleSubmitting}
+        disabled={googleSubmitting || selectedRole !== 'Teacher'}
         text="signup_with"
       />
+
+      {selectedRole === 'Student' && (
+        <p className="mt-3 text-center text-xs font-bold text-slate-500">
+          Tài khoản học sinh hiện đăng ký bằng email và mật khẩu để giữ đúng vai trò.
+        </p>
+      )}
 
       <p className="auth-legal">
         Bằng việc đăng ký, bạn đồng ý với <Link to="/terms">điều khoản dịch vụ</Link> và{' '}

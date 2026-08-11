@@ -21,7 +21,7 @@ export default function AuthLayout({ children }) {
 
                 <div className="auth-top-actions">
                     <Link to="/play" className="auth-top-action auth-top-action--muted">
-                        Nhập mã lớp
+                        Tham gia phiên
                     </Link>
                     <Link
                         to={isRegister ? '/signin' : '/register'}

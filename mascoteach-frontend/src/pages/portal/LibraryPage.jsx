@@ -249,6 +249,16 @@ export default function LibraryPage() {
         });
     }
 
+    function handleAssignFlashcard(quiz) {
+        const basePath = location.pathname.startsWith('/dev/teacher') ? '/dev/teacher' : '/teacher';
+        navigate(`${basePath}/classes`, {
+            state: {
+                quizId: quiz.id,
+                quizTitle: quiz.title || `Flashcard #${quiz.id}`,
+            },
+        });
+    }
+
     function handleCreateQuizFromDocument(doc) {
         const basePath = location.pathname.startsWith('/dev/teacher') ? '/dev/teacher' : '/teacher';
         navigate(`${basePath}/quiz-settings`, {
@@ -645,11 +655,11 @@ export default function LibraryPage() {
                     <span className="hidden text-center text-[14px] font-semibold text-slate-500 lg:block">{formatDate(getItemDate(quiz))}</span>
                     <div className="flex w-full items-center justify-end gap-2">
                         <button
-                            onClick={() => handlePlayQuiz(quiz)}
+                            onClick={() => isFlashcards ? handleAssignFlashcard(quiz) : handlePlayQuiz(quiz)}
                             className="inline-flex h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-[14px] font-bold text-slate-900 transition-all duration-200 hover:border-brand-mid hover:bg-brand-light/20 hover:text-brand-blue"
                         >
-                            <Play className="h-4 w-4" />
-                            Chơi
+                            {isFlashcards ? <Users className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                            {isFlashcards ? 'Giao cho lớp' : 'Chơi'}
                         </button>
                         <button
                             onClick={() => toggleExpandQuiz(quiz.id)}

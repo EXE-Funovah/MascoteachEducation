@@ -1,22 +1,38 @@
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
-import { ArrowUpRight, CreditCard, History, Home, Library, User } from 'lucide-react';
+import { ArrowUpRight, BookOpenCheck, CreditCard, GraduationCap, History, Home, Library, User } from 'lucide-react';
 import Sidebar from './Sidebar';
+import { useAuth } from '@/contexts/AuthContext';
 
-const mobileNavItems = [
-    { to: '/teacher', icon: Home, label: 'Trang chủ', end: true },
-    { to: '/teacher/profile', icon: User, label: 'Hồ sơ' },
-    { to: '/teacher/library', icon: Library, label: 'Thư viện' },
-    { to: '/teacher/sessions', icon: History, label: 'Phiên chơi' },
-    { to: '/teacher/billing', icon: CreditCard, label: 'Thanh toán' },
+const teacherMobileItems = [
+    { path: '', icon: Home, label: 'Trang chủ', end: true },
+    { path: '/library', icon: Library, label: 'Thư viện' },
+    { path: '/classes', icon: GraduationCap, label: 'Lớp học' },
+    { path: '/sessions', icon: History, label: 'Phiên chơi' },
+    { path: '/billing', icon: CreditCard, label: 'Thanh toán' },
+];
+
+const studentMobileItems = [
+    { path: '/flashcards', icon: BookOpenCheck, label: 'Flashcard' },
+    { path: '/profile', icon: User, label: 'Hồ sơ' },
 ];
 
 export default function PortalLayout() {
     const location = useLocation();
-    const isWidePortalPage = location.pathname.includes('/library') || location.pathname.includes('/sessions');
-    const basePath = location.pathname.startsWith('/dev/teacher') ? '/dev/teacher' : '/teacher';
+    const { user } = useAuth();
+    const role = String(user?.role || user?.roleName || 'Teacher').toLowerCase();
+    const isWidePortalPage = ['/library', '/sessions', '/classes', '/flashcards']
+        .some((segment) => location.pathname.includes(segment));
+    const basePath = location.pathname.startsWith('/dev/teacher')
+        ? '/dev/teacher'
+        : role === 'student'
+            ? '/student'
+            : role === 'parent'
+                ? '/parent'
+                : '/teacher';
+    const mobileNavItems = role === 'student' ? studentMobileItems : teacherMobileItems;
     const scopedMobileNavItems = mobileNavItems.map((item) => ({
         ...item,
-        to: item.to.replace('/teacher', basePath),
+        to: `${basePath}${item.path}`,
     }));
 
     return (
@@ -24,7 +40,7 @@ export default function PortalLayout() {
             <Sidebar />
 
             <div className="flex min-h-screen flex-col lg:ml-[288px]">
-                <nav className="sticky top-0 z-30 border-b border-brand-light/50 bg-white/90 px-3 py-2 shadow-sm backdrop-blur lg:hidden" aria-label="Điều hướng giáo viên">
+                <nav className="sticky top-0 z-30 border-b border-brand-light/50 bg-white/90 px-3 py-2 shadow-sm backdrop-blur lg:hidden" aria-label="Điều hướng tài khoản">
                     <div className="mb-2 flex items-center justify-between px-1">
                         <NavLink to={basePath} className="text-sm font-black text-brand-navy">
                             Trang quản lý
@@ -34,7 +50,7 @@ export default function PortalLayout() {
                             <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={2.5} />
                         </NavLink>
                     </div>
-                    <div className="grid grid-cols-5 gap-1">
+                    <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${scopedMobileNavItems.length}, minmax(0, 1fr))` }}>
                         {scopedMobileNavItems.map((item) => (
                             <NavLink
                                 key={item.to}
