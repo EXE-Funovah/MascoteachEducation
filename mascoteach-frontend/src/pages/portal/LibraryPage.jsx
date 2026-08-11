@@ -43,8 +43,11 @@ import {
     toFrontendActivityType,
 } from '@/services/quizService';
 import { getMySessions } from '@/services/liveSessionService';
+import { useAuth } from '@/contexts/AuthContext';
+import { isPremiumActive } from '@/lib/billingUi';
 
 const ITEMS_PER_PAGE = 10;
+const FREEMIUM_ACTIVE_DOCUMENT_LIMIT = 5;
 
 const ACTIVITY_FILTERS = [
     { id: 'all', label: 'Tất cả loại' },
@@ -80,6 +83,7 @@ function sortByNewest(items) {
 }
 
 export default function LibraryPage() {
+    const { user } = useAuth();
     const location = useLocation();
     const navigate = useNavigate();
     const [showCreateModal, setShowCreateModal] = useState(false);
@@ -111,6 +115,7 @@ export default function LibraryPage() {
     const [openMenu, setOpenMenu] = useState(null);
     const [openShareMenu, setOpenShareMenu] = useState(null);
     const [filterOpen, setFilterOpen] = useState(false);
+    const premiumActive = isPremiumActive(user);
 
     useEffect(() => {
         fetchDocuments();
@@ -780,6 +785,28 @@ export default function LibraryPage() {
                             );
                         })}
                     </nav>
+
+                    <div className="mt-auto px-2 pb-1 pt-8">
+                        <div className="flex items-center justify-between gap-3 text-[13px] font-extrabold text-slate-800">
+                            <span>Tài liệu đang hoạt động</span>
+                            <span className="tabular-nums text-brand-navy">
+                                {premiumActive ? documents.length : `${documents.length}/${FREEMIUM_ACTIVE_DOCUMENT_LIMIT}`}
+                            </span>
+                        </div>
+                        <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100">
+                            <div
+                                className="h-full rounded-full bg-brand-blue transition-all duration-300"
+                                style={{
+                                    width: premiumActive
+                                        ? '100%'
+                                        : `${Math.min((documents.length / FREEMIUM_ACTIVE_DOCUMENT_LIMIT) * 100, 100)}%`,
+                                }}
+                            />
+                        </div>
+                        <p className="mt-2 text-[12px] font-semibold text-slate-500">
+                            {premiumActive ? 'Gói Premium · Không giới hạn' : 'Giới hạn của gói Freemium'}
+                        </p>
+                    </div>
 
                 </motion.aside>
 
