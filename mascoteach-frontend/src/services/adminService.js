@@ -56,6 +56,10 @@ export function getAdminSessionParticipants(id, params = {}, options = {}) {
     return api.get(`/api/Admin/sessions/${id}/participants${buildQuery({ page: 1, pageSize: 20, ...params })}`, options);
 }
 
+export function endAdminSession(id, data, options = {}) {
+    return api.patch(`/api/Admin/sessions/${id}/end`, data, options);
+}
+
 export function getAdminBillingOrders(params = {}, options = {}) {
     return api.get(`/api/Admin/billing/orders${buildQuery({ page: 1, pageSize: 20, ...params })}`, options);
 }
