@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getQuizWithQuestions } from '@/services/quizService';
 import { createLiveSessionConnection } from '@/services/liveSessionRealtime';
+import { confirmAction } from '@/components/shared/GlobalConfirmDialog';
 import './TreasureHuntGame.css';
 
 /**
@@ -313,9 +314,11 @@ export default function TreasureHuntGame() {
     const handleManualEnd = useCallback(async () => {
         if (!hostMode || !gamePin || endingSession || completed) return;
 
-        const confirmed = window.confirm(
-            'Bạn có chắc muốn kết thúc phiên ngay? Học sinh sẽ không thể trả lời thêm.'
-        );
+        const confirmed = await confirmAction({
+            title: 'Kết thúc phiên ngay?',
+            message: 'Học sinh sẽ không thể trả lời thêm sau khi phiên kết thúc.',
+            confirmLabel: 'Kết thúc phiên',
+        });
         if (!confirmed) return;
 
         try {

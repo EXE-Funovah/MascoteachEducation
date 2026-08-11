@@ -12,6 +12,7 @@ import {
     FileSearch,
     Gamepad2,
     HardDrive,
+    Layers3,
     ReceiptText,
     RotateCw,
     ShieldAlert,
@@ -702,9 +703,7 @@ function adaptSession(row) {
         mode: getField(row, 'templateName', 'TemplateName', getField(row, 'quizActivityType', 'QuizActivityType', 'Quiz')),
         status,
         participants: Number(getField(row, 'participantCount', 'ParticipantCount', 0)),
-        accuracy: 'Chưa có',
         startedAt: formatDateTime(getField(row, 'createdAt', 'CreatedAt')),
-        duration: 'Chưa có',
     };
 }
 
@@ -1402,10 +1401,10 @@ export function AdminUserDetailPage() {
 
 export function AdminContentPage() {
     const base = useAdminBase();
-    const [query, setQuery] = useState({ page: 1, pageSize: 20, search: '', deletion: 'Active', contentType: '' });
-    const [draft, setDraft] = useState({ search: '', deletion: 'Active', contentType: '' });
-    const shouldFetchDocuments = !query.contentType || query.contentType === 'Document';
-    const shouldFetchQuizzes = !query.contentType || query.contentType === 'Quiz' || query.contentType === 'Flashcard';
+    const [query, setQuery] = useState({ page: 1, pageSize: 20, search: '', deletion: 'Active', contentType: 'Document', workflowStatus: '' });
+    const [draft, setDraft] = useState({ search: '', deletion: 'Active', contentType: 'Document', workflowStatus: '' });
+    const shouldFetchDocuments = query.contentType === 'Document';
+    const shouldFetchQuizzes = query.contentType === 'Quiz' || query.contentType === 'Flashcard';
     const documentParams = {
         page: query.page,
         pageSize: query.pageSize,
@@ -1418,6 +1417,7 @@ export function AdminContentPage() {
         search: query.search,
         deletion: query.deletion,
         activityType: query.contentType === 'Quiz' || query.contentType === 'Flashcard' ? query.contentType : '',
+        status: query.workflowStatus,
     };
     const documentsState = useAdminResource(
         (options) => shouldFetchDocuments ? getAdminDocuments(documentParams, options) : Promise.resolve({ items: [], total: 0, page: query.page, pageSize: query.pageSize }),
@@ -1431,14 +1431,39 @@ export function AdminContentPage() {
     );
     const documents = useMemo(() => getItems(documentsState.data).map(adaptDocument), [documentsState.data]);
     const quizzes = useMemo(() => getItems(quizzesState.data).map(adaptQuiz), [quizzesState.data]);
-    const contentRows = useMemo(() => [...documents, ...quizzes], [documents, quizzes]);
-    const flashcardCount = quizzes.filter((item) => item.type === 'Flashcards').length;
-    const quizCount = quizzes.length - flashcardCount;
-    const totalContent = getTotal(documentsState.data, documents.length) + getTotal(quizzesState.data, quizzes.length);
+    const contentRows = query.contentType === 'Document' ? documents : quizzes;
+    const totalContent = query.contentType === 'Document'
+        ? getTotal(documentsState.data, documents.length)
+        : getTotal(quizzesState.data, quizzes.length);
+    const contentLabel = query.contentType === 'Document'
+        ? 'tài liệu'
+        : query.contentType === 'Flashcard' ? 'thẻ ghi nhớ' : 'bộ câu hỏi';
+    const contentColumns = query.contentType === 'Document'
+        ? [
+            { key: 'title', label: 'Tên tài liệu' },
+            { key: 'owner', label: 'Giáo viên' },
+            { key: 'status', label: 'Trạng thái xử lý', render: (row) => <StatusBadge value={row.status} /> },
+            { key: 'size', label: 'Nội dung đã tạo' },
+            { key: 'createdAt', label: 'Ngày tải lên' },
+        ]
+        : [
+            { key: 'title', label: query.contentType === 'Flashcard' ? 'Tên bộ thẻ' : 'Tên bộ câu hỏi' },
+            { key: 'owner', label: 'Giáo viên' },
+            { key: 'source', label: 'Tài liệu nguồn' },
+            { key: 'status', label: 'Trạng thái xuất bản', render: (row) => <StatusBadge value={row.status} /> },
+            { key: 'size', label: query.contentType === 'Flashcard' ? 'Số thẻ' : 'Số câu' },
+            { key: 'createdAt', label: 'Ngày tạo' },
+        ];
 
     function applyContentFilters(event) {
         event?.preventDefault();
         setQuery((current) => ({ ...current, ...draft, page: 1 }));
+    }
+
+    function selectContentType(contentType) {
+        const defaults = { search: '', deletion: 'Active', contentType, workflowStatus: '' };
+        setDraft(defaults);
+        setQuery((current) => ({ ...current, ...defaults, page: 1 }));
     }
 
     if (documentsState.isLoading || quizzesState.isLoading) {
@@ -1449,38 +1474,55 @@ export function AdminContentPage() {
         <PageGrid>
             <DataStateNotice states={[documentsState, quizzesState]} />
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                <MiniMetric icon={FileSearch} label="Tài liệu trong trang" value={formatNumber(documents.length)} />
-                <MiniMetric icon={BookOpenCheck} label="Bộ câu hỏi trong trang" value={formatNumber(quizCount)} tone="navy" />
-                <MiniMetric icon={Sparkles} label="Thẻ ghi nhớ trong trang" value={formatNumber(flashcardCount)} tone="green" />
+                <MiniMetric icon={query.contentType === 'Document' ? FileSearch : query.contentType === 'Flashcard' ? Sparkles : BookOpenCheck} label={`Tổng ${contentLabel}`} value={formatNumber(totalContent)} />
+                <MiniMetric icon={Layers3} label="Đang hiển thị" value={formatNumber(contentRows.length)} tone="navy" />
+                <MiniMetric icon={CheckCircle2} label="Đang hoạt động trong trang" value={formatNumber(contentRows.filter((item) => item.status !== 'Deleted').length)} tone="green" />
                 <MiniMetric icon={AlertTriangle} label="Đã xóa/ẩn" value={formatNumber(contentRows.filter((item) => item.status === 'Deleted').length)} tone="orange" />
             </div>
+            <AdminCard className="p-2">
+                <div className="grid gap-2 sm:grid-cols-3">
+                    {[
+                        { value: 'Document', label: 'Tài liệu', icon: FileSearch },
+                        { value: 'Quiz', label: 'Bộ câu hỏi', icon: BookOpenCheck },
+                        { value: 'Flashcard', label: 'Thẻ ghi nhớ', icon: Sparkles },
+                    ].map((tab) => {
+                        const Icon = tab.icon;
+                        const active = query.contentType === tab.value;
+                        return (
+                            <button key={tab.value} type="button" onClick={() => selectContentType(tab.value)} className={`inline-flex h-12 items-center justify-center gap-2 rounded-xl text-sm font-black transition ${active ? 'bg-[#19385F] text-white shadow-sm' : 'text-[#61758D] hover:bg-[#F3F8FC]'}`}>
+                                <Icon className="h-4 w-4" /> {tab.label}
+                            </button>
+                        );
+                    })}
+                </div>
+            </AdminCard>
             <AdminQueryToolbar
                 draft={draft}
                 isRefreshing={documentsState.isRefreshing || quizzesState.isRefreshing}
-                activeFilterCount={countActiveFilters(draft, { deletion: 'Active' })}
+                activeFilterCount={countActiveFilters(draft, { deletion: 'Active', contentType: query.contentType, workflowStatus: '' })}
                 onClear={() => {
-                    const defaults = { search: '', deletion: 'Active', contentType: '' };
+                    const defaults = { search: '', deletion: 'Active', contentType: query.contentType, workflowStatus: '' };
                     setDraft(defaults);
                     setQuery((current) => ({ ...current, ...defaults, page: 1 }));
                 }}
                 onDraftChange={(name, value) => setDraft((current) => ({ ...current, [name]: value }))}
                 onSubmit={applyContentFilters}
-                searchPlaceholder="Tìm tài liệu, quiz, flashcard, giáo viên..."
+                searchPlaceholder={`Tìm ${contentLabel}, giáo viên...`}
                 fields={[
-                    {
-                        name: 'contentType',
-                        label: 'Loại nội dung',
+                    ...(query.contentType === 'Document' ? [] : [{
+                        name: 'workflowStatus',
+                        label: 'Trạng thái xuất bản',
                         type: 'select',
                         options: [
                             { value: '', label: 'Tất cả' },
-                            { value: 'Document', label: formatAdminValue('Document') },
-                            { value: 'Quiz', label: formatAdminValue('Quiz') },
-                            { value: 'Flashcard', label: formatAdminValue('Flashcards') },
+                            { value: 'AI_Drafted', label: formatAdminValue('AI_Drafted') },
+                            { value: 'Teacher_Approved', label: formatAdminValue('Teacher_Approved') },
+                            { value: 'Published', label: formatAdminValue('Published') },
                         ],
-                    },
+                    }]),
                     {
                         name: 'deletion',
-                        label: 'Trạng thái',
+                        label: 'Ẩn/xóa',
                         type: 'select',
                         options: [
                             { value: 'Active', label: 'Đang hoạt động' },
@@ -1491,17 +1533,9 @@ export function AdminContentPage() {
                 ]}
             />
             <AdminCard className="p-5">
-                <AdminSectionHeader title="Theo dõi nội dung" description="Trang này phục vụ vận hành và kiểm duyệt, không phải nơi chỉnh nội dung học tập của giáo viên." />
+                <AdminSectionHeader title={`Theo dõi ${contentLabel}`} description={query.contentType === 'Document' ? 'Theo dõi trạng thái xử lý tài liệu và số nội dung đã được tạo.' : 'Theo dõi nguồn tạo, trạng thái xuất bản và quy mô nội dung.'} />
                 <AdminTable
-                    columns={[
-                        { key: 'title', label: 'Tên nội dung' },
-                        { key: 'owner', label: 'Giáo viên' },
-                        { key: 'type', label: 'Loại' },
-                        { key: 'source', label: 'Nguồn' },
-                        { key: 'status', label: 'Trạng thái', render: (row) => <StatusBadge value={row.status} /> },
-                        { key: 'size', label: 'Kích thước' },
-                        { key: 'createdAt', label: 'Ngày tạo' },
-                    ]}
+                    columns={contentColumns}
                     rows={contentRows}
                     isRefreshing={documentsState.isRefreshing || quizzesState.isRefreshing}
                     dataVersion={documentsState.dataVersion + quizzesState.dataVersion}
@@ -1769,7 +1803,6 @@ export function AdminSessionsPage() {
                         { key: 'mode', label: 'Chế độ' },
                         { key: 'status', label: 'Trạng thái', render: (row) => <StatusBadge value={row.status} /> },
                         { key: 'participants', label: 'Học sinh' },
-                        { key: 'accuracy', label: 'Đúng' },
                         { key: 'startedAt', label: 'Bắt đầu' },
                     ]}
                     rows={sessions}
@@ -1888,10 +1921,9 @@ export function AdminSessionDetailPage() {
                     </>
                 )}
             />
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                 <MiniMetric icon={UsersRound} label="Người tham gia" value={session.participants} />
-                <MiniMetric icon={CheckCircle2} label="Độ đúng" value={session.accuracy} tone="green" />
-                <MiniMetric icon={Clock3} label="Thời lượng" value={session.duration} tone="navy" />
+                <MiniMetric icon={Clock3} label="Bắt đầu" value={session.startedAt} tone="navy" />
                 <MiniMetric icon={Gamepad2} label="Chế độ" value={formatAdminValue(session.mode)} tone="orange" />
                 <MiniMetric icon={Zap} label="Thời gian thực" value={session.status === 'Realtime Issue' ? 'Cần theo dõi' : 'Ổn'} tone={session.status === 'Realtime Issue' ? 'red' : 'green'} />
             </div>

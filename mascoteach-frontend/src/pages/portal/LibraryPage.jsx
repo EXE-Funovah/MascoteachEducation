@@ -30,6 +30,7 @@ import {
     X,
 } from 'lucide-react';
 import CreateFlowModal from '@/components/portal/create/CreateFlowModal';
+import { confirmAction } from '@/components/shared/GlobalConfirmDialog';
 import {
     deleteDocument,
     getMyDeletedDocuments,
@@ -190,7 +191,12 @@ export default function LibraryPage() {
     }
 
     async function handleDeleteDoc(id) {
-        if (!confirm('Tài liệu sẽ được chuyển vào thùng rác và có thể khôi phục sau. Bạn có muốn tiếp tục?')) return;
+        const confirmed = await confirmAction({
+            title: 'Chuyển tài liệu vào thùng rác?',
+            message: 'Tài liệu sẽ bị ẩn khỏi thư viện nhưng bạn vẫn có thể khôi phục sau.',
+            confirmLabel: 'Chuyển vào thùng rác',
+        });
+        if (!confirmed) return;
         try {
             await deleteDocument(id);
             setDocuments((prev) => prev.filter((doc) => doc.id !== id));
@@ -225,7 +231,12 @@ export default function LibraryPage() {
     }
 
     async function handleDeleteQuiz(id) {
-        if (!confirm('Bạn có chắc chắn muốn xóa bộ câu hỏi này?')) return;
+        const confirmed = await confirmAction({
+            title: 'Xóa bộ câu hỏi?',
+            message: 'Bộ câu hỏi sẽ không còn xuất hiện trong thư viện của bạn.',
+            confirmLabel: 'Xóa bộ câu hỏi',
+        });
+        if (!confirmed) return;
         try {
             await deleteQuiz(id);
             setQuizzes((prev) => prev.filter((quiz) => quiz.id !== id));

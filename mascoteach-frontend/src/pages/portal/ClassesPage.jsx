@@ -17,6 +17,7 @@ import {
     X,
 } from 'lucide-react';
 import { getMyQuizzes } from '@/services/quizService';
+import { confirmAction } from '@/components/shared/GlobalConfirmDialog';
 import {
     assignFlashcard,
     createClass,
@@ -156,7 +157,12 @@ export default function ClassesPage() {
     }
 
     async function handleRemoveMember(member) {
-        if (!window.confirm(`Xóa ${member.fullName} khỏi lớp?`)) return;
+        const confirmed = await confirmAction({
+            title: 'Xóa học sinh khỏi lớp?',
+            message: `${member.fullName} sẽ không còn nhận được flashcard mới của lớp này.`,
+            confirmLabel: 'Xóa khỏi lớp',
+        });
+        if (!confirmed) return;
         try {
             await removeClassMember(selectedClassId, member.studentId);
             setClassDetail((current) => ({
