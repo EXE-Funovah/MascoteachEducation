@@ -50,10 +50,12 @@ import AdventureGamePage from '@/pages/student/games/AdventureGame';
 import AdventureDemoPage from '@/pages/student/games/AdventureGame/DemoPage';
 import StudentFlashcardsPage from '@/pages/student/StudentFlashcardsPage';
 import FlashcardStudyPage from '@/pages/student/FlashcardStudyPage';
+import GlobalConfirmDialog from '@/components/shared/GlobalConfirmDialog';
 
 export default function App() {
   return (
     <BrowserRouter>
+      <GlobalConfirmDialog />
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/product" element={<MarketingPlaceholderPage type="product" />} />

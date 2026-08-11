@@ -24,6 +24,7 @@ import {
 } from '@/services/userService';
 import { isPremiumActive } from '@/lib/billingUi';
 import { getMyDocuments } from '@/services/documentService';
+import { confirmAction } from '@/components/shared/GlobalConfirmDialog';
 
 const MAX_AVATAR_SIZE_BYTES = 1024 * 1024;
 const ACCEPTED_AVATAR_TYPES = ['image/jpeg', 'image/png'];
@@ -274,9 +275,11 @@ export default function ProfilePage() {
   async function handleDeleteAccount() {
     if (!profile?.id || isDeleting) return;
 
-    const confirmed = window.confirm(
-      'Tài khoản, tài liệu, quiz và dữ liệu liên quan sẽ bị xóa vĩnh viễn. Hành động này không thể hoàn tác. Bạn có chắc chắn muốn tiếp tục?',
-    );
+    const confirmed = await confirmAction({
+      title: 'Xóa tài khoản vĩnh viễn?',
+      message: 'Tài khoản, tài liệu, quiz và dữ liệu liên quan sẽ bị xóa vĩnh viễn. Hành động này không thể hoàn tác.',
+      confirmLabel: 'Xóa tài khoản',
+    });
 
     if (!confirmed) return;
 
