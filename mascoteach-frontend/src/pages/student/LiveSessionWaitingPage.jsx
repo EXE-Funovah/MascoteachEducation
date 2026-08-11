@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Hourglass, Loader2, Users, Sparkles, ArrowRight, AlertCircle } from 'lucide-react';
 import { getSessionByPin } from '@/services/liveSessionService';
 import { createLiveSessionConnection } from '@/services/liveSessionRealtime';
+import { loadLiveGameIdentity } from '@/services/liveGameIdentity';
 
 function getSessionPin(session) {
     return session?.gamePin || session?.pin || session?.pinCode || '';
@@ -14,8 +15,9 @@ export default function LiveSessionWaitingPage() {
     const location = useLocation();
     const [searchParams] = useSearchParams();
 
-    const initialSession = location.state?.session || null;
-    const participant = location.state?.participant || null;
+    const storedIdentity = useMemo(() => loadLiveGameIdentity(), []);
+    const initialSession = location.state?.session || storedIdentity?.session || null;
+    const participant = location.state?.participant || storedIdentity?.participant || null;
 
     const pin = useMemo(
         () => searchParams.get('pin') || getSessionPin(initialSession),
@@ -27,12 +29,13 @@ export default function LiveSessionWaitingPage() {
     );
 
     const [session, setSession] = useState(initialSession);
+    const sessionRef = useRef(initialSession);
     const [error, setError] = useState(null);
     const [loading, setLoading] = useState(!initialSession);
     const [statusText, setStatusText] = useState('Đang chờ giáo viên bắt đầu');
 
     useEffect(() => {
-        if (!pin) {
+        if (!pin || !participant?.id || !participant?.joinToken) {
             navigate('/play');
             return undefined;
         }
@@ -45,6 +48,7 @@ export default function LiveSessionWaitingPage() {
                 if (cancelled || !latest) return;
 
                 setSession(latest);
+                sessionRef.current = latest;
                 setLoading(false);
 
                 if (latest.status === 'Active') {
@@ -87,15 +91,16 @@ export default function LiveSessionWaitingPage() {
     }, [navigate, participant, pin, playerName]);
 
     useEffect(() => {
-        if (!pin) return undefined;
+        if (!pin || !participant?.id || !participant?.joinToken) return undefined;
 
         let navigated = false;
 
         const realtime = createLiveSessionConnection({
             gamePin: pin,
-            sessionId: session?.id,
+            sessionId: sessionRef.current?.id,
             role: 'student',
-            studentName: playerName,
+            participantId: participant?.id,
+            joinToken: participant?.joinToken,
             onEvent: (eventName, payload) => {
                 console.log('[WaitingPage] SignalR event:', eventName, payload);
 
@@ -106,7 +111,7 @@ export default function LiveSessionWaitingPage() {
                         navigate('/play/live-game', {
                             replace: true,
                             state: {
-                                session: session,
+                                session: sessionRef.current,
                                 participant,
                                 playerName,
                             },
@@ -130,7 +135,7 @@ export default function LiveSessionWaitingPage() {
         return () => {
             realtime?.stop();
         };
-    }, [pin, session, participant, playerName, navigate]);
+    }, [pin, participant, playerName, navigate]);
 
     return (
         <div className="relative min-h-screen overflow-hidden bg-[radial-gradient(circle_at_top,#1d4ed8_0%,#0f172a_42%,#020617_100%)] px-4 py-8 text-white">

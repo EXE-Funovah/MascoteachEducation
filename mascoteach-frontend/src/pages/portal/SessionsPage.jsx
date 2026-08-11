@@ -9,18 +9,15 @@ import {
     Gamepad2,
     Library,
     Loader2,
-    PencilLine,
     Search,
-    SlidersHorizontal,
 } from 'lucide-react';
 import { getMySessions } from '@/services/liveSessionService';
 
 const TABS = [
     { id: 'all', label: 'Tất cả' },
+    { id: 'waiting', label: 'Chờ bắt đầu' },
     { id: 'running', label: 'Đang diễn ra' },
-    { id: 'scheduled', label: 'Đã lên lịch' },
-    { id: 'completed', label: 'Đã hoàn thành' },
-    { id: 'paused', label: 'Tạm dừng' },
+    { id: 'ended', label: 'Đã kết thúc' },
 ];
 
 const DATE_FILTERS = [
@@ -31,22 +28,37 @@ const DATE_FILTERS = [
 ];
 
 const STATUS_META = {
-    Waiting: { label: 'Đã lên lịch', tab: 'scheduled', className: 'bg-brand-light/25 text-brand-navy border-brand-light' },
+    Waiting: { label: 'Chờ bắt đầu', tab: 'waiting', className: 'bg-brand-light/25 text-brand-navy border-brand-light' },
     Active: { label: 'Đang diễn ra', tab: 'running', className: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
     Running: { label: 'Đang diễn ra', tab: 'running', className: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
-    Scheduled: { label: 'Đã lên lịch', tab: 'scheduled', className: 'bg-brand-light/25 text-brand-navy border-brand-light' },
-    Ended: { label: 'Đã hoàn thành', tab: 'completed', className: 'bg-slate-50 text-slate-600 border-slate-200' },
-    Completed: { label: 'Đã hoàn thành', tab: 'completed', className: 'bg-slate-50 text-slate-600 border-slate-200' },
+    Scheduled: { label: 'Chờ bắt đầu', tab: 'waiting', className: 'bg-brand-light/25 text-brand-navy border-brand-light' },
+    Ended: { label: 'Đã kết thúc', tab: 'ended', className: 'bg-slate-50 text-slate-600 border-slate-200' },
+    Completed: { label: 'Đã kết thúc', tab: 'ended', className: 'bg-slate-50 text-slate-600 border-slate-200' },
     Pending: { label: 'Tạm dừng', tab: 'paused', className: 'bg-amber-50 text-amber-700 border-amber-200' },
     Paused: { label: 'Tạm dừng', tab: 'paused', className: 'bg-amber-50 text-amber-700 border-amber-200' },
 };
 
 function getSessionTitle(session) {
-    return session.title || session.quizTitle || `Buổi học #${session.id}`;
+    return session.title || session.quizTitle || `Phiên chơi #${session.id}`;
 }
 
 function getStatusMeta(status) {
-    return STATUS_META[status] || { label: status || 'Chưa rõ', tab: 'all', className: 'bg-slate-50 text-slate-600 border-slate-200' };
+    return STATUS_META[status] || { label: status || 'Chưa rõ', tab: 'other', className: 'bg-slate-50 text-slate-600 border-slate-200' };
+}
+
+function isRunningSession(status) {
+    return status === 'Active' || status === 'Running';
+}
+
+function isWaitingSession(status) {
+    return status === 'Waiting' || status === 'Scheduled';
+}
+
+function getSessionActionLabel(session) {
+    if (!session?.quizId) return 'Chưa có quiz';
+    if (isRunningSession(session.status)) return 'Tiếp tục chơi';
+    if (isWaitingSession(session.status)) return 'Mở phòng chờ';
+    return 'Xem báo cáo';
 }
 
 function formatDate(value) {
@@ -99,7 +111,7 @@ export default function SessionsPage() {
             const data = await getMySessions();
             setSessions(Array.isArray(data) ? data : []);
         } catch (err) {
-            setError(err.message || 'Không thể tải lịch sử buổi học');
+            setError(err.message || 'Không thể tải lịch sử phiên chơi');
         } finally {
             setLoading(false);
         }
@@ -113,14 +125,27 @@ export default function SessionsPage() {
     function handleOpenSession(session) {
         if (!session?.quizId) return;
 
-        goToLibrary({
-            activeTab: 'quizzes',
-            targetQuizId: session.quizId,
-            sourceSession: {
-                id: session.id,
-                title: getSessionTitle(session),
-            },
-        });
+        if (isRunningSession(session.status)) {
+            navigate('/teacher/treasure-hunt', {
+                state: {
+                    sessionId: session.id,
+                    quizId: session.quizId,
+                    quizTitle: getSessionTitle(session),
+                    gamePin: session.gamePin || session.pin,
+                    hostMode: true,
+                    resumeSession: true,
+                },
+            });
+            return;
+        }
+
+        if (isWaitingSession(session.status)) {
+            navigate(`/teacher/live-session/${session.id}`);
+            return;
+        }
+
+        const basePath = location.pathname.startsWith('/dev/teacher') ? '/dev/teacher' : '/teacher';
+        navigate(`${basePath}/sessions/${session.id}/report`);
     }
 
     const tabCounts = useMemo(() => {
@@ -131,7 +156,7 @@ export default function SessionsPage() {
                 if (counts[tab] !== undefined) counts[tab] += 1;
                 return counts;
             },
-            { all: 0, running: 0, scheduled: 0, completed: 0, paused: 0 }
+            { all: 0, waiting: 0, running: 0, ended: 0 }
         );
     }, [sessions]);
 
@@ -151,9 +176,9 @@ export default function SessionsPage() {
         <div className="min-h-screen bg-[#fbfdff] px-5 py-6 text-slate-900 sm:px-8">
             <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
                 <div>
-                    <h1 className="text-[28px] font-extrabold leading-tight text-slate-950">Báo cáo buổi học</h1>
+                    <h1 className="text-[28px] font-extrabold leading-tight text-slate-950">Lịch sử phiên chơi</h1>
                     <p className="mt-2 text-[15px] font-semibold text-slate-500">
-                        Xem lại kết quả các buổi học, game và hoạt động đã mở trên lớp.
+                        Quản lý các phiên quiz và flashcard đã mở cho người chơi tham gia bằng mã PIN.
                     </p>
                 </div>
 
@@ -162,7 +187,7 @@ export default function SessionsPage() {
                     <input
                         value={searchQuery}
                         onChange={(event) => setSearchQuery(event.target.value)}
-                        placeholder="Tìm theo tên báo cáo"
+                        placeholder="Tìm theo tên nội dung hoặc mã PIN"
                         className="h-12 w-full rounded-full border border-slate-200 bg-white pl-12 pr-4 text-[15px] font-semibold text-slate-800 outline-none transition-all duration-200 placeholder:text-slate-400 hover:border-brand-light focus:border-brand-mid focus:ring-4 focus:ring-brand-light/30"
                     />
                 </div>
@@ -189,10 +214,6 @@ export default function SessionsPage() {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
-                    {/* TODO Backend: enable these filters when session APIs support content type, report grouping, and class filtering. */}
-                    <FilterButton label="Loại nội dung" icon={SlidersHorizontal} disabled title="TODO Backend: add content-type filter for sessions." />
-                    <FilterButton label="Tất cả báo cáo" disabled title="TODO Backend: add report grouping/filter API." />
-                    <FilterButton label="Tất cả lớp" disabled title="TODO Backend: add class filter API." />
                     <DateFilterControl value={dateFilter} onChange={setDateFilter} />
                 </div>
             </div>
@@ -214,25 +235,6 @@ export default function SessionsPage() {
                 )}
             </motion.section>
         </div>
-    );
-}
-
-function FilterButton({ label, icon: Icon, disabled = false, title }) {
-    return (
-        <button
-            disabled={disabled}
-            title={title}
-            className={[
-                'inline-flex h-10 items-center gap-2 rounded-lg border px-4 text-[13px] font-extrabold shadow-sm transition-all duration-200',
-                disabled
-                    ? 'cursor-not-allowed border-slate-200 bg-slate-50 text-slate-300'
-                    : 'border-slate-200 bg-white text-slate-800 hover:border-brand-mid hover:bg-brand-light/20 hover:text-brand-navy active:scale-[0.99]',
-            ].join(' ')}
-        >
-            {Icon && <Icon className="h-4 w-4 text-slate-600" />}
-            {label}
-            <ChevronDown className="h-4 w-4 text-slate-500" />
-        </button>
     );
 }
 
@@ -261,25 +263,15 @@ function EmptyReports({ onOpenLibrary, hasSearch }) {
     return (
         <div className="flex min-h-[560px] flex-col items-center justify-start pt-20 text-center">
             <div className="mb-5 grid h-14 w-14 place-items-center rounded-2xl bg-brand-light/30 text-brand-blue shadow-[0_18px_40px_rgba(43,122,181,0.12)]">
-                <PencilLine className="h-8 w-8" />
+                <Gamepad2 className="h-8 w-8" />
             </div>
             <h2 className="text-[20px] font-extrabold text-slate-800">
-                {hasSearch ? 'Chưa tìm thấy báo cáo phù hợp' : 'Bắt đầu một buổi học để xem báo cáo'}
+                {hasSearch ? 'Chưa tìm thấy phiên chơi phù hợp' : 'Chưa có phiên chơi nào'}
             </h2>
-            <div className="mt-7 w-full max-w-[900px]">
-                <div className="relative">
-                    <Search className="pointer-events-none absolute left-5 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500" />
-                    <input
-                        readOnly
-                        placeholder="Tìm trong bài giảng và bộ câu hỏi đã tạo..."
-                        className="h-[52px] w-full rounded-full border border-slate-200 bg-white py-3.5 pl-14 pr-5 text-[15px] font-semibold text-slate-500 outline-none shadow-sm"
-                    />
-                </div>
-            </div>
-            <span className="my-6 text-[14px] font-bold text-slate-500">hoặc</span>
+            <p className="mt-2 text-[14px] font-semibold text-slate-500">Chọn một quiz hoặc flashcard trong thư viện để bắt đầu phiên mới.</p>
             <button
                 onClick={onOpenLibrary}
-                className="inline-flex h-11 items-center gap-2 rounded-lg border border-slate-200 bg-white px-5 text-[14px] font-extrabold text-slate-900 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-brand-mid hover:bg-brand-light/20 hover:text-brand-navy active:translate-y-0"
+                className="mt-6 inline-flex h-11 items-center gap-2 rounded-lg border border-slate-200 bg-white px-5 text-[14px] font-extrabold text-slate-900 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-brand-mid hover:bg-brand-light/20 hover:text-brand-navy active:translate-y-0"
             >
                 <Library className="h-4 w-4" />
                 Mở thư viện của tôi
@@ -293,7 +285,7 @@ function LoadingState() {
         <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-[0_18px_46px_rgba(15,23,42,0.05)]">
             <div className="mb-6 flex items-center justify-center py-8 text-[15px] font-bold text-slate-500">
                 <Loader2 className="mr-3 h-6 w-6 animate-spin text-brand-blue" />
-                Đang tải báo cáo buổi học...
+                Đang tải lịch sử phiên chơi...
             </div>
             <div className="space-y-3">
                 {[0, 1, 2, 3].map((item) => (
@@ -322,12 +314,12 @@ function ErrorState({ message, onRetry }) {
 function ReportsTable({ sessions, onOpenSession }) {
     return (
         <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_18px_46px_rgba(15,23,42,0.05)]">
-            <div className="hidden grid-cols-[minmax(0,1fr)_160px_150px_130px_auto] items-center gap-5 px-6 py-4 text-[13px] font-extrabold uppercase tracking-[0.08em] text-slate-500 lg:grid">
-                <span>Tên báo cáo</span>
+            <div className="hidden grid-cols-[minmax(0,1fr)_160px_150px_130px_180px] items-center gap-5 px-6 py-4 text-[13px] font-extrabold uppercase tracking-[0.08em] text-slate-500 lg:grid">
+                <span>Nội dung</span>
                 <span>Trạng thái</span>
                 <span>Ngày tạo</span>
-                <span>Mã lớp</span>
-                <span className="text-right">Thao tác</span>
+                <span>Mã PIN</span>
+                <span className="text-right">Kết quả</span>
             </div>
 
             <div>
@@ -340,7 +332,7 @@ function ReportsTable({ sessions, onOpenSession }) {
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.22, delay: Math.min(index * 0.035, 0.18) }}
                             onClick={() => onOpenSession(session)}
-                            className="grid cursor-pointer grid-cols-1 gap-4 border-t border-slate-200 px-6 py-4 transition-all duration-200 hover:bg-brand-light/10 lg:grid-cols-[minmax(0,1fr)_160px_150px_130px_auto] lg:items-center lg:gap-5"
+                            className="grid cursor-pointer grid-cols-1 gap-4 border-t border-slate-200 px-6 py-4 transition-all duration-200 hover:bg-brand-light/10 lg:grid-cols-[minmax(0,1fr)_160px_150px_130px_180px] lg:items-center lg:gap-5"
                         >
                             <div className="flex min-w-0 items-center gap-4">
                                 <div className="grid h-12 w-12 flex-none place-items-center rounded-lg border border-slate-200 bg-slate-50 text-brand-blue">
@@ -349,7 +341,7 @@ function ReportsTable({ sessions, onOpenSession }) {
                                 <div className="min-w-0">
                                     <h3 className="truncate text-[16px] font-extrabold text-slate-900">{getSessionTitle(session)}</h3>
                                     <p className="mt-1 truncate text-[13px] font-semibold text-slate-500">
-                                        {session.quizTitle || 'Hoạt động trên lớp'} · {session.participantCount || 0} học sinh
+                                        Phiên chơi trực tiếp · {session.participantCount || 0} người chơi
                                     </p>
                                 </div>
                             </div>
@@ -375,8 +367,10 @@ function ReportsTable({ sessions, onOpenSession }) {
                                     disabled={!session.quizId}
                                     className="inline-flex h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-[14px] font-bold text-slate-800 transition-all duration-200 hover:border-brand-mid hover:bg-brand-light/20 hover:text-brand-blue disabled:cursor-not-allowed disabled:opacity-50"
                                 >
-                                    <Eye className="h-4 w-4" />
-                                    {session.quizId ? 'Xem lại' : 'Chưa có quiz'}
+                                    {isRunningSession(session.status)
+                                        ? <Gamepad2 className="h-4 w-4" />
+                                        : <Eye className="h-4 w-4" />}
+                                    {getSessionActionLabel(session)}
                                 </button>
                             </div>
                         </motion.article>

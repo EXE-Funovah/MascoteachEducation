@@ -15,7 +15,7 @@ import { isPremiumActive } from '@/lib/billingUi';
 const mainItems = [
     { to: '/teacher', icon: Home, label: 'Trang chủ', end: true },
     { to: '/teacher/library', icon: Library, label: 'Thư viện của tôi' },
-    { to: '/teacher/sessions', icon: History, label: 'Lịch sử buổi học' },
+    { to: '/teacher/sessions', icon: History, label: 'Lịch sử phiên chơi' },
     { to: '/teacher/billing', icon: CreditCard, label: 'Thanh toán' },
 ];
 

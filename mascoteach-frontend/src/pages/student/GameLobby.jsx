@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Hash, ArrowRight, Loader2, AlertCircle, UserRound, Gamepad2 } from 'lucide-react';
 import { getSessionByPin } from '@/services/liveSessionService';
 import { joinGame } from '@/services/gameService';
+import { saveLiveGameIdentity } from '@/services/liveGameIdentity';
 
 function getSessionPin(session) {
     return session?.gamePin || session?.pin || session?.pinCode || '';
@@ -36,6 +37,7 @@ export default function GameLobby() {
 
             const participant = await joinGame(session.id, trimmedName);
             const resolvedPin = getSessionPin(session) || trimmedPin;
+            saveLiveGameIdentity(session, participant);
 
             navigate(`/play/waiting?pin=${encodeURIComponent(resolvedPin)}&name=${encodeURIComponent(trimmedName)}`, {
                 state: { session, participant },

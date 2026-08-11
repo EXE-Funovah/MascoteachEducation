@@ -22,6 +22,14 @@ export async function getMyDocuments() {
 }
 
 /**
+ * Get soft-deleted documents owned by the current user.
+ * @returns {Promise<object[]>}
+ */
+export async function getMyDeletedDocuments() {
+    return api.get('/api/Document/me/trash');
+}
+
+/**
  * Get a single document by ID
  * @param {number} id
  * @returns {Promise<object>}
@@ -50,7 +58,7 @@ export async function updateDocument(id, fileUrl) {
 }
 
 /**
- * Hard delete a document
+ * Soft delete a document (moves it to trash)
  * @param {number} id
  * @returns {Promise<void>}
  */
@@ -61,7 +69,7 @@ export async function deleteDocument(id) {
 /**
  * Soft delete toggle
  * @param {number} id
- * @returns {Promise<void>}
+ * @returns {Promise<object>}
  */
 export async function toggleDeleteDocument(id) {
     return api.patch(`/api/Document/${id}/toggle-delete`);

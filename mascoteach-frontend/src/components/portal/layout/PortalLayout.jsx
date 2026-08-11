@@ -6,7 +6,7 @@ const mobileNavItems = [
     { to: '/teacher', icon: Home, label: 'Trang chủ', end: true },
     { to: '/teacher/profile', icon: User, label: 'Hồ sơ' },
     { to: '/teacher/library', icon: Library, label: 'Thư viện' },
-    { to: '/teacher/sessions', icon: History, label: 'Buổi học' },
+    { to: '/teacher/sessions', icon: History, label: 'Phiên chơi' },
     { to: '/teacher/billing', icon: CreditCard, label: 'Thanh toán' },
 ];
 

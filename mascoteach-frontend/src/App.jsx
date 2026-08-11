@@ -33,6 +33,7 @@ import PortalLayout from '@/components/portal/layout/PortalLayout';
 import HomePage from '@/pages/portal/HomePage';
 import LibraryPage from '@/pages/portal/LibraryPage';
 import SessionsPage from '@/pages/portal/SessionsPage';
+import SessionReportPage from '@/pages/portal/SessionReportPage';
 import QuizSettingsPage from '@/pages/portal/QuizSettingsPage';
 import QuizPreviewPage from '@/pages/portal/QuizPreviewPage';
 import GameTemplateSelectionPage from '@/pages/portal/GameTemplateSelectionPage';
@@ -136,6 +137,7 @@ export default function App() {
           <Route path="profile" element={<ProfilePage />} />
           <Route path="library" element={<LibraryPage />} />
           <Route path="sessions" element={<SessionsPage />} />
+          <Route path="sessions/:sessionId/report" element={<SessionReportPage />} />
           <Route path="billing" element={<AccountBillingPage />} />
           <Route path="quiz-settings" element={<QuizSettingsPage />} />
           <Route path="quiz-preview" element={<QuizPreviewPage />} />
@@ -148,6 +150,7 @@ export default function App() {
               <Route path="profile" element={<ProfilePage />} />
               <Route path="library" element={<LibraryPage />} />
               <Route path="sessions" element={<SessionsPage />} />
+              <Route path="sessions/:sessionId/report" element={<SessionReportPage />} />
               <Route path="billing" element={<AccountBillingPage />} />
               <Route path="quiz-settings" element={<QuizSettingsPage />} />
               <Route path="quiz-preview" element={<QuizPreviewPage />} />

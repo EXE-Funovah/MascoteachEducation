@@ -13,7 +13,8 @@ import {
     AlertCircle,
 } from 'lucide-react';
 import { getParticipantsBySession } from '@/services/sessionParticipantService';
-import { getSessionById, updateSession } from '@/services/liveSessionService';
+import { getSessionById } from '@/services/liveSessionService';
+import { createLiveSessionConnection } from '@/services/liveSessionRealtime';
 
 function formatPin(session) {
     return session?.gamePin || session?.pin || session?.pinCode || '------';
@@ -85,20 +86,33 @@ export default function TreasureHuntHostPage() {
 
     async function handleStartGame() {
         if (!session?.id) return;
+        let realtime = null;
 
         try {
             setStarting(true);
-            await updateSession(session.id, { status: 'Active' });
+            const gamePin = formatPin(session);
+            realtime = createLiveSessionConnection({
+                gamePin,
+                sessionId: session.id,
+                role: 'host',
+                onError: (realtimeError) => console.warn('[HostLobby] SignalR error:', realtimeError),
+            });
+            const connection = await realtime?.startPromise;
+            if (!connection) throw new Error('Không thể kết nối máy chủ trò chơi.');
+
+            await connection.invoke('StartGame', gamePin);
+            await realtime.stop();
             navigate('/teacher/treasure-hunt', {
                 state: {
                     sessionId: session.id,
                     quizId: session.quizId,
                     quizTitle: formatTitle(session),
-                    gamePin: formatPin(session),
+                    gamePin,
                     hostMode: true,
                 },
             });
         } catch (err) {
+            await realtime?.stop();
             setError(err.message || 'Không thể bắt đầu game lúc này.');
         } finally {
             setStarting(false);

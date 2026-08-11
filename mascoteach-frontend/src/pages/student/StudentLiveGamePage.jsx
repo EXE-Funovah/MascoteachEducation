@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Hourglass, Trophy, Flame, Star, CheckCircle2 } from 'lucide-react';
 import { createLiveSessionConnection } from '@/services/liveSessionRealtime';
+import { loadLiveGameIdentity } from '@/services/liveGameIdentity';
 import './StudentLiveGame.css';
 
 /**
@@ -29,11 +30,14 @@ export default function StudentLiveGamePage() {
     const location = useLocation();
     const navigate = useNavigate();
 
-    const session = location.state?.session;
-    const participant = location.state?.participant;
+    const storedIdentity = useMemo(() => loadLiveGameIdentity(), []);
+    const session = location.state?.session || storedIdentity?.session;
+    const participant = location.state?.participant || storedIdentity?.participant;
     const playerName = location.state?.playerName || participant?.studentName || 'Guest';
     const sessionId = session?.id;
     const gamePin = session?.gamePin || session?.pin || session?.pinCode;
+    const participantId = participant?.id;
+    const joinToken = participant?.joinToken;
 
     /* ── State ── */
     const [gameState, setGameState] = useState('waiting'); // waiting | answering | answered | ended
@@ -46,13 +50,15 @@ export default function StudentLiveGamePage() {
     const [correctAnswers, setCorrectAnswers] = useState(0);
     const [totalQuestions, setTotalQuestions] = useState(0);
     const [connected, setConnected] = useState(false);
+    const [answerError, setAnswerError] = useState(null);
+    const [lastScoreAwarded, setLastScoreAwarded] = useState(0);
 
     const answerSubmittedRef = useRef(false);
     const realtimeRef = useRef(null);
 
     /* ── Connect SignalR ── */
     useEffect(() => {
-        if (!gamePin && !sessionId) {
+        if ((!gamePin && !sessionId) || !participantId || !joinToken) {
             navigate('/play');
             return undefined;
         }
@@ -61,7 +67,8 @@ export default function StudentLiveGamePage() {
             gamePin,
             sessionId,
             role: 'student',
-            studentName: playerName,
+            participantId,
+            joinToken,
             onEvent: (eventName, payload) => {
                 console.log('[StudentLive] Event:', eventName, payload);
 
@@ -72,23 +79,23 @@ export default function StudentLiveGamePage() {
                         const data = typeof payload === 'string' ? JSON.parse(payload) : payload;
 
                         const rawOptions = data.options || data.Options || [];
-                        const parsedOptions = rawOptions.map(o => {
-                            const isCorrectVal = o.isCorrect ?? o.IsCorrect ?? false;
-                            return {
-                                text: o.text || o.Text || '',
-                                isCorrect: isCorrectVal === 'true' || isCorrectVal === true
-                            };
-                        });
+                        const parsedOptions = rawOptions.map(o => ({
+                            id: o.optionId ?? o.OptionId,
+                            text: o.text || o.Text || '',
+                        }));
 
                         setCurrentQuestion({
-                            index: data.questionIndex ?? data.QuestionIndex,
+                            id: data.questionId ?? data.QuestionId,
+                            position: data.position ?? data.Position ?? 0,
                             text: data.questionText ?? data.QuestionText ?? '',
                             options: parsedOptions,
                             totalQuestions: data.totalQuestions ?? data.TotalQuestions,
                         });
-                        setTotalQuestions(data.totalQuestions || 0);
+                        setTotalQuestions(data.totalQuestions ?? data.TotalQuestions ?? 0);
                         setSelectedOption(null);
                         setIsCorrect(null);
+                        setAnswerError(null);
+                        setLastScoreAwarded(0);
                         setGameState('answering');
                     } catch (err) {
                         console.error('[StudentLive] Parse error:', err);
@@ -99,11 +106,38 @@ export default function StudentLiveGamePage() {
                     console.log('[StudentLive] Game started!');
                 }
 
+                if (eventName === 'AnswerResult') {
+                    const result = typeof payload === 'string' ? JSON.parse(payload) : payload;
+                    if (result.accepted || result.Accepted || result.alreadyAnswered || result.AlreadyAnswered) {
+                        const correct = result.isCorrect ?? result.IsCorrect ?? false;
+                        const awarded = result.scoreAwarded ?? result.ScoreAwarded ?? 0;
+                        const serverTotal = result.totalScore ?? result.TotalScore ?? 0;
+
+                        setIsCorrect(correct);
+                        setLastScoreAwarded(awarded);
+                        setScore(serverTotal);
+                        setQuestionsAnswered((count) => count + 1);
+                        if (correct) {
+                            setCorrectAnswers((count) => count + 1);
+                            setStreak((value) => value + 1);
+                        } else {
+                            setStreak(0);
+                        }
+                        setGameState('answered');
+                    } else {
+                        answerSubmittedRef.current = false;
+                        setSelectedOption(null);
+                        setGameState('answering');
+                        setAnswerError(result.message || result.Message || 'Không thể gửi đáp án.');
+                    }
+                }
+
                 if (eventName === 'QuestionClosed') {
                     setGameState('waiting');
                     setCurrentQuestion(null);
                     setSelectedOption(null);
                     setIsCorrect(null);
+                    setAnswerError(null);
                 }
 
                 if (eventName === 'GameEnded') {
@@ -117,81 +151,52 @@ export default function StudentLiveGamePage() {
 
         realtimeRef.current = realtime;
 
-        /* Wait for connection to be ready, then re-join group to ensure we're in */
+        /* The realtime service already joins the group once. */
         realtime?.startPromise?.then((connection) => {
             if (connection) {
                 setConnected(true);
-                console.log('[StudentLive] SignalR connected, re-joining group...');
-                /* Re-invoke JoinAsStudent to make sure we're in the group,
-                   since the previous connection from WaitingPage was stopped */
-                if (gamePin && playerName) {
-                    connection.invoke('JoinAsStudent', gamePin, playerName)
-                        .then(() => {
-                            console.log('[StudentLive] Joined group successfully');
-                            /* Ask backend to re-send current question if one is active */
-                            connection.invoke('RequestCurrentQuestion', gamePin).catch(() => {
-                                /* Backend may not support this method — that's OK */
-                                console.log('[StudentLive] RequestCurrentQuestion not supported or no active question');
-                            });
-                        })
-                        .catch((err) => {
-                            console.warn('[StudentLive] Re-join failed:', err.message);
-                        });
-                }
+                connection.invoke('RequestCurrentQuestion', gamePin).catch((err) => {
+                    console.warn('[StudentLive] Failed to request current question:', err.message);
+                });
             }
         }).catch((err) => {
             console.warn('[StudentLive] Connection failed:', err);
         });
 
-        /* Retry: if still waiting after 3s, try re-joining */
-        const retryTimer = window.setTimeout(() => {
-            const conn = realtime?.getConnection?.();
-            if (conn?.state === 'Connected' && gamePin && playerName) {
-                console.log('[StudentLive] Retry: re-joining group...');
-                conn.invoke('JoinAsStudent', gamePin, playerName).catch(() => { });
-                conn.invoke('RequestCurrentQuestion', gamePin).catch(() => { });
-            }
-        }, 3000);
-
         return () => {
-            window.clearTimeout(retryTimer);
             realtime?.stop();
         };
-    }, [gamePin, sessionId, playerName, navigate]);
+    }, [gamePin, sessionId, participantId, joinToken, navigate]);
 
     /* ── Handle answer selection ── */
     const handleAnswer = useCallback((optIdx) => {
         if (answerSubmittedRef.current || gameState !== 'answering' || !currentQuestion) return;
+        const option = currentQuestion.options[optIdx];
+        if (!option?.id) return;
         answerSubmittedRef.current = true;
 
-        const option = currentQuestion.options[optIdx];
-        const correct = option?.isCorrect ?? false;
-
         setSelectedOption(optIdx);
-        setIsCorrect(correct);
-        setQuestionsAnswered((q) => q + 1);
-        setGameState('answered');
-
-        if (correct) {
-            setCorrectAnswers((c) => c + 1);
-            setScore((s) => s + 1000 + streak * 200);
-            setStreak((s) => s + 1);
-        } else {
-            setStreak(0);
-        }
+        setIsCorrect(null);
+        setAnswerError(null);
+        setGameState('submitting');
 
         if (realtimeRef.current && gamePin) {
             realtimeRef.current.invoke(
                 'SubmitAnswer',
                 gamePin,
-                playerName,
-                currentQuestion.index,
-                optIdx
+                participantId,
+                joinToken,
+                currentQuestion.id,
+                option.id
             ).catch((err) => {
                 console.warn('[StudentLive] Failed to submit answer:', err);
+                answerSubmittedRef.current = false;
+                setSelectedOption(null);
+                setGameState('answering');
+                setAnswerError(err.message || 'Không thể gửi đáp án.');
             });
         }
-    }, [gameState, currentQuestion, streak, gamePin, playerName]);
+    }, [gameState, currentQuestion, gamePin, participantId, joinToken]);
 
     /* ── Waiting Screen ── */
     if (gameState === 'waiting' && !currentQuestion) {
@@ -305,7 +310,7 @@ export default function StudentLiveGamePage() {
                 <div className="slg-header-center">
                     {currentQuestion && (
                         <span className="slg-header-qnum">
-                            Câu {(currentQuestion.index || 0) + 1}
+                            Câu {(currentQuestion.position || 0) + 1}
                             {totalQuestions > 0 ? ` / ${totalQuestions}` : ''}
                         </span>
                     )}
@@ -323,7 +328,7 @@ export default function StudentLiveGamePage() {
                     className="slg-question-text"
                     initial={{ opacity: 0, y: 16 }}
                     animate={{ opacity: 1, y: 0 }}
-                    key={currentQuestion?.index}
+                    key={currentQuestion?.id}
                 >
                     {currentQuestion?.text || 'Đang tải câu hỏi...'}
                 </motion.h1>
@@ -334,15 +339,12 @@ export default function StudentLiveGamePage() {
                 {(currentQuestion?.options || []).map((opt, optIdx) => {
                     const color = OPTION_COLORS[optIdx % OPTION_COLORS.length];
                     const isSelected = selectedOption === optIdx;
-                    const showResult = selectedOption !== null;
-                    const optionCorrect = opt.isCorrect;
+                    const showResult = selectedOption !== null && isCorrect !== null;
 
                     let optionClass = 'slg-option';
                     if (showResult) {
                         if (isSelected) {
                             optionClass += isCorrect ? ' slg-option--correct' : ' slg-option--wrong';
-                        } else if (optionCorrect) {
-                            optionClass += ' slg-option--reveal-correct';
                         } else {
                             optionClass += ' slg-option--dimmed';
                         }
@@ -350,7 +352,7 @@ export default function StudentLiveGamePage() {
 
                     return (
                         <motion.button
-                            key={optIdx}
+                            key={opt.id || optIdx}
                             className={optionClass}
                             style={{ '--opt-gradient': color.gradient, '--opt-bg': color.bg }}
                             onClick={() => handleAnswer(optIdx)}
@@ -377,7 +379,7 @@ export default function StudentLiveGamePage() {
 
             {/* Feedback bar */}
             <AnimatePresence>
-                {selectedOption !== null && (
+                {selectedOption !== null && isCorrect !== null && (
                     <motion.div
                         className={`slg-feedback ${isCorrect ? 'slg-feedback--correct' : 'slg-feedback--wrong'}`}
                         initial={{ opacity: 0, y: 20 }}
@@ -388,12 +390,15 @@ export default function StudentLiveGamePage() {
                         <span className="slg-feedback-text">
                             {isCorrect ? 'Chính xác!' : 'Sai rồi!'}
                         </span>
-                        {isCorrect && (
-                            <span className="slg-feedback-score">+{1000 + (streak - 1) * 200}</span>
+                        {isCorrect && lastScoreAwarded > 0 && (
+                            <span className="slg-feedback-score">+{lastScoreAwarded}</span>
                         )}
                     </motion.div>
                 )}
             </AnimatePresence>
+            {answerError && (
+                <div className="slg-feedback slg-feedback--wrong">{answerError}</div>
+            )}
         </div>
     );
 }
