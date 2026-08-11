@@ -72,6 +72,20 @@ export function exportAdminBillingRevenue(params = {}, options = {}) {
     );
 }
 
+export function getAdminBillingRevenueSeries(params = {}, options = {}) {
+    const {
+        from,
+        to,
+        plan,
+        granularity = 'day',
+        timezone = 'Asia/Ho_Chi_Minh',
+    } = params;
+    return api.get(
+        `/api/Admin/billing/revenue/series${buildQuery({ from, to, plan, granularity, timezone })}`,
+        options
+    );
+}
+
 export function getAdminBillingWebhookEvents(params = {}, options = {}) {
     return api.get(`/api/Admin/billing/webhook-events${buildQuery({ page: 1, pageSize: 20, ...params })}`, options);
 }

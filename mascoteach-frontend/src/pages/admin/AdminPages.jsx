@@ -44,6 +44,7 @@ import {
 import {
     exportAdminBillingRevenue,
     getAdminBillingOrders,
+    getAdminBillingRevenueSeries,
     getAdminBillingWebhookEvents,
     getAdminAuditLogById,
     getAdminAuditLogs,
@@ -351,102 +352,62 @@ function getRevenueExportParams(filters) {
     };
 }
 
-function parseCsv(text) {
-    const rows = [];
-    let row = [];
-    let cell = '';
-    let quoted = false;
+function adaptBillingRevenueResponse(response, filters) {
+    const series = getField(response, 'series', 'Series', [])
+        .map((point) => ({
+            period: getField(point, 'period', 'Period', ''),
+            label: getField(point, 'label', 'Label', ''),
+            collected: Number(getField(point, 'revenue', 'Revenue', 0) || 0),
+            paidOrderCount: Number(getField(point, 'paidOrderCount', 'PaidOrderCount', 0) || 0),
+        }))
+        .sort((left, right) => String(left.period).localeCompare(String(right.period)));
 
-    for (let index = 0; index < text.length; index += 1) {
-        const character = text[index];
-
-        if (quoted) {
-            if (character === '"' && text[index + 1] === '"') {
-                cell += '"';
-                index += 1;
-            } else if (character === '"') {
-                quoted = false;
-            } else {
-                cell += character;
-            }
-        } else if (character === '"') {
-            quoted = true;
-        } else if (character === ',') {
-            row.push(cell);
-            cell = '';
-        } else if (character === '\n') {
-            row.push(cell.replace(/\r$/, ''));
-            rows.push(row);
-            row = [];
-            cell = '';
-        } else {
-            cell += character;
-        }
-    }
-
-    if (cell || row.length) {
-        row.push(cell.replace(/\r$/, ''));
-        rows.push(row);
-    }
-
-    return rows;
+    return {
+        filters,
+        totalRevenue: Number(getField(response, 'totalRevenue', 'TotalRevenue', 0) || 0),
+        paidOrderCount: Number(getField(response, 'paidOrderCount', 'PaidOrderCount', 0) || 0),
+        averageOrderValue: Number(getField(response, 'averageOrderValue', 'AverageOrderValue', 0) || 0),
+        series,
+    };
 }
 
-async function parseRevenueCsvBlob(blob) {
-    const csvRows = parseCsv((await blob.text()).replace(/^\uFEFF/, ''));
-    if (csvRows.length < 2) return [];
+function buildRevenueChartSeries(series, granularity) {
+    if (granularity === 'day') return series;
 
-    const headers = csvRows[0];
-    const amountIndex = headers.indexOf('Amount');
-    const paidAtIndex = headers.indexOf('PaidAt');
-    if (amountIndex < 0 || paidAtIndex < 0) return [];
-
-    return csvRows.slice(1).flatMap((row) => {
-        const paidAt = new Date(row[paidAtIndex]);
-        const amount = Number(row[amountIndex]);
-        if (Number.isNaN(paidAt.getTime()) || !Number.isFinite(amount)) return [];
-        return [{ amount, paidAt }];
-    });
-}
-
-function buildRevenueChartSeries(rows, filters, granularity) {
-    const from = getLocalDayBoundary(filters.from);
-    const to = getLocalDayBoundary(filters.to);
-    if (!from || !to) return [];
-
-    const totals = new Map();
-    rows.forEach(({ amount, paidAt }) => {
-        const key = granularity === 'month'
-            ? `${paidAt.getFullYear()}-${String(paidAt.getMonth() + 1).padStart(2, '0')}`
-            : formatDateInputValue(paidAt);
-        totals.set(key, (totals.get(key) || 0) + Number(amount || 0));
-    });
-
-    const series = [];
-    if (granularity === 'month') {
-        const cursor = new Date(from.getFullYear(), from.getMonth(), 1);
-        const lastMonth = new Date(to.getFullYear(), to.getMonth(), 1);
-        while (cursor <= lastMonth) {
-            const key = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}`;
-            series.push({
-                label: `T${cursor.getMonth() + 1}/${String(cursor.getFullYear()).slice(-2)}`,
-                collected: totals.get(key) || 0,
-            });
-            cursor.setMonth(cursor.getMonth() + 1);
-        }
-        return series;
-    }
-
-    const cursor = new Date(from);
-    while (cursor <= to) {
-        const key = formatDateInputValue(cursor);
-        series.push({
-            label: `${String(cursor.getDate()).padStart(2, '0')}/${String(cursor.getMonth() + 1).padStart(2, '0')}`,
-            collected: totals.get(key) || 0,
+    const monthlyTotals = new Map();
+    series.forEach((point) => {
+        const match = String(point.period).match(/^(\d{4})-(\d{2})/);
+        if (!match) return;
+        const key = `${match[1]}-${match[2]}`;
+        const current = monthlyTotals.get(key) || { revenue: 0, paidOrderCount: 0 };
+        monthlyTotals.set(key, {
+            revenue: current.revenue + Number(point.collected || 0),
+            paidOrderCount: current.paidOrderCount + Number(point.paidOrderCount || 0),
         });
-        cursor.setDate(cursor.getDate() + 1);
-    }
-    return series;
+    });
+
+    return Array.from(monthlyTotals.entries()).map(([period, totals]) => {
+        const [year, month] = period.split('-');
+        return {
+            period,
+            label: `T${Number(month)}/${String(year).slice(-2)}`,
+            collected: totals.revenue,
+            paidOrderCount: totals.paidOrderCount,
+        };
+    });
+}
+
+function RevenueChartTooltip({ active, payload, label }) {
+    if (!active || !payload?.length) return null;
+    const point = payload[0]?.payload || {};
+
+    return (
+        <div className="rounded-[16px] border border-[#D8E9F5] bg-white/95 px-4 py-3 shadow-[0_16px_40px_rgba(43,122,181,0.16)] backdrop-blur">
+            <p className="text-xs font-black uppercase tracking-[0.08em] text-[#7C91A8]">Kỳ {label}</p>
+            <p className="mt-2 text-sm font-black text-[#102744]">{formatMoney(point.collected)}</p>
+            <p className="mt-1 text-xs font-bold text-[#60758D]">{formatNumber(point.paidOrderCount)} đơn đã thanh toán</p>
+        </div>
+    );
 }
 
 function formatRevenueFilterPeriod(filters) {
@@ -1926,10 +1887,20 @@ export function AdminBillingPage() {
     const [webhookDraft, setWebhookDraft] = useState({ search: '', processed: '', hasError: '' });
     const revenueState = useAdminResource(
         async (options) => {
-            const blob = await exportAdminBillingRevenue(getRevenueExportParams(revenueQuery), options);
-            return { blob, rows: await parseRevenueCsvBlob(blob), filters: revenueQuery };
+            const response = await getAdminBillingRevenueSeries({
+                ...getRevenueExportParams(revenueQuery),
+                granularity: 'day',
+                timezone: 'Asia/Ho_Chi_Minh',
+            }, options);
+            return adaptBillingRevenueResponse(response, revenueQuery);
         },
-        { blob: null, rows: [], filters: revenueQuery },
+        {
+            filters: revenueQuery,
+            totalRevenue: 0,
+            paidOrderCount: 0,
+            averageOrderValue: 0,
+            series: [],
+        },
         [JSON.stringify(revenueQuery), revenueRefreshKey]
     );
     const ordersState = useAdminResource(
@@ -1942,13 +1913,13 @@ export function AdminBillingPage() {
         { items: [] },
         [JSON.stringify(webhookQuery)]
     );
-    const revenueRows = revenueState.data?.rows || [];
+    const revenueSeries = revenueState.data?.series || [];
     const revenueDataFilters = revenueState.data?.filters || revenueQuery;
     const billingSeries = useMemo(
-        () => buildRevenueChartSeries(revenueRows, revenueDataFilters, revenueGranularity),
-        [revenueRows, revenueDataFilters, revenueGranularity]
+        () => buildRevenueChartSeries(revenueSeries, revenueGranularity),
+        [revenueSeries, revenueGranularity]
     );
-    const collectedTotal = revenueRows.reduce((total, row) => total + Number(row.amount || 0), 0);
+    const collectedTotal = Number(revenueState.data?.totalRevenue || 0);
     const orders = useMemo(
         () => getItems(ordersState.data).map(adaptBillingOrder),
         [ordersState.data]
@@ -1957,8 +1928,8 @@ export function AdminBillingPage() {
         () => getItems(webhookState.data).map(adaptWebhookEvent),
         [webhookState.data]
     );
-    const paidOrders = revenueRows.length;
-    const averagePaidOrder = paidOrders > 0 ? collectedTotal / paidOrders : 0;
+    const paidOrders = Number(revenueState.data?.paidOrderCount || 0);
+    const averagePaidOrder = Number(revenueState.data?.averageOrderValue || 0);
     const revenueDefaultFilters = getDefaultRevenueExportFilters();
     const revenueActiveFilterCount = countActiveFilters(revenueDraft, revenueDefaultFilters);
     const isRevenueDraftDirty = JSON.stringify(revenueDraft) !== JSON.stringify(revenueQuery);
@@ -2013,10 +1984,7 @@ export function AdminBillingPage() {
         setToast(null);
 
         try {
-            const cachedFiltersMatch = JSON.stringify(revenueState.data?.filters) === JSON.stringify(revenueQuery);
-            const blob = cachedFiltersMatch && revenueState.data?.blob
-                ? revenueState.data.blob
-                : await exportAdminBillingRevenue(params);
+            const blob = await exportAdminBillingRevenue(params);
             const objectUrl = URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = objectUrl;
@@ -2157,10 +2125,7 @@ export function AdminBillingPage() {
                                         domain={[0, (dataMax) => (dataMax > 0 ? Math.ceil(dataMax * 1.12) : 1)]}
                                         tickFormatter={formatRevenueAxis}
                                     />
-                                    <Tooltip
-                                        formatter={(value) => [formatMoney(value), 'Doanh thu đã thu']}
-                                        labelFormatter={(label) => `Kỳ: ${label}`}
-                                    />
+                                    <Tooltip content={<RevenueChartTooltip />} />
                                     <Line
                                         type="monotone"
                                         dataKey="collected"
@@ -2226,10 +2191,6 @@ export function AdminBillingPage() {
                             </>
                         )}
                     </ActionButton>
-                    <div className="mt-5 grid gap-2 border-t border-[#E5F0F8] pt-5">
-                        <ActionButton type="button" tone="ghost" disabled>Chưa hỗ trợ đồng bộ đơn</ActionButton>
-                        <ActionButton type="button" tone="ghost" disabled>Chưa hỗ trợ gia hạn gói</ActionButton>
-                    </div>
                 </AdminCard>
             </div>
             <AdminCard className="p-5">
