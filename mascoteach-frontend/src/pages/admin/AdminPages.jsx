@@ -2109,11 +2109,12 @@ export function AdminBillingPage() {
     return (
         <PageGrid>
             <DataStateNotice states={[revenueState, ordersState, webhookState]} />
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
                 <MiniMetric icon={CircleDollarSign} label="Doanh thu trong kỳ" value={formatMoney(collectedTotal)} />
                 <MiniMetric icon={CreditCard} label="Đơn đã trả trong kỳ" value={formatNumber(paidOrders)} tone="green" />
                 <MiniMetric icon={ReceiptText} label="Trung bình mỗi đơn" value={formatMoney(averagePaidOrder)} tone="navy" />
-                <MiniMetric icon={AlertTriangle} label={`Đang chờ / lỗi trong trang`} value={`${formatNumber(pendingOrders)} / ${formatNumber(webhookErrors)}`} tone="orange" />
+                <MiniMetric icon={Clock3} label="Đơn đang chờ trong trang" value={formatNumber(pendingOrders)} tone="orange" />
+                <MiniMetric icon={AlertTriangle} label="Webhook lỗi trong trang" value={formatNumber(webhookErrors)} tone="orange" />
             </div>
             <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
                 <AdminCard className="p-6">
