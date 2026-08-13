@@ -23,9 +23,9 @@ export default function FlashcardStudyPage() {
     const [study, setStudy] = useState(null);
     const [roundQuestionIds, setRoundQuestionIds] = useState([]);
     const [roundResults, setRoundResults] = useState({});
+    const [roundSummary, setRoundSummary] = useState(null);
     const [currentIndex, setCurrentIndex] = useState(0);
     const [flipped, setFlipped] = useState(false);
-    const [isRoundComplete, setIsRoundComplete] = useState(false);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
@@ -61,40 +61,38 @@ export default function FlashcardStudyPage() {
         [cards]
     );
     const percent = cards.length ? Math.round((masteredCount / cards.length) * 100) : 0;
-    const roundKnownCount = useMemo(
-        () => Object.values(roundResults).filter((value) => value === true).length,
-        [roundResults]
-    );
-    const roundUnknownCount = useMemo(
-        () => Object.values(roundResults).filter((value) => value === false).length,
-        [roundResults]
-    );
+    const displayedResults = roundSummary || roundResults;
+    const roundKnownCount = Object.values(displayedResults).filter((value) => value === true).length;
+    const roundUnknownCount = Object.values(displayedResults).filter((value) => value === false).length;
 
     async function review(isKnown) {
         if (!currentCard || saving) return;
+        const reviewedCard = currentCard;
+        const isLastCard = currentIndex >= roundQuestionIds.length - 1;
         setSaving(true);
         setError('');
         try {
             const progress = await updateFlashcardProgress(
                 assignmentId,
-                currentCard.questionId,
+                reviewedCard.questionId,
                 isKnown
             );
             setStudy((current) => ({
                 ...current,
-                cards: current.cards.map((card) => card.questionId === currentCard.questionId
+                cards: current.cards.map((card) => card.questionId === reviewedCard.questionId
                     ? { ...card, ...progress }
                     : card),
             }));
-            setRoundResults((current) => ({
-                ...current,
-                [currentCard.questionId]: isKnown,
-            }));
-            if (currentIndex < roundCards.length - 1) {
-                setCurrentIndex((index) => index + 1);
+            const nextResults = {
+                ...roundResults,
+                [reviewedCard.questionId]: isKnown,
+            };
+            setRoundResults(nextResults);
+            if (isLastCard) {
+                setRoundSummary(nextResults);
                 setFlipped(false);
             } else {
-                setIsRoundComplete(true);
+                setCurrentIndex((index) => index + 1);
                 setFlipped(false);
             }
         } catch (requestError) {
@@ -108,9 +106,9 @@ export default function FlashcardStudyPage() {
         if (!questionIds.length) return;
         setRoundQuestionIds(questionIds);
         setRoundResults({});
+        setRoundSummary(null);
         setCurrentIndex(0);
         setFlipped(false);
-        setIsRoundComplete(false);
         setError('');
     }
 
@@ -136,14 +134,14 @@ export default function FlashcardStudyPage() {
                         <button type="button" onClick={() => navigate('/student/flashcards')} className="grid h-11 w-11 flex-none place-items-center rounded-xl border border-slate-200 text-slate-600 transition hover:bg-slate-50 hover:text-brand-blue" aria-label="Quay lại"><ArrowLeft className="h-5 w-5" /></button>
                         <div className="min-w-0"><p className="text-xs font-black uppercase tracking-[0.12em] text-brand-blue">{study?.className}</p><h1 className="mt-1 truncate text-xl font-black text-slate-950 sm:text-2xl">{study?.title}</h1></div>
                     </div>
-                    <div className="flex items-center gap-3"><span className="rounded-xl bg-slate-100 px-3 py-2 text-xs font-black text-slate-600">{isRoundComplete ? roundCards.length : Math.min(currentIndex + 1, roundCards.length)} / {roundCards.length}</span><span className="rounded-xl bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-700">{masteredCount} đã thuộc</span></div>
+                    <div className="flex items-center gap-3"><span className="rounded-xl bg-slate-100 px-3 py-2 text-xs font-black text-slate-600">{roundSummary ? roundCards.length : Math.min(currentIndex + 1, roundCards.length)} / {roundCards.length}</span><span className="rounded-xl bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-700">{masteredCount} đã thuộc</span></div>
                 </header>
 
                 <div className="mt-5 h-2.5 overflow-hidden rounded-full bg-white shadow-inner"><div className="h-full rounded-full bg-gradient-to-r from-brand-blue via-sky-400 to-cyan-400 transition-all duration-500" style={{ width: `${percent}%` }} /></div>
 
                 {error && <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700">{error}</div>}
 
-                {isRoundComplete ? (
+                {roundSummary ? (
                     <RoundSummary
                         knownCount={roundKnownCount}
                         unknownCount={roundUnknownCount}
