@@ -63,10 +63,12 @@ import {
     hasAdminApiToken,
     hideAdminDocument,
     restoreAdminDocument,
+    reconcileAdminBillingOrder,
     updateAdminUserRole,
     updateAdminUserStatus,
     updateAdminUserSubscription,
 } from '@/services/adminService';
+import { confirmAction } from '@/components/shared/GlobalConfirmDialog';
 
 function useAdminBase() {
     const location = useLocation();
@@ -1976,7 +1978,9 @@ export function AdminBillingPage() {
     const [revenueQuery, setRevenueQuery] = useState(getDefaultRevenueExportFilters);
     const [revenueGranularity, setRevenueGranularity] = useState('day');
     const [revenueRefreshKey, setRevenueRefreshKey] = useState(0);
+    const [ordersRefreshKey, setOrdersRefreshKey] = useState(0);
     const [isExporting, setIsExporting] = useState(false);
+    const [reconcilingOrderId, setReconcilingOrderId] = useState(null);
     const [toast, setToast] = useState(null);
     const [ordersQuery, setOrdersQuery] = useState({ page: 1, pageSize: 20, search: '', status: '', plan: '', deletion: 'Active' });
     const [ordersDraft, setOrdersDraft] = useState({ search: '', status: '', plan: '', deletion: 'Active' });
@@ -2003,7 +2007,7 @@ export function AdminBillingPage() {
     const ordersState = useAdminResource(
         (options) => getAdminBillingOrders(ordersQuery, options),
         { items: [], total: 0 },
-        [JSON.stringify(ordersQuery)]
+        [JSON.stringify(ordersQuery), ordersRefreshKey]
     );
     const webhookState = useAdminResource(
         (options) => getAdminBillingWebhookEvents(webhookQuery, options),
@@ -2099,6 +2103,40 @@ export function AdminBillingPage() {
             });
         } finally {
             setIsExporting(false);
+        }
+    }
+
+    async function handleReconcileOrder(order) {
+        if (reconcilingOrderId || order.status !== 'Pending') return;
+
+        const confirmed = await confirmAction({
+            title: 'Đối soát đơn với PayOS?',
+            message: `Mascoteach sẽ lấy trạng thái thật của đơn ${order.orderCode} từ PayOS và cập nhật đơn/gói đăng ký nếu cần.`,
+            confirmLabel: 'Đối soát PayOS',
+            tone: 'warning',
+        });
+        if (!confirmed) return;
+
+        setReconcilingOrderId(order.id);
+        setToast(null);
+        try {
+            const result = await reconcileAdminBillingOrder(order.id);
+            const statusLabel = formatAdminValue(result?.status || order.status);
+            setToast({
+                type: 'success',
+                message: result?.changed
+                    ? `Đã đối soát đơn ${order.orderCode}: ${statusLabel}.`
+                    : `Đơn ${order.orderCode} đã khớp với PayOS, không cần cập nhật.`,
+            });
+            setOrdersRefreshKey((value) => value + 1);
+            setRevenueRefreshKey((value) => value + 1);
+        } catch (error) {
+            setToast({
+                type: 'error',
+                message: formatAdminActionError(error, 'Không thể đối soát đơn với PayOS.'),
+            });
+        } finally {
+            setReconcilingOrderId(null);
         }
     }
 
@@ -2351,6 +2389,21 @@ export function AdminBillingPage() {
                         { key: 'status', label: 'Trạng thái', render: (row) => <StatusBadge value={row.status} /> },
                         { key: 'paidAt', label: 'Thanh toán lúc' },
                         { key: 'expiresAt', label: 'Hết hạn' },
+                        {
+                            key: 'actions',
+                            label: 'Thao tác',
+                            render: (row) => row.status === 'Pending' ? (
+                                <button
+                                    type="button"
+                                    className="inline-flex items-center gap-2 whitespace-nowrap rounded-full border border-[#B9DFF3] bg-[#F3FAFF] px-3 py-2 text-xs font-black text-[#2B7AB5] transition hover:bg-[#E5F5FF] disabled:cursor-not-allowed disabled:opacity-60"
+                                    onClick={() => handleReconcileOrder(row)}
+                                    disabled={Boolean(reconcilingOrderId)}
+                                >
+                                    <RotateCw className={`h-3.5 w-3.5 ${reconcilingOrderId === row.id ? 'animate-spin' : ''}`} />
+                                    {reconcilingOrderId === row.id ? 'Đang đối soát' : 'Đối soát PayOS'}
+                                </button>
+                            ) : <span className="text-xs font-bold text-[#93A5B7]">Không cần</span>,
+                        },
                     ]}
                     rows={orders}
                     isRefreshing={ordersState.isRefreshing}
