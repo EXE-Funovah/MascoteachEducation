@@ -2355,6 +2355,7 @@ export function AdminBillingPage() {
                                     { value: 'Pending', label: formatAdminValue('Pending') },
                                     { value: 'Paid', label: formatAdminValue('Paid') },
                                     { value: 'Cancelled', label: formatAdminValue('Cancelled') },
+                                    { value: 'Expired', label: formatAdminValue('Expired') },
                                 ],
                             },
                             {
