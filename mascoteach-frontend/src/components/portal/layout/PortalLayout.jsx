@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
-import { ArrowUpRight, BookOpenCheck, CreditCard, GraduationCap, History, Home, Library, User } from 'lucide-react';
+import { ArrowUpRight, BookOpenCheck, CreditCard, Gamepad2, GraduationCap, History, Home, Library, User } from 'lucide-react';
 import Sidebar from './Sidebar';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -13,6 +13,7 @@ const teacherMobileItems = [
 
 const studentMobileItems = [
     { path: '/flashcards', icon: BookOpenCheck, label: 'Flashcard' },
+    { path: '/join-session', icon: Gamepad2, label: 'Vào phiên' },
     { path: '/profile', icon: User, label: 'Hồ sơ' },
 ];
 

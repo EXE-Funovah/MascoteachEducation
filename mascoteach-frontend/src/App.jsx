@@ -216,6 +216,7 @@ export default function App() {
           <Route path="profile" element={<ProfilePage />} />
           <Route path="flashcards" element={<StudentFlashcardsPage />} />
           <Route path="flashcards/:assignmentId" element={<FlashcardStudyPage />} />
+          <Route path="join-session" element={<GameLobby />} />
         </Route>
 
         <Route
