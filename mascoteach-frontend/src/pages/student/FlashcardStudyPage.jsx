@@ -60,6 +60,7 @@ export default function FlashcardStudyPage() {
         () => cards.filter((card) => card.status === 'Mastered').length,
         [cards]
     );
+    const learningCount = Math.max(0, cards.length - masteredCount);
     const percent = cards.length ? Math.round((masteredCount / cards.length) * 100) : 0;
     const displayedResults = roundSummary || roundResults;
     const roundKnownCount = Object.values(displayedResults).filter((value) => value === true).length;
@@ -134,7 +135,7 @@ export default function FlashcardStudyPage() {
                         <button type="button" onClick={() => navigate('/student/flashcards')} className="grid h-11 w-11 flex-none place-items-center rounded-xl border border-slate-200 text-slate-600 transition hover:bg-slate-50 hover:text-brand-blue" aria-label="Quay lại"><ArrowLeft className="h-5 w-5" /></button>
                         <div className="min-w-0"><p className="text-xs font-black uppercase tracking-[0.12em] text-brand-blue">{study?.className}</p><h1 className="mt-1 truncate text-xl font-black text-slate-950 sm:text-2xl">{study?.title}</h1></div>
                     </div>
-                    <div className="flex items-center gap-3"><span className="rounded-xl bg-slate-100 px-3 py-2 text-xs font-black text-slate-600">{roundSummary ? roundCards.length : Math.min(currentIndex + 1, roundCards.length)} / {roundCards.length}</span><span className="rounded-xl bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-700">{masteredCount} đã thuộc</span></div>
+                    <div className="flex items-center gap-3"><span className="rounded-xl bg-slate-100 px-3 py-2 text-xs font-black text-slate-600">{roundSummary ? roundCards.length : Math.min(currentIndex + 1, roundCards.length)} / {roundCards.length}</span></div>
                 </header>
 
                 <div className="mt-5 h-2.5 overflow-hidden rounded-full bg-white shadow-inner"><div className="h-full rounded-full bg-gradient-to-r from-brand-blue via-sky-400 to-cyan-400 transition-all duration-500" style={{ width: `${percent}%` }} /></div>
@@ -152,6 +153,10 @@ export default function FlashcardStudyPage() {
                 ) : !currentCard ? <CenteredState><Layers3 className="h-9 w-9 text-brand-blue" /><strong>Bộ thẻ chưa có nội dung</strong></CenteredState> : (
                     <main className="mx-auto mt-8 max-w-[850px]">
                         {study?.instructions && <p className="mb-5 text-center text-sm font-semibold text-slate-500">{study.instructions}</p>}
+                        <div className="mb-4 flex items-center justify-between gap-4 px-1 text-sm font-black">
+                            <span className="inline-flex items-center gap-2 text-rose-600"><span className="grid h-7 min-w-7 place-items-center rounded-full border border-rose-300 bg-rose-50 px-2 text-xs">{learningCount}</span> Chưa thuộc</span>
+                            <span className="inline-flex items-center gap-2 text-emerald-600">Đã thuộc <span className="grid h-7 min-w-7 place-items-center rounded-full border border-emerald-300 bg-emerald-50 px-2 text-xs">{masteredCount}</span></span>
+                        </div>
                         <button type="button" onClick={() => setFlipped((value) => !value)} className="group relative block min-h-[390px] w-full [perspective:1400px]" aria-label={flipped ? 'Xem mặt trước' : 'Lật xem đáp án'}>
                             <div className={`relative min-h-[390px] w-full transition-transform duration-500 [transform-style:preserve-3d] ${flipped ? '[transform:rotateY(180deg)]' : ''}`}>
                                 <CardFace label="Mặt trước" tone="front" text={currentCard.front} hint="Nhấn vào thẻ để xem mặt sau" />
