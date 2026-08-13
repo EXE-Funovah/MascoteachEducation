@@ -20,9 +20,6 @@ export default function AuthLayout({ children }) {
                 </Link>
 
                 <div className="auth-top-actions">
-                    <Link to="/play" className="auth-top-action auth-top-action--muted">
-                        Tham gia phiên
-                    </Link>
                     <Link
                         to={isRegister ? '/signin' : '/register'}
                         className="auth-top-action auth-top-action--primary"

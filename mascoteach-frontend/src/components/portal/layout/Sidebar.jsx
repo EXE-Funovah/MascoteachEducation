@@ -5,6 +5,7 @@ import {
     CreditCard,
     Crown,
     GraduationCap,
+    Gamepad2,
     History,
     Home,
     Library,
@@ -24,6 +25,7 @@ const teacherItems = [
 
 const studentItems = [
     { path: '/flashcards', icon: BookOpenCheck, label: 'Lớp & Flashcard' },
+    { path: '/join-session', icon: Gamepad2, label: 'Tham gia phiên' },
 ];
 
 const parentItems = [
