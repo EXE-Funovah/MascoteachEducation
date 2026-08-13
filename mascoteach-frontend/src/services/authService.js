@@ -41,6 +41,12 @@ export async function verifyEmail(data) {
     }, { skipAuth: true });
 }
 
+export async function resendVerification(data) {
+    return api.post('/api/Auth/resend-verification', {
+        email: data.email,
+    }, { skipAuth: true });
+}
+
 function storeAuthToken(result, persist = true) {
     const token = result?.token || result?.accessToken || result;
     if (typeof token === 'string' && token.length > 0) {
