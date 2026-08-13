@@ -68,6 +68,7 @@ export default function SignUpPage() {
         state: {
           message:
             'Đăng ký thành công. Vui lòng kiểm tra email để xác thực tài khoản trước khi đăng nhập.',
+          verificationEmail: form.email.trim(),
         },
       });
     } catch {

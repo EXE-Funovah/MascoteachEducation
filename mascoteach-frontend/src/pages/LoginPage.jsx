@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowRight } from 'lucide-react';
@@ -6,18 +6,26 @@ import AuthLayout from '@/components/auth/AuthLayout';
 import AuthInput from '@/components/auth/AuthInput';
 import GoogleSignInButton from '@/components/auth/GoogleSignInButton';
 import { useAuth } from '@/contexts/AuthContext';
+import { resendVerification } from '@/services/authService';
 
 export default function LoginPage() {
-    const [email, setEmail] = useState('');
+    const navigate = useNavigate();
+    const location = useLocation();
+    const initialVerificationEmail = location.state?.verificationEmail || '';
+
+    const [email, setEmail] = useState(initialVerificationEmail);
     const [password, setPassword] = useState('');
     const [remember, setRemember] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [googleSubmitting, setGoogleSubmitting] = useState(false);
     const [googleError, setGoogleError] = useState('');
+    const [verificationEmail, setVerificationEmail] = useState(initialVerificationEmail);
+    const [resendStatus, setResendStatus] = useState('');
+    const [resendError, setResendError] = useState('');
+    const [resendCooldown, setResendCooldown] = useState(0);
+    const [resending, setResending] = useState(false);
 
     const { login, googleLogin, error, clearError } = useAuth();
-    const navigate = useNavigate();
-    const location = useLocation();
 
     const successMessage = location.state?.message;
 
@@ -32,6 +40,16 @@ export default function LoginPage() {
     }
 
     const redirectTarget = getRedirectTarget(location.state?.from);
+
+    useEffect(() => {
+        if (resendCooldown <= 0) return undefined;
+
+        const timer = window.setInterval(() => {
+            setResendCooldown((current) => Math.max(0, current - 1));
+        }, 1000);
+
+        return () => window.clearInterval(timer);
+    }, [resendCooldown]);
 
     function getDashboard(user) {
         const role = String(user?.role || user?.roleName || '').toLowerCase();
@@ -53,10 +71,33 @@ export default function LoginPage() {
         try {
             const profile = await login(email, password, remember);
             navigate(redirectTarget.path || getDashboard(profile), { replace: true, state: redirectTarget.state });
-        } catch {
-            // AuthContext owns the visible error message.
+        } catch (err) {
+            const message = String(err?.message || '').toLowerCase();
+            if (message.includes('verify your email')) {
+                setVerificationEmail(email.trim());
+                setResendStatus('');
+                setResendError('');
+            }
         } finally {
             setSubmitting(false);
+        }
+    }
+
+    async function handleResendVerification() {
+        const targetEmail = verificationEmail || email.trim();
+        if (!targetEmail || resending || resendCooldown > 0) return;
+
+        setResending(true);
+        setResendStatus('');
+        setResendError('');
+        try {
+            await resendVerification({ email: targetEmail });
+            setResendStatus('Đã gửi lại email xác minh. Vui lòng kiểm tra cả hộp thư rác.');
+            setResendCooldown(60);
+        } catch (err) {
+            setResendError(err?.message || 'Không thể gửi lại email xác minh. Vui lòng thử lại sau.');
+        } finally {
+            setResending(false);
         }
     }
 
@@ -102,6 +143,36 @@ export default function LoginPage() {
                 </div>
             )}
 
+            {verificationEmail && (
+                <div className="auth-alert auth-alert--success" role="status">
+                    <p>Chưa nhận được email xác minh cho <strong>{verificationEmail}</strong>?</p>
+                    <button
+                        type="button"
+                        className="mt-2 font-bold text-brand-blue underline underline-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+                        onClick={handleResendVerification}
+                        disabled={resending || resendCooldown > 0}
+                    >
+                        {resending
+                            ? 'Đang gửi lại...'
+                            : resendCooldown > 0
+                                ? `Có thể gửi lại sau ${resendCooldown}s`
+                                : 'Gửi lại email xác minh'}
+                    </button>
+                </div>
+            )}
+
+            {resendStatus && (
+                <div className="auth-alert auth-alert--success" role="status">
+                    {resendStatus}
+                </div>
+            )}
+
+            {resendError && (
+                <div className="auth-alert auth-alert--error" role="alert">
+                    {resendError}
+                </div>
+            )}
+
             <form onSubmit={handleSubmit} className="auth-form">
                 <AuthInput
                     id="login-email"
@@ -109,7 +180,14 @@ export default function LoginPage() {
                     type="email"
                     placeholder="email@example.com"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(e) => {
+                        setEmail(e.target.value);
+                        if (verificationEmail && e.target.value.trim() !== verificationEmail) {
+                            setVerificationEmail('');
+                            setResendStatus('');
+                            setResendError('');
+                        }
+                    }}
                     required
                 />
 

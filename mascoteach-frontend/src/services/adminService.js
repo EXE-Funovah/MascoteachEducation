@@ -68,6 +68,10 @@ export function getAdminBillingOrderById(id, options = {}) {
     return api.get(`/api/Admin/billing/orders/${id}`, options);
 }
 
+export function reconcileAdminBillingOrder(id, options = {}) {
+    return api.post(`/api/Admin/billing/orders/${id}/reconcile`, {}, options);
+}
+
 export function exportAdminBillingRevenue(params = {}, options = {}) {
     const { from, to, plan } = params;
     return api.get(

@@ -6,8 +6,11 @@ import {
     FileSearch,
     LayoutDashboard,
     ListChecks,
+    LogOut,
     UsersRound,
 } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { confirmAction } from '@/components/shared/GlobalConfirmDialog';
 
 const navItems = [
     { label: 'Tổng quan', path: '/admin', icon: LayoutDashboard },
@@ -109,9 +112,21 @@ export function formatAdminValue(value) {
 
 export default function AdminLayout() {
     const location = useLocation();
+    const { logout } = useAuth();
     const isDevPreview = location.pathname.startsWith('/dev/admin');
     const items = isDevPreview ? devNavItems : navItems;
     const meta = getMeta(location.pathname);
+
+    async function handleLogout() {
+        const confirmed = await confirmAction({
+            title: 'Đăng xuất khỏi trang quản trị?',
+            message: 'Phiên đăng nhập hiện tại sẽ kết thúc và bạn được chuyển về trang đăng nhập.',
+            confirmLabel: 'Đăng xuất',
+            tone: 'danger',
+        });
+
+        if (confirmed) logout();
+    }
 
     return (
         <div className="min-h-screen bg-[#F7FCFF] text-[#102744]">
@@ -179,6 +194,16 @@ export default function AdminLayout() {
                                     <p className="text-xs font-bold text-[#6C8098]">Chủ sở hữu</p>
                                 </div>
                             </div>
+                            <button
+                                type="button"
+                                onClick={handleLogout}
+                                className="flex h-14 shrink-0 items-center justify-center gap-2 rounded-full border border-[#FFD8DE] bg-white px-4 font-black text-[#C2293A] shadow-[0_12px_28px_rgba(194,41,58,0.08)] transition hover:-translate-y-0.5 hover:bg-[#FFF4F6]"
+                                aria-label="Đăng xuất"
+                                title="Đăng xuất"
+                            >
+                                <LogOut className="h-5 w-5" />
+                                <span className="hidden 2xl:inline">Đăng xuất</span>
+                            </button>
                         </div>
                     </div>
 
