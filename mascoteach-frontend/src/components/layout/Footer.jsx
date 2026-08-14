@@ -8,7 +8,6 @@ const FOOTER_COLUMNS = [
     title: 'Khám phá',
     links: [
       { label: 'Cách hoạt động', href: '/#how-it-works' },
-      { label: 'Tính năng', href: '/#features' },
       { label: 'Dành cho ai', href: '/#targeting' },
       { label: 'Bảng giá', href: '/pricing' },
     ],

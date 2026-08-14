@@ -8,7 +8,6 @@ export const SITE = {
 export const NAV_LINKS = [
   { label: 'Trang chủ', href: '/' },
   { label: 'Cách hoạt động', href: '/#how-it-works' },
-  { label: 'Tính năng', href: '/#features' },
   { label: 'Dành cho ai', href: '/#targeting' },
   { label: 'Bảng giá', href: '/pricing' },
 ];
@@ -21,117 +20,6 @@ export const HERO = {
   cta_primary: 'Đăng ký trải nghiệm miễn phí',
   cta_secondary: 'Xem thử 3 phút',
   visual_caption: 'Giao diện quản lý lớp học Mascoteach',
-};
-
-export const FEATURES = [
-  {
-    id: 'mascot-ai',
-    badge: 'Trợ lý học tập',
-    badgeColor: 'sky',
-    title: 'Tạo hoạt động nhanh từ tài liệu có sẵn',
-    description:
-      'Mascoteach giúp giáo viên biến giáo án, slide hoặc nội dung bài học thành câu hỏi và trò chơi tương tác trong thời gian ngắn.',
-    lottie: '/lottie/mascot-ai.json',
-    bgColor: 'bg-surface-blue',
-    span: 'md:col-span-2',
-  },
-  {
-    id: 'quiz-game',
-    badge: 'Học qua trò chơi',
-    badgeColor: 'violet',
-    title: 'Học vui nhưng vẫn bám bài',
-    description:
-      'Biến phần kiểm tra khô khan thành hoạt động ngắn, trực quan và có mục tiêu. Học sinh hào hứng, giáo viên vẫn giữ được mạch bài.',
-    lottie: '/lottie/quiz-game.json',
-    bgColor: 'bg-surface-violet',
-    span: 'md:col-span-1',
-  },
-  {
-    id: 'analytics',
-    badge: 'Theo dõi lớp học',
-    badgeColor: 'teal',
-    title: 'Giữ nhịp lớp học bằng phản hồi rõ ràng',
-    description:
-      'Bảng theo dõi giúp giáo viên biết phần nào cần nhắc lại, học sinh nào cần hỗ trợ và hoạt động nào đang kéo lớp quay lại kiến thức chính.',
-    lottie: '/lottie/analytics.json',
-    bgColor: 'bg-surface-teal',
-    span: 'md:col-span-1',
-  },
-];
-
-export const SHOWCASE_INSIGHT = {
-  eyebrow: 'Dữ liệu từ khảo sát người dùng',
-  title: 'Mascoteach được xây dựng từ nhu cầu thật của lớp học.',
-  subtitle:
-    'Kết quả khảo sát người dùng cho thấy lớp học không chỉ cần vui hơn, mà còn cần hoạt động tương tác ngắn, dễ triển khai và vẫn bám sát kiến thức chính.',
-  meta: [
-    { value: '82%', label: 'giáo viên muốn tạo câu hỏi và trò chơi học tập nhanh hơn' },
-    {
-      value: '84%',
-      label: 'phụ huynh ủng hộ nếu hoạt động tương tác vẫn bám sát nội dung bài học',
-    },
-    {
-      value: '70%',
-      label: 'học sinh hứng thú hơn khi bài học có nhân vật, hình ảnh hoặc trò chơi ngắn',
-    },
-  ],
-  questions: [
-    {
-      id: 'Q1',
-      title: 'Điều gì khiến lớp học mất nhịp tương tác?',
-      subtitle:
-        'Những phản hồi lặp lại cho thấy học sinh dễ rời khỏi bài học khi nội dung thiếu hình ảnh, khó hiểu hoặc hoạt động tương tác chưa gắn chặt với kiến thức chính.',
-      chips: [
-        '50% giáo viên nhận thấy học sinh mất tập trung sau 15 phút đầu',
-        '47% giáo viên cho rằng bài học khó tạo hứng thú nếu thiếu minh họa sinh động',
-        '47% học sinh dễ mất tập trung khi nội dung quá khó hiểu',
-        '47% giáo viên nhận thấy hứng thú giảm khi hoạt động chỉ quay lại phần lý thuyết',
-      ],
-      note:
-        'Vì vậy, Mascoteach tập trung vào hoạt động ngắn, trực quan và có thể tạo nhanh từ tài liệu sẵn có.',
-    },
-    {
-      id: 'Q2',
-      title: 'Điều gì khiến người dùng muốn sử dụng Mascoteach lâu dài?',
-      subtitle:
-        'Mascoteach cần tạo hứng thú, nhưng đồng thời phải cho thấy tiến độ học tập rõ ràng và giúp người lớn kiểm soát được trải nghiệm của trẻ.',
-      chips: [
-        '82% giáo viên muốn hệ thống hỗ trợ tạo câu hỏi và trò chơi trong thời gian ngắn',
-        '80% phụ huynh ưu tiên hiệu quả học tập khi chọn ứng dụng cho con',
-        '79% phụ huynh lo khó kiểm soát con đang học hay dùng ứng dụng khác',
-        '70% học sinh muốn tương tác với nhân vật 2D/3D trên màn hình',
-      ],
-    },
-  ],
-  insight: {
-    title:
-      'Mascoteach giúp lớp học đủ vui để học sinh tham gia, và đủ rõ ràng để giáo viên, phụ huynh tin tưởng.',
-    body:
-      'Giá trị thật không nằm ở việc thêm thật nhiều trò chơi, mà ở cách Mascoteach biến nội dung khô thành tương tác có mục tiêu, phản hồi được tiến độ và giúp người lớn thấy trẻ đang học một cách có kiểm soát.',
-    pillars: [
-      {
-        label: 'Giá trị 1',
-        title: 'Chơi để quay lại kiến thức',
-        description:
-          'Trò chơi cần kéo học sinh quay lại kiến thức, không dừng ở thắng-thua hay bảng điểm.',
-        evidence: '50% giáo viên cho rằng học sinh dễ bị cuốn vào thắng-thua hơn là ghi nhớ bài.',
-      },
-      {
-        label: 'Giá trị 2',
-        title: 'Giảm tải cho giáo viên',
-        description:
-          'Giáo viên cần giảm tải soạn câu hỏi, nhập liệu và biến bài học thành hoạt động tương tác nhanh hơn.',
-        evidence: '82% giáo viên bị thuyết phục bởi khả năng tạo câu hỏi và trò chơi nhanh hơn.',
-      },
-      {
-        label: 'Giá trị 3',
-        title: 'Học tập có kiểm soát',
-        description:
-          'Phụ huynh và giáo viên cần tín hiệu rõ rằng trẻ đang học, đang tiến bộ và không bị xao nhãng.',
-        evidence: '79% phụ huynh lo khó kiểm soát việc con học hay dùng ứng dụng khác.',
-      },
-    ],
-  },
 };
 
 export const TARGET_PERSONA = {
@@ -196,7 +84,6 @@ export const FOOTER = {
       title: 'Khám phá',
       links: [
         { label: 'Cách hoạt động', href: '/#how-it-works' },
-        { label: 'Tính năng', href: '/#features' },
         { label: 'Dành cho ai', href: '/#targeting' },
         { label: 'Bảng giá', href: '/pricing' },
       ],

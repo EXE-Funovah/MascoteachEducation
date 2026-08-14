@@ -4,7 +4,6 @@ import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import HeroSection from '@/components/sections/HeroSection';
 import UnderHeroImage from '@/components/sections/UnderHeroImage';
-import FeatureBentoGrid from '@/components/sections/FeatureBentoGrid';
 import HowMascoteachWorks from '@/components/sections/HowMascoteachWorks';
 import TargetPersona from '@/components/sections/TargetPersona';
 import CTASection from '@/components/sections/CTASection';
@@ -33,7 +32,6 @@ export default function Home() {
         <HeroSection />
         <UnderHeroImage />
         <HowMascoteachWorks />
-        <FeatureBentoGrid />
         <TargetPersona />
         <CTASection />
       </main>

@@ -111,7 +111,6 @@ export async function apiRequest(endpoint, options = {}) {
             const publicPaths = [
                 '/',
                 '/product',
-                '/features',
                 '/pricing',
                 '/signin',
                 '/register',
