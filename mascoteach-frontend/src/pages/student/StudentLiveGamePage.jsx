@@ -4,6 +4,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Hourglass, Trophy, Flame, Star, CheckCircle2 } from 'lucide-react';
 import { createLiveSessionConnection } from '@/services/liveSessionRealtime';
 import { loadLiveGameIdentity } from '@/services/liveGameIdentity';
+import { useAuth } from '@/contexts/AuthContext';
+import { getGameExitPath } from '@/utils/navigation';
 import './StudentLiveGame.css';
 
 /**
@@ -29,6 +31,8 @@ const OPTION_COLORS = [
 export default function StudentLiveGamePage() {
     const location = useLocation();
     const navigate = useNavigate();
+    const { user, loading: authLoading } = useAuth();
+    const exitPath = getGameExitPath(user);
 
     const storedIdentity = useMemo(() => loadLiveGameIdentity(), []);
     const session = location.state?.session || storedIdentity?.session;
@@ -59,7 +63,8 @@ export default function StudentLiveGamePage() {
     /* ── Connect SignalR ── */
     useEffect(() => {
         if ((!gamePin && !sessionId) || !participantId || !joinToken) {
-            navigate('/play');
+            if (authLoading) return undefined;
+            navigate(exitPath, { replace: true });
             return undefined;
         }
 
@@ -166,7 +171,7 @@ export default function StudentLiveGamePage() {
         return () => {
             realtime?.stop();
         };
-    }, [gamePin, sessionId, participantId, joinToken, navigate]);
+    }, [gamePin, sessionId, participantId, joinToken, navigate, exitPath, authLoading]);
 
     /* ── Handle answer selection ── */
     const handleAnswer = useCallback((optIdx) => {
@@ -286,7 +291,7 @@ export default function StudentLiveGamePage() {
 
                     <motion.button
                         className="slg-ended-btn"
-                        onClick={() => navigate('/play')}
+                        onClick={() => navigate(exitPath, { replace: true })}
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
                     >

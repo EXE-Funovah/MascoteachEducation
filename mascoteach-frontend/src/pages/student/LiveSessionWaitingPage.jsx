@@ -5,6 +5,8 @@ import { Hourglass, Loader2, Users, Sparkles, ArrowRight, AlertCircle } from 'lu
 import { getSessionByPin } from '@/services/liveSessionService';
 import { createLiveSessionConnection } from '@/services/liveSessionRealtime';
 import { loadLiveGameIdentity } from '@/services/liveGameIdentity';
+import { useAuth } from '@/contexts/AuthContext';
+import { getGameExitPath, getGameLobbyPath } from '@/utils/navigation';
 
 function getSessionPin(session) {
     return session?.gamePin || session?.pin || session?.pinCode || '';
@@ -13,8 +15,11 @@ function getSessionPin(session) {
 export default function LiveSessionWaitingPage() {
     const navigate = useNavigate();
     const location = useLocation();
+    const { user, loading: authLoading } = useAuth();
     const [searchParams] = useSearchParams();
     const reduceMotion = useReducedMotion();
+    const exitPath = getGameExitPath(user);
+    const lobbyPath = getGameLobbyPath(user);
 
     const storedIdentity = useMemo(() => loadLiveGameIdentity(), []);
     const initialSession = location.state?.session || storedIdentity?.session || null;
@@ -37,7 +42,8 @@ export default function LiveSessionWaitingPage() {
 
     useEffect(() => {
         if (!pin || !participant?.id || !participant?.joinToken) {
-            navigate('/play');
+            if (authLoading) return undefined;
+            navigate(exitPath, { replace: true });
             return undefined;
         }
 
@@ -89,7 +95,7 @@ export default function LiveSessionWaitingPage() {
             cancelled = true;
             window.clearInterval(intervalId);
         };
-    }, [navigate, participant, pin, playerName]);
+    }, [navigate, participant, pin, playerName, exitPath, authLoading]);
 
     useEffect(() => {
         if (!pin || !participant?.id || !participant?.joinToken) return undefined;
@@ -178,7 +184,7 @@ export default function LiveSessionWaitingPage() {
                         {error ? <div className="mt-5 flex items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700"><AlertCircle className="mt-0.5 h-4 w-4 shrink-0" /><span>{error}</span></div> : null}
                         <div className="mt-7 flex flex-col gap-4 border-t border-slate-100 pt-6 sm:flex-row sm:items-center sm:justify-between">
                             <div className="inline-flex items-center gap-2 text-sm font-semibold text-slate-500"><Users className="h-4 w-4 text-sky-600" />Sẵn sàng nhận câu hỏi</div>
-                            <button onClick={() => navigate(`/play?pin=${encodeURIComponent(pin)}`)} className="inline-flex items-center gap-2 text-sm font-bold text-[#236b9d] transition-colors hover:text-[#17375f] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:ring-offset-2">Đổi tên hoặc vào phòng khác<ArrowRight className="h-4 w-4" /></button>
+                            <button onClick={() => navigate(`${lobbyPath}?pin=${encodeURIComponent(pin)}`)} className="inline-flex items-center gap-2 text-sm font-bold text-[#236b9d] transition-colors hover:text-[#17375f] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:ring-offset-2">Đổi tên hoặc vào phòng khác<ArrowRight className="h-4 w-4" /></button>
                         </div>
                     </div>
                 </motion.section>

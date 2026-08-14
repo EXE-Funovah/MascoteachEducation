@@ -4,6 +4,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { getQuizWithQuestions } from '@/services/quizService';
 import { createLiveSessionConnection } from '@/services/liveSessionRealtime';
 import { confirmAction } from '@/components/shared/GlobalConfirmDialog';
+import { useAuth } from '@/contexts/AuthContext';
+import { getGameExitPath } from '@/utils/navigation';
 import './TreasureHuntGame.css';
 
 /**
@@ -143,6 +145,7 @@ const OPTION_COLORS = [
 export default function TreasureHuntGame() {
     const location = useLocation();
     const navigate = useNavigate();
+    const { user } = useAuth();
 
     const quizId = location.state?.quizId;
     const quizTitle = location.state?.quizTitle || (import.meta.env.DEV ? 'Treasure Hunt Demo' : 'Treasure Hunt');
@@ -151,6 +154,7 @@ export default function TreasureHuntGame() {
     const sessionId = location.state?.sessionId;
     const gamePin = location.state?.gamePin;
     const resumeSession = location.state?.resumeSession || false;
+    const exitPath = hostMode ? '/teacher/sessions' : getGameExitPath(user);
 
     /* ── State ── */
     const [questions, setQuestions] = useState([]);
@@ -398,7 +402,7 @@ export default function TreasureHuntGame() {
                 <p className="th-loading-text" style={{ color: '#e74c3c' }}>
                     {error || 'Không có câu hỏi nào.'}
                 </p>
-                <button className="th-btn-back" onClick={() => navigate(-1)}>
+                <button className="th-btn-back" onClick={() => navigate(exitPath, { replace: true })}>
                     ← Quay lại
                 </button>
             </div>
@@ -471,7 +475,7 @@ export default function TreasureHuntGame() {
         <div className="th-game-container">
             {/* ── Top HUD ── */}
             <header className="th-hud">
-                <button className="th-hud-back" onClick={() => navigate(-1)}>
+                <button className="th-hud-back" onClick={() => navigate(exitPath, { replace: true })}>
                     ← Quay lại
                 </button>
                 <div className="th-hud-title">
@@ -852,7 +856,7 @@ export default function TreasureHuntGame() {
                                 )}
                                 <motion.button
                                     className="th-victory-btn th-victory-btn--secondary"
-                                    onClick={() => navigate(hostMode ? '/teacher/sessions' : -1)}
+                                    onClick={() => navigate(exitPath, { replace: true })}
                                     whileHover={{ scale: 1.05 }}
                                     whileTap={{ scale: 0.95 }}
                                 >

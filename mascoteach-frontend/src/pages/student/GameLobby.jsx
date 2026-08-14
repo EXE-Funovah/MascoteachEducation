@@ -5,6 +5,8 @@ import { AlertCircle, ArrowLeft, ArrowRight, Hash, Loader2, UserRound } from 'lu
 import { getSessionByPin } from '@/services/liveSessionService';
 import { joinGame } from '@/services/gameService';
 import { saveLiveGameIdentity } from '@/services/liveGameIdentity';
+import { useAuth } from '@/contexts/AuthContext';
+import { getUserPortalPath } from '@/utils/navigation';
 
 function getSessionPin(session) {
     return session?.gamePin || session?.pin || session?.pinCode || '';
@@ -13,12 +15,16 @@ function getSessionPin(session) {
 export default function GameLobby() {
     const navigate = useNavigate();
     const location = useLocation();
+    const { user, isLoggedIn, loading: authLoading } = useAuth();
     const [searchParams] = useSearchParams();
     const [pin, setPin] = useState(searchParams.get('pin') || '');
     const [playerName, setPlayerName] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const isStudentPortal = location.pathname.startsWith('/student/');
+    const portalPath = getUserPortalPath(user);
+    const backPath = isLoggedIn && portalPath ? portalPath : '/signin';
+    const backLabel = isLoggedIn && portalPath ? 'Về trang quản lý' : 'Đăng nhập';
 
     const canSubmit = useMemo(() => pin.trim() && playerName.trim(), [pin, playerName]);
 
@@ -69,13 +75,13 @@ export default function GameLobby() {
                 <div className="absolute inset-0 opacity-30 [background-image:radial-gradient(#5BAED4_1px,transparent_1px)] [background-size:26px_26px]" />
             </div>
 
-            {!isStudentPortal && (
+            {!isStudentPortal && !authLoading && (
                 <Link
-                    to="/signin"
+                    to={backPath}
                     className="absolute left-5 top-5 z-20 inline-flex h-11 items-center gap-2 rounded-xl bg-white/80 px-4 text-sm font-extrabold text-slate-700 shadow-sm backdrop-blur transition hover:-translate-y-0.5 hover:text-brand-navy focus:outline-none focus-visible:ring-4 focus-visible:ring-brand-light/50 active:translate-y-0 sm:left-8 sm:top-8"
                 >
                     <ArrowLeft className="h-4 w-4" />
-                    Đăng nhập
+                    {backLabel}
                 </Link>
             )}
 

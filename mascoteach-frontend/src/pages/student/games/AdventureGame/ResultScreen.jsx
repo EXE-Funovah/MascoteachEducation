@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Star, Trophy, RotateCcw, Home, CheckCircle2, XCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
+import { getGameExitPath } from '@/utils/navigation';
 
 function calcStars(correctCount, total) {
     if (!total) return 1;
@@ -23,6 +25,8 @@ const STAR_MESSAGES = {
  */
 export default function ResultScreen({ score, correctCount, wrongCount, questionsTotal, questions = [], answerHistory = [], onPlayAgain }) {
     const navigate = useNavigate();
+    const { user } = useAuth();
+    const exitPath = getGameExitPath(user);
     const stars = calcStars(correctCount, questionsTotal);
     const [headline, subtitle] = STAR_MESSAGES[stars];
     const [showReview, setShowReview] = useState(false);
@@ -237,7 +241,7 @@ export default function ResultScreen({ score, correctCount, wrongCount, question
                         transition={{ delay: 1.05 }}
                     >
                         <button
-                            onClick={() => navigate(-1)}
+                            onClick={() => navigate(exitPath, { replace: true })}
                             className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-slate-700 hover:bg-slate-600 border border-white/8 text-white text-sm font-semibold transition-all active:scale-98"
                         >
                             <Home className="w-4 h-4" />

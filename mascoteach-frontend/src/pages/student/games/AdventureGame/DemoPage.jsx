@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 
 import { createAdventureGame } from '@/game/adventureGame';
+import { useAuth } from '@/contexts/AuthContext';
+import { getGameExitPath } from '@/utils/navigation';
 import GameHUD from './GameHUD';
 import QuestionPopup from './QuestionPopup';
 import ResultScreen from './ResultScreen';
@@ -55,6 +57,8 @@ const DEMO_QUESTIONS = [
 
 export default function DemoPage() {
     const navigate = useNavigate();
+    const { user } = useAuth();
+    const exitPath = getGameExitPath(user);
     const containerRef = useRef(null);
     const gameRef = useRef(null);
 
@@ -131,7 +135,7 @@ export default function DemoPage() {
 
             {/* Back button */}
             <button
-                onClick={() => navigate(-1)}
+                onClick={() => navigate(exitPath, { replace: true })}
                 className="absolute top-14 left-3 z-50 text-white/40 hover:text-white/80 text-xs px-2 py-1 rounded transition-colors"
             >
                 ← Thoát
