@@ -381,7 +381,6 @@ export default function StudentLiveGamePage() {
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0 }}
                     >
-                        <span className="slg-feedback-icon">{isCorrect ? '🎉' : '💀'}</span>
                         <span className="slg-feedback-text">
                             {isCorrect ? 'Chính xác' : 'Chưa chính xác'}
                         </span>

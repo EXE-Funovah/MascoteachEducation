@@ -457,7 +457,6 @@
 
 .slg-feedback--correct { border-color: #a7f3d0; color: #047857; background: #ecfdf5; }
 .slg-feedback--wrong { border-color: #fecdd3; color: #be123c; background: #fff1f2; }
-.slg-feedback-icon { font-size: 1.25rem; }
 .slg-feedback-text { font-size: 0.9rem; }
 .slg-feedback-score { border-radius: 8px; padding: 4px 9px; background: rgba(255, 255, 255, 0.8); font-size: 0.8rem; }
 
