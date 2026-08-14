@@ -220,7 +220,7 @@ export default function StudentLiveGamePage() {
 
                     <h1 className="slg-waiting-title">Chờ giáo viên...</h1>
                     <p className="slg-waiting-sub">
-                        Giáo viên đang điều khiển game. Câu hỏi sẽ hiện lên khi giáo viên chọn câu tiếp theo.
+                        Giáo viên đang điều khiển trò chơi. Câu hỏi tiếp theo sẽ tự động xuất hiện tại đây.
                     </p>
 
                     <div className="slg-waiting-info">
@@ -270,8 +270,8 @@ export default function StudentLiveGamePage() {
                     <div className="slg-ended-trophy">
                         <Trophy className="w-16 h-16 text-amber-300" />
                     </div>
-                    <h1 className="slg-ended-title">Game đã kết thúc!</h1>
-                    <p className="slg-ended-sub">{session?.title || 'Mascoteach Live Game'}</p>
+                    <h1 className="slg-ended-title">Trò chơi đã kết thúc</h1>
+                    <p className="slg-ended-sub">{session?.title || 'Mascoteach Live'}</p>
 
                     <div className="slg-ended-stats">
                         <div className="slg-ended-stat">
@@ -303,8 +303,7 @@ export default function StudentLiveGamePage() {
             {/* Top bar */}
             <header className="slg-header">
                 <div className="slg-header-left">
-                    <Star className="w-4 h-4 text-amber-400" />
-                    <span className="slg-header-score">{score.toLocaleString()}</span>
+                    <span className="slg-player-name">{playerName}</span>
                 </div>
 
                 <div className="slg-header-center">
@@ -317,21 +316,17 @@ export default function StudentLiveGamePage() {
                 </div>
 
                 <div className="slg-header-right">
-                    <Flame className="w-4 h-4 text-orange-400" />
-                    <span className="slg-header-streak">{streak}x</span>
+                    <span className="slg-score-group"><Star className="w-4 h-4" /><span className="slg-header-score">{score.toLocaleString()}</span></span>
+                    <span className="slg-score-group slg-score-group--streak"><Flame className="w-4 h-4" /><span className="slg-header-streak">{streak}x</span></span>
                 </div>
             </header>
 
             {/* Question text */}
             <div className="slg-question-area">
-                <motion.h1
-                    className="slg-question-text"
-                    initial={{ opacity: 0, y: 16 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    key={currentQuestion?.id}
-                >
-                    {currentQuestion?.text || 'Đang tải câu hỏi...'}
-                </motion.h1>
+                <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} key={currentQuestion?.id}>
+                    <p className="slg-question-eyebrow">Chọn đáp án phù hợp</p>
+                    <h1 className="slg-question-text">{currentQuestion?.text || 'Đang tải câu hỏi...'}</h1>
+                </motion.div>
             </div>
 
             {/* Answer options */}
@@ -388,7 +383,7 @@ export default function StudentLiveGamePage() {
                     >
                         <span className="slg-feedback-icon">{isCorrect ? '🎉' : '💀'}</span>
                         <span className="slg-feedback-text">
-                            {isCorrect ? 'Chính xác!' : 'Sai rồi!'}
+                            {isCorrect ? 'Chính xác' : 'Chưa chính xác'}
                         </span>
                         {isCorrect && lastScoreAwarded > 0 && (
                             <span className="slg-feedback-score">+{lastScoreAwarded}</span>
