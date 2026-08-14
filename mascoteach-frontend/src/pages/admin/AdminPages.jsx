@@ -1052,11 +1052,10 @@ export function AdminUsersPage() {
     return (
         <PageGrid>
             <DataStateNotice state={usersState} />
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <div className="grid gap-4 md:grid-cols-3">
                 <MiniMetric icon={UsersRound} label="Tổng người dùng" value={formatNumber(totalUsers)} />
                 <MiniMetric icon={UserCog} label="Giáo viên trong trang" value={formatNumber(teacherCount)} tone="navy" />
                 <MiniMetric icon={ShieldCheck} label="Gói trả phí" value={formatNumber(premiumCount)} tone="green" />
-                <MiniMetric icon={AlertTriangle} label="Đã tải trang" value={formatNumber(getField(usersState.data, 'page', 'Page', 1))} tone="orange" />
             </div>
             <AdminQueryToolbar
                 draft={draft}
