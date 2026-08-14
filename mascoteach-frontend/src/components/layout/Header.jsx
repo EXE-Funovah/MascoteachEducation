@@ -76,7 +76,7 @@ export default function Header() {
     };
   }, [accountOpen]);
 
-  const navWidth = `${lerp(1148, 900, collapse)}px`;
+  const navWidth = `${lerp(1148, 820, collapse)}px`;
   const navHeight = `${lerp(64, 58, collapse)}px`;
   const navPadding = `${lerp(18, 10, collapse)}px`;
   const logoScale = lerp(1, 0.88, collapse);
@@ -109,7 +109,7 @@ export default function Header() {
   };
 
   const navLinkClass = ({ isActive }) => [
-    'relative shrink-0 whitespace-nowrap rounded-full px-2.5 py-2 text-[15px] font-semibold transition-colors duration-300 xl:px-4',
+    'relative rounded-full px-4 py-2 text-[15px] font-semibold transition-colors duration-300',
     'after:absolute after:inset-x-4 after:bottom-1 after:h-0.5 after:origin-center after:rounded-full after:bg-[#6DA6E8] after:transition-transform after:duration-300',
     isActive
       ? 'text-[#173154] after:scale-x-100'
@@ -146,7 +146,7 @@ export default function Header() {
         </Link>
 
         <nav
-          className="hidden min-w-0 flex-1 items-center justify-center gap-0 md:flex xl:gap-1"
+          className="hidden flex-1 items-center justify-center gap-1 md:flex"
           aria-label="Primary"
           style={{ transform: `translateX(${lerp(0, -10, collapse)}px)` }}
         >
