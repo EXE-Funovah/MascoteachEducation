@@ -10,17 +10,20 @@ import {
     Layers3,
     Loader2,
     LockKeyhole,
+    LogOut,
     School,
     Search,
     Sparkles,
-    X,
 } from 'lucide-react';
 import {
     getEnrolledClasses,
     getMyFlashcardAssignments,
     joinClass,
+    leaveClassAsStudent,
     searchClasses,
 } from '@/services/flashcardClassService';
+import { confirmAction } from '@/components/shared/GlobalConfirmDialog';
+import PortalModal from '@/components/shared/PortalModal';
 
 function formatDate(value) {
     if (!value) return 'Không giới hạn';
@@ -116,6 +119,28 @@ export default function StudentFlashcardsPage() {
         }
     }
 
+    async function handleLeaveClass() {
+        if (!activeClass) return;
+        const confirmed = await confirmAction({
+            title: 'Rời lớp học?',
+            message: `Bạn sẽ không còn thấy các flashcard của lớp “${activeClass.name}”. Bạn vẫn có thể tham gia lại bằng mật khẩu lớp.`,
+            confirmLabel: 'Rời lớp',
+        });
+        if (!confirmed) return;
+
+        setError('');
+        try {
+            await leaveClassAsStudent(activeClass.id);
+            const nextClasses = classes.filter((item) => item.id !== activeClass.id);
+            setClasses(nextClasses);
+            setAssignments((current) => current.filter((item) => item.classId !== activeClass.id));
+            setActiveClassId(nextClasses[0]?.id ?? null);
+            setNotice(`Bạn đã rời lớp “${activeClass.name}”.`);
+        } catch (requestError) {
+            setError(requestError?.message || 'Không thể rời lớp học.');
+        }
+    }
+
     const stats = useMemo(() => {
         const totalCards = assignments.reduce((sum, item) => sum + (Number(item.cardCount) || 0), 0);
         const mastered = assignments.reduce((sum, item) => sum + (Number(item.masteredCount) || 0), 0);
@@ -166,16 +191,16 @@ export default function StudentFlashcardsPage() {
                         </aside>
 
                         <main>
-                            <div className="mb-4 flex items-end justify-between gap-4"><div><h2 className="text-2xl font-black text-slate-950">{activeClass ? `Flashcard lớp ${activeClass.name}` : 'Bài được giao'}</h2><p className="mt-1 text-sm font-semibold text-slate-500">{activeClass ? 'Chỉ hiển thị các bộ thẻ giáo viên đã giao cho lớp này.' : 'Chọn một lớp để xem flashcard.'}</p></div><span className="rounded-full bg-white px-3 py-1.5 text-xs font-black text-slate-500 shadow-sm">{visibleAssignments.length} bộ</span></div>
+                            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><h2 className="text-2xl font-black text-slate-950">{activeClass ? `Flashcard lớp ${activeClass.name}` : 'Bài được giao'}</h2><p className="mt-1 text-sm font-semibold text-slate-500">{activeClass ? 'Chỉ hiển thị các bộ thẻ giáo viên đã giao cho lớp này.' : 'Chọn một lớp để xem flashcard.'}</p></div><div className="flex items-center gap-2"><span className="rounded-full bg-white px-3 py-1.5 text-xs font-black text-slate-500 shadow-sm">{visibleAssignments.length} bộ</span>{activeClass && <button type="button" onClick={handleLeaveClass} className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3 text-xs font-black text-rose-700 transition hover:bg-rose-100 active:scale-[0.98]"><LogOut className="h-3.5 w-3.5" /> Rời lớp</button>}</div></div>
                             {!visibleAssignments.length ? <EmptyAssignments hasClass={classes.length > 0} /> : <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">{visibleAssignments.map((assignment) => {
                                 const percent = assignment.cardCount ? Math.round((assignment.masteredCount / assignment.cardCount) * 100) : 0;
-                                return <button key={assignment.id} type="button" onClick={() => navigate(`/student/flashcards/${assignment.id}`)} className="group rounded-[22px] border border-slate-200 bg-white p-5 text-left shadow-[0_14px_42px_rgba(15,23,42,0.05)] transition hover:-translate-y-1 hover:border-brand-mid hover:shadow-[0_22px_52px_rgba(43,122,181,0.13)]"><div className="flex items-start justify-between gap-3"><span className="grid h-12 w-12 place-items-center rounded-2xl bg-violet-50 text-violet-600"><Layers3 className="h-6 w-6" /></span><ArrowRight className="h-5 w-5 text-slate-300 transition group-hover:translate-x-1 group-hover:text-brand-blue" /></div><p className="mt-5 text-xs font-black uppercase tracking-[0.1em] text-brand-blue">{assignment.className}</p><h3 className="mt-2 line-clamp-2 text-lg font-black leading-6 text-slate-950">{assignment.title}</h3>{assignment.instructions && <p className="mt-2 line-clamp-2 text-sm font-semibold leading-5 text-slate-500">{assignment.instructions}</p>}<div className="mt-5 flex items-center justify-between text-xs font-bold text-slate-500"><span>{assignment.masteredCount}/{assignment.cardCount} thẻ đã thuộc</span><span>{percent}%</span></div><div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-gradient-to-r from-brand-blue to-cyan-400 transition-all" style={{ width: `${percent}%` }} /></div><p className="mt-4 inline-flex items-center gap-1.5 text-xs font-bold text-slate-500"><Clock3 className="h-3.5 w-3.5" /> Hạn: {formatDate(assignment.dueAt)}</p></button>;
+                                return <button key={assignment.id} type="button" onClick={() => navigate(`/student/flashcards/${assignment.id}`)} className="group rounded-[22px] border border-slate-200 bg-white p-5 text-left shadow-[0_14px_42px_rgba(15,23,42,0.05)] transition hover:-translate-y-1 hover:border-brand-mid hover:shadow-[0_22px_52px_rgba(43,122,181,0.13)]"><div className="flex items-start justify-between gap-3"><span className="grid h-12 w-12 place-items-center rounded-2xl bg-violet-50 text-violet-600"><Layers3 className="h-6 w-6" /></span><ArrowRight className="h-5 w-5 text-slate-300 transition group-hover:translate-x-1 group-hover:text-brand-blue" /></div><p className="mt-5 text-xs font-black uppercase tracking-[0.1em] text-brand-blue">{assignment.className}</p><h3 className="mt-2 line-clamp-2 text-lg font-black leading-6 text-slate-950">{assignment.title}</h3>{assignment.assignedByName && <p className="mt-2 text-xs font-bold text-slate-500">Giáo viên: <span className="text-slate-700">{assignment.assignedByName}</span></p>}{assignment.instructions && <p className="mt-2 line-clamp-2 text-sm font-semibold leading-5 text-slate-500">{assignment.instructions}</p>}<div className="mt-5 flex items-center justify-between text-xs font-bold text-slate-500"><span>{assignment.masteredCount}/{assignment.cardCount} thẻ đã thuộc</span><span>{percent}%</span></div><div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-gradient-to-r from-brand-blue to-cyan-400 transition-all" style={{ width: `${percent}%` }} /></div><p className="mt-4 inline-flex items-center gap-1.5 text-xs font-bold text-slate-500"><Clock3 className="h-3.5 w-3.5" /> Hạn: {formatDate(assignment.dueAt)}</p></button>;
                             })}</div>}
                         </main>
                     </div>
                 )}
             </div>
-            {selectedClass && <div className="fixed inset-0 z-[100] grid place-items-center bg-slate-950/45 p-4 backdrop-blur-sm"><form onSubmit={handleJoin} className="w-full max-w-md rounded-[24px] bg-white p-6 shadow-[0_30px_90px_rgba(15,23,42,0.28)]"><div className="flex items-start gap-4"><span className="grid h-12 w-12 flex-none place-items-center rounded-2xl bg-brand-light/25 text-brand-blue"><LockKeyhole className="h-6 w-6" /></span><div className="min-w-0"><p className="text-xs font-black uppercase tracking-[0.1em] text-brand-blue">Tham gia lớp</p><h2 className="mt-1 truncate text-xl font-black text-slate-950">{selectedClass.name}</h2><p className="mt-1 text-sm font-semibold text-slate-500">Giáo viên: {selectedClass.teacherName}</p></div><button type="button" onClick={() => setSelectedClass(null)} className="ml-auto grid h-9 w-9 place-items-center rounded-xl text-slate-500 hover:bg-slate-100"><X className="h-5 w-5" /></button></div><label className="mt-6 block"><span className="mb-2 block text-xs font-black uppercase tracking-[0.08em] text-slate-500">Mật khẩu lớp</span><input autoFocus type="password" value={joinPassword} onChange={(event) => setJoinPassword(event.target.value)} maxLength={72} autoComplete="current-password" className="h-12 w-full rounded-xl border border-slate-200 px-4 text-sm font-bold outline-none focus:border-brand-mid focus:ring-4 focus:ring-brand-light/25" placeholder="Nhập mật khẩu giáo viên cung cấp" required /></label><button disabled={joining || !joinPassword} className="mt-5 inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-brand-navy text-sm font-black text-white disabled:opacity-50">{joining && <Loader2 className="h-4 w-4 animate-spin" />} {joining ? 'Đang tham gia...' : 'Tham gia lớp'}</button></form></div>}
+            <PortalModal open={Boolean(selectedClass)} title={selectedClass?.name || 'Tham gia lớp'} description={`Giáo viên: ${selectedClass?.teacherName || 'Mascoteach'}`} icon={LockKeyhole} maxWidth="max-w-md" closeDisabled={joining} onClose={() => setSelectedClass(null)}><form onSubmit={handleJoin}><label className="block"><span className="mb-2 block text-xs font-black uppercase tracking-[0.08em] text-slate-500">Mật khẩu lớp</span><input autoFocus type="password" value={joinPassword} onChange={(event) => setJoinPassword(event.target.value)} maxLength={72} autoComplete="current-password" className="h-12 w-full rounded-xl border border-slate-200 px-4 text-sm font-bold outline-none transition focus:border-brand-mid focus:ring-4 focus:ring-brand-light/25" placeholder="Nhập mật khẩu giáo viên cung cấp" required /></label><button disabled={joining || !joinPassword} className="mt-5 inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-brand-navy text-sm font-black text-white transition hover:bg-brand-blue active:scale-[0.99] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-light/30 disabled:opacity-50">{joining && <Loader2 className="h-4 w-4 animate-spin" />} {joining ? 'Đang tham gia...' : 'Tham gia lớp'}</button></form></PortalModal>
         </div>
     );
 }

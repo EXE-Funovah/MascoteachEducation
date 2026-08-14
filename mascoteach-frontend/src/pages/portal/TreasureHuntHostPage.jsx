@@ -149,7 +149,7 @@ export default function TreasureHuntHostPage() {
                         className="inline-flex items-center gap-2 text-sm text-white/70 hover:text-white"
                     >
                         <ArrowLeft className="w-4 h-4" />
-                        Về danh sách phiên
+                        Về lịch sử lượt chơi
                     </button>
 
                     <div className="inline-flex items-center gap-2 rounded-full border border-emerald-400/20 bg-emerald-400/10 px-4 py-2 text-sm">

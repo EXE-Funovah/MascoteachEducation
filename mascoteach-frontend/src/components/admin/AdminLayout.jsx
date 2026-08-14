@@ -16,7 +16,7 @@ const navItems = [
     { label: 'Tổng quan', path: '/admin', icon: LayoutDashboard },
     { label: 'Người dùng', path: '/admin/users', icon: UsersRound },
     { label: 'Nội dung', path: '/admin/content', icon: FileSearch },
-    { label: 'Phiên trực tiếp', path: '/admin/sessions', icon: CalendarClock },
+    { label: 'Lượt chơi trực tiếp', path: '/admin/sessions', icon: CalendarClock },
     { label: 'Thanh toán', path: '/admin/billing', icon: CreditCard },
     { label: 'Nhật ký thao tác', path: '/admin/audit-logs', icon: ListChecks },
 ];
@@ -27,10 +27,10 @@ const devNavItems = navItems.map((item) => ({
 }));
 
 const pageMeta = {
-    '/admin': { title: 'Bảng điều khiển quản trị', eyebrow: 'Vận hành Mascoteach', description: 'Theo dõi người dùng, nội dung học tập, phiên trực tiếp và doanh thu.' },
+    '/admin': { title: 'Bảng điều khiển quản trị', eyebrow: 'Vận hành Mascoteach', description: 'Theo dõi người dùng, nội dung học tập, lượt chơi trực tiếp và doanh thu.' },
     '/admin/users': { title: 'Người dùng', eyebrow: 'Quản lý người dùng', description: 'Quản lý giáo viên, vai trò, gói trả phí và hoạt động gần đây.' },
     '/admin/content': { title: 'Nội dung học tập', eyebrow: 'Theo dõi nội dung', description: 'Theo dõi tài liệu, bộ câu hỏi, thẻ ghi nhớ và trạng thái xử lý nội dung.' },
-    '/admin/sessions': { title: 'Phiên trực tiếp', eyebrow: 'Theo dõi phiên trực tiếp', description: 'Theo dõi phiên đang chạy, PIN, học sinh tham gia và lỗi thời gian thực.' },
+    '/admin/sessions': { title: 'Lượt chơi trực tiếp', eyebrow: 'Theo dõi lượt chơi', description: 'Theo dõi lượt chơi đang diễn ra, PIN, học sinh tham gia và lỗi thời gian thực.' },
     '/admin/billing': { title: 'Thanh toán', eyebrow: 'Vận hành thanh toán', description: 'Theo dõi đơn hàng, doanh thu, trạng thái gói trả phí và các đơn cần đối soát.' },
     '/admin/audit-logs': { title: 'Nhật ký thao tác', eyebrow: 'Theo dõi thay đổi', description: 'Ghi nhận các thao tác quan trọng trên người dùng, thanh toán, nội dung và hạn mức.' },
 };
@@ -95,7 +95,7 @@ export function formatAdminValue(value) {
         Required: 'Bắt buộc',
         Done: 'Hoàn tất',
         Pending: 'Đang chờ xử lý',
-        Connected: 'Đang kết nối trong phiên',
+        Connected: 'Đang kết nối trong phòng chơi',
         Reconnected: 'Đã kết nối lại',
         OK: 'Hoạt động bình thường',
         warning: 'Cảnh báo cần xử lý',

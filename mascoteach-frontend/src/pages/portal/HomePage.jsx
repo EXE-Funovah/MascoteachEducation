@@ -506,7 +506,7 @@ export default function HomePage() {
                         <div className="grid gap-3 sm:grid-cols-2">
                             {recentSessions.map((session) => (
                                 <article key={session.id} className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
-                                    <p className="text-sm font-bold text-slate-800">{session.title || `Phiên #${session.id}`}</p>
+                                    <p className="text-sm font-bold text-slate-800">{session.title || `Lượt chơi #${session.id}`}</p>
                                     <p className="mt-1 text-xs font-medium text-slate-400">{session.participants || 0} học sinh đã tham gia</p>
                                 </article>
                             ))}

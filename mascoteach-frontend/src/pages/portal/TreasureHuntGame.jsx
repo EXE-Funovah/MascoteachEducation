@@ -80,7 +80,7 @@ const DEV_DEMO_QUESTIONS = [
             { optionText: 'Tìm kho báu sau khi hoàn thành các trạm', isCorrect: true },
             { optionText: 'Thoát khỏi lớp học', isCorrect: false },
             { optionText: 'Ẩn tất cả câu hỏi', isCorrect: false },
-            { optionText: 'Xóa phiên chơi', isCorrect: false },
+            { optionText: 'Xóa lượt chơi', isCorrect: false },
         ],
     },
 ];
@@ -315,9 +315,9 @@ export default function TreasureHuntGame() {
         if (!hostMode || !gamePin || endingSession || completed) return;
 
         const confirmed = await confirmAction({
-            title: 'Kết thúc phiên ngay?',
-            message: 'Học sinh sẽ không thể trả lời thêm sau khi phiên kết thúc.',
-            confirmLabel: 'Kết thúc phiên',
+            title: 'Kết thúc trò chơi ngay?',
+            message: 'Học sinh sẽ không thể trả lời thêm sau khi trò chơi kết thúc.',
+            confirmLabel: 'Kết thúc trò chơi',
         });
         if (!confirmed) return;
 
@@ -329,7 +329,7 @@ export default function TreasureHuntGame() {
             setCompleted(true);
         } catch (endError) {
             console.error('[TreasureHunt Host] Failed to end session:', endError);
-            setError(endError.message || 'Không thể kết thúc phiên lúc này.');
+            setError(endError.message || 'Không thể kết thúc trò chơi lúc này.');
         } finally {
             setEndingSession(false);
         }
@@ -509,7 +509,7 @@ export default function TreasureHuntGame() {
                                 opacity: endingSession || completed ? 0.6 : 1,
                             }}
                         >
-                            {endingSession ? 'Đang kết thúc…' : '⏹ Kết thúc phiên'}
+                            {endingSession ? 'Đang kết thúc…' : '⏹ Kết thúc trò chơi'}
                         </button>
                     )}
                     {!hostMode && (

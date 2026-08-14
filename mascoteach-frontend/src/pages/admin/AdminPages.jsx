@@ -697,7 +697,7 @@ function adaptSession(row) {
     return {
         id: String(id),
         pin: getField(row, 'gamePin', 'GamePin', ''),
-        title: getField(row, 'quizTitle', 'QuizTitle', 'Phiên học chưa đặt tên'),
+        title: getField(row, 'quizTitle', 'QuizTitle', 'Lượt chơi chưa đặt tên'),
         teacherId: String(getField(row, 'teacherId', 'TeacherId', '')),
         teacher: getField(row, 'teacherName', 'TeacherName', 'Không rõ'),
         teacherEmail: getField(row, 'teacherEmail', 'TeacherEmail', ''),
@@ -1036,7 +1036,7 @@ export function AdminUsersPage() {
         { key: 'plan', label: 'Gói' },
         { key: 'status', label: 'Trạng thái', render: (row) => <StatusBadge value={row.status} /> },
         { key: 'documents', label: 'Tài liệu' },
-        { key: 'sessions', label: 'Phiên' },
+        { key: 'sessions', label: 'Lượt chơi' },
         { key: 'lastActive', label: 'Hoạt động gần nhất' },
     ];
 
@@ -1325,7 +1325,7 @@ export function AdminUserDetailPage() {
                 <MiniMetric icon={FileSearch} label="Tài liệu" value={user.documents} />
                 <MiniMetric icon={BookOpenCheck} label="Bộ câu hỏi" value={user.quizzes} tone="navy" />
                 <MiniMetric icon={Sparkles} label="Thẻ ghi nhớ" value={user.flashcards} tone="green" />
-                <MiniMetric icon={Gamepad2} label="Phiên" value={user.sessions} tone="orange" />
+                <MiniMetric icon={Gamepad2} label="Lượt chơi" value={user.sessions} tone="orange" />
                 <MiniMetric icon={HardDrive} label="XP học tập" value={formatNumber(user.xp || 0)} />
             </div>
 
@@ -1366,11 +1366,11 @@ export function AdminUserDetailPage() {
             </div>
 
             <AdminCard className="p-5">
-                <AdminSectionHeader title="Phiên gần đây" />
+                <AdminSectionHeader title="Lượt chơi gần đây" />
                 <AdminTable
                     columns={[
                         { key: 'pin', label: 'PIN' },
-                        { key: 'title', label: 'Tên phiên' },
+                        { key: 'title', label: 'Tên lượt chơi' },
                         { key: 'mode', label: 'Chế độ chơi' },
                         { key: 'status', label: 'Trạng thái', render: (row) => <StatusBadge value={row.status} /> },
                         { key: 'participants', label: 'Học sinh' },
@@ -1747,14 +1747,14 @@ export function AdminSessionsPage() {
     }
 
     if (sessionsState.isLoading) {
-        return <AdminPageLoader label="Đang tải danh sách phiên trực tiếp..." />;
+        return <AdminPageLoader label="Đang tải danh sách lượt chơi..." />;
     }
 
     return (
         <PageGrid>
             <DataStateNotice state={sessionsState} />
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                <MiniMetric icon={Gamepad2} label="Phiên trong trang" value={formatNumber(sessions.length)} />
+                <MiniMetric icon={Gamepad2} label="Lượt chơi trong trang" value={formatNumber(sessions.length)} />
                 <MiniMetric icon={UsersRound} label="Lượt tham gia" value={formatNumber(participantTotal)} tone="navy" />
                 <MiniMetric icon={CheckCircle2} label="Đang diễn ra" value={formatNumber(activeCount)} tone="green" />
                 <MiniMetric icon={ShieldAlert} label="Đã xóa/ẩn" value={formatNumber(sessions.filter((session) => session.status === 'Deleted').length)} tone="red" />
@@ -1796,11 +1796,11 @@ export function AdminSessionsPage() {
                 ]}
             />
             <AdminCard className="p-5">
-                <AdminSectionHeader title="Phiên trực tiếp" />
+                <AdminSectionHeader title="Lượt chơi trực tiếp" />
                 <AdminTable
                     columns={[
                         { key: 'pin', label: 'PIN' },
-                        { key: 'title', label: 'Tên phiên' },
+                        { key: 'title', label: 'Tên lượt chơi' },
                         { key: 'teacher', label: 'Giáo viên' },
                         { key: 'mode', label: 'Chế độ' },
                         { key: 'status', label: 'Trạng thái', render: (row) => <StatusBadge value={row.status} /> },
@@ -1874,20 +1874,20 @@ export function AdminSessionDetailPage() {
             setEndState({
                 pending: false,
                 error: '',
-                success: 'Đã kết thúc phiên và thông báo tới người đang tham gia.',
+                success: 'Đã kết thúc lượt chơi và thông báo tới người đang tham gia.',
             });
             setRefreshKey((value) => value + 1);
         } catch (error) {
             setEndState({
                 pending: false,
-                error: formatAdminActionError(error, 'Không thể kết thúc phiên.'),
+                error: formatAdminActionError(error, 'Không thể kết thúc lượt chơi.'),
                 success: '',
             });
         }
     }
 
     if (sessionState.isLoading || participantsState.isLoading) {
-        return <AdminPageLoader label="Đang tải chi tiết phiên trực tiếp..." />;
+        return <AdminPageLoader label="Đang tải chi tiết lượt chơi..." />;
     }
 
     if (!session) {
@@ -1896,7 +1896,7 @@ export function AdminSessionDetailPage() {
                 <DataStateNotice state={sessionState} />
                 {!sessionState.error && !sessionState.isFallback && (
                     <AdminCard className="p-6 text-sm font-bold text-[#52677F]">
-                        Không tìm thấy phiên trực tiếp.
+                        Không tìm thấy lượt chơi trực tiếp.
                     </AdminCard>
                 )}
             </PageGrid>
@@ -1918,7 +1918,7 @@ export function AdminSessionDetailPage() {
                             Làm mới dữ liệu
                         </ActionButton>
                         <ActionButton tone="danger" onClick={openEndModal} disabled={!canEndSession}>
-                            {canEndSession ? 'Kết thúc phiên' : 'Phiên đã kết thúc'}
+                            {canEndSession ? 'Kết thúc lượt chơi' : 'Lượt chơi đã kết thúc'}
                         </ActionButton>
                     </>
                 )}
@@ -1948,14 +1948,14 @@ export function AdminSessionDetailPage() {
                         ['Giáo viên', session.teacher],
                         ['Chế độ', session.mode],
                         ['Người tham gia', session.participants],
-                        ['Thao tác kết thúc phiên', canEndSession ? 'Sẵn sàng' : 'Đã kết thúc'],
+                        ['Thao tác kết thúc lượt chơi', canEndSession ? 'Sẵn sàng' : 'Đã kết thúc'],
                     ]} />
                 </AdminCard>
             </div>
             {endModalOpen && (
                 <AdminCommandModal
-                    title="Kết thúc phiên trực tiếp"
-                    description={`Phiên PIN ${session.pin} sẽ dừng ngay. Giáo viên và người chơi đang kết nối sẽ nhận thông báo kết thúc phiên.`}
+                    title="Kết thúc lượt chơi trực tiếp"
+                    description={`Lượt chơi PIN ${session.pin} sẽ dừng ngay. Giáo viên và người chơi đang kết nối sẽ nhận thông báo kết thúc.`}
                     fields={[{ name: 'reason', label: 'Lý do kết thúc', type: 'textarea', required: true, maxLength: 500 }]}
                     values={endValues}
                     onChange={(name, value) => setEndValues((current) => ({ ...current, [name]: value }))}
@@ -1964,7 +1964,7 @@ export function AdminSessionDetailPage() {
                     pending={endState.pending}
                     error={endState.error}
                     success={endState.success}
-                    submitLabel="Xác nhận kết thúc phiên"
+                    submitLabel="Xác nhận kết thúc lượt chơi"
                     tone="danger"
                 />
             )}

@@ -7,13 +7,13 @@ const teacherMobileItems = [
     { path: '', icon: Home, label: 'Trang chủ', end: true },
     { path: '/library', icon: Library, label: 'Thư viện' },
     { path: '/classes', icon: GraduationCap, label: 'Lớp học' },
-    { path: '/sessions', icon: History, label: 'Phiên chơi' },
+    { path: '/sessions', icon: History, label: 'Lượt chơi' },
     { path: '/billing', icon: CreditCard, label: 'Thanh toán' },
 ];
 
 const studentMobileItems = [
     { path: '/flashcards', icon: BookOpenCheck, label: 'Flashcard' },
-    { path: '/join-session', icon: Gamepad2, label: 'Vào phiên' },
+    { path: '/join-session', icon: Gamepad2, label: 'Vào phòng' },
     { path: '/profile', icon: User, label: 'Hồ sơ' },
 ];
 

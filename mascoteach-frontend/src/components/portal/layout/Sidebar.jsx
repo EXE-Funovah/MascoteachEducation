@@ -19,13 +19,13 @@ const teacherItems = [
     { path: '', icon: Home, label: 'Trang chủ', end: true },
     { path: '/library', icon: Library, label: 'Thư viện của tôi' },
     { path: '/classes', icon: GraduationCap, label: 'Lớp & Flashcard' },
-    { path: '/sessions', icon: History, label: 'Lịch sử phiên chơi' },
+    { path: '/sessions', icon: History, label: 'Lịch sử lượt chơi' },
     { path: '/billing', icon: CreditCard, label: 'Thanh toán' },
 ];
 
 const studentItems = [
     { path: '/flashcards', icon: BookOpenCheck, label: 'Lớp & Flashcard' },
-    { path: '/join-session', icon: Gamepad2, label: 'Tham gia phiên' },
+    { path: '/join-session', icon: Gamepad2, label: 'Tham gia phòng' },
 ];
 
 const parentItems = [

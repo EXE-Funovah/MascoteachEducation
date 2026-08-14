@@ -4,7 +4,7 @@ import { Flame, Star, Trophy } from 'lucide-react';
 // Placeholder state — will be replaced by real-time session data
 // when the live game flow (WebSocket + PIN) is integrated
 const defaultGameState = {
-    question: 'Đang chờ kết nối phiên chơi...',
+    question: 'Đang kết nối với phòng chơi...',
     options: ['Lựa chọn A', 'Lựa chọn B', 'Lựa chọn C', 'Lựa chọn D'],
     questionNumber: 1,
     totalQuestions: 10,

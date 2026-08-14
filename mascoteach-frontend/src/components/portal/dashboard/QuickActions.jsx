@@ -18,7 +18,7 @@ const actions = [
         to: '/teacher/games',
         icon: Gamepad2,
         title: 'Bắt đầu trò chơi',
-        description: 'Chọn chế độ chơi và tổ chức phiên trực tiếp',
+        description: 'Chọn chế độ và tổ chức lượt chơi trực tiếp',
         gradient: 'from-brand-navy to-brand-blue',
         bgGlow: 'bg-blue-100',
     },

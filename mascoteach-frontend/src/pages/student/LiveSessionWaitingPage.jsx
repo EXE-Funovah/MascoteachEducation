@@ -189,7 +189,7 @@ export default function LiveSessionWaitingPage() {
                                     Đã join thành công
                                 </div>
                                 <p className="mt-4 text-sm text-white/70">
-                                    Màn hình này sẽ tự động vào game khi giáo viên bắt đầu phiên.
+                                    Màn hình này sẽ tự động vào trò chơi khi giáo viên bắt đầu.
                                 </p>
                             </div>
                             <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-slate-950/35 px-4 py-3 text-sm">

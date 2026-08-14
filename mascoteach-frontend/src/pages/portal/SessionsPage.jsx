@@ -39,7 +39,7 @@ const STATUS_META = {
 };
 
 function getSessionTitle(session) {
-    return session.title || session.quizTitle || `Phiên chơi #${session.id}`;
+    return session.title || session.quizTitle || `Lượt chơi #${session.id}`;
 }
 
 function getStatusMeta(status) {
@@ -111,7 +111,7 @@ export default function SessionsPage() {
             const data = await getMySessions();
             setSessions(Array.isArray(data) ? data : []);
         } catch (err) {
-            setError(err.message || 'Không thể tải lịch sử phiên chơi');
+            setError(err.message || 'Không thể tải lịch sử lượt chơi');
         } finally {
             setLoading(false);
         }
@@ -176,9 +176,9 @@ export default function SessionsPage() {
         <div className="min-h-screen bg-[#fbfdff] px-5 py-6 text-slate-900 sm:px-8">
             <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
                 <div>
-                    <h1 className="text-[28px] font-extrabold leading-tight text-slate-950">Lịch sử phiên chơi</h1>
+                    <h1 className="text-[28px] font-extrabold leading-tight text-slate-950">Lịch sử lượt chơi</h1>
                     <p className="mt-2 text-[15px] font-semibold text-slate-500">
-                        Quản lý các phiên quiz đã mở cho người chơi tham gia bằng mã PIN.
+                        Xem lại các lượt quiz đã tổ chức cho người chơi bằng mã PIN.
                     </p>
                 </div>
 
@@ -266,9 +266,9 @@ function EmptyReports({ onOpenLibrary, hasSearch }) {
                 <Gamepad2 className="h-8 w-8" />
             </div>
             <h2 className="text-[20px] font-extrabold text-slate-800">
-                {hasSearch ? 'Chưa tìm thấy phiên chơi phù hợp' : 'Chưa có phiên chơi nào'}
+                {hasSearch ? 'Chưa tìm thấy lượt chơi phù hợp' : 'Chưa có lượt chơi nào'}
             </h2>
-            <p className="mt-2 text-[14px] font-semibold text-slate-500">Chọn một quiz hoặc flashcard trong thư viện để bắt đầu phiên mới.</p>
+            <p className="mt-2 text-[14px] font-semibold text-slate-500">Chọn một quiz hoặc flashcard trong thư viện để bắt đầu lượt chơi mới.</p>
             <button
                 onClick={onOpenLibrary}
                 className="mt-6 inline-flex h-11 items-center gap-2 rounded-lg border border-slate-200 bg-white px-5 text-[14px] font-extrabold text-slate-900 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-brand-mid hover:bg-brand-light/20 hover:text-brand-navy active:translate-y-0"
@@ -285,7 +285,7 @@ function LoadingState() {
         <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-[0_18px_46px_rgba(15,23,42,0.05)]">
             <div className="mb-6 flex items-center justify-center py-8 text-[15px] font-bold text-slate-500">
                 <Loader2 className="mr-3 h-6 w-6 animate-spin text-brand-blue" />
-                Đang tải lịch sử phiên chơi...
+                Đang tải lịch sử lượt chơi...
             </div>
             <div className="space-y-3">
                 {[0, 1, 2, 3].map((item) => (
@@ -341,7 +341,7 @@ function ReportsTable({ sessions, onOpenSession }) {
                                 <div className="min-w-0">
                                     <h3 className="truncate text-[16px] font-extrabold text-slate-900">{getSessionTitle(session)}</h3>
                                     <p className="mt-1 truncate text-[13px] font-semibold text-slate-500">
-                                        Phiên chơi trực tiếp · {session.participantCount || 0} người chơi
+                                        Lượt chơi trực tiếp · {session.participantCount || 0} người chơi
                                     </p>
                                 </div>
                             </div>

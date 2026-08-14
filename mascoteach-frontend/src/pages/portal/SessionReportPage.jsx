@@ -67,7 +67,7 @@ export default function SessionReportPage() {
             setReport(await getSessionReport(sessionId, { signal }));
         } catch (requestError) {
             if (signal?.aborted) return;
-            setError(requestError?.message || 'Không thể tải kết quả phiên chơi.');
+            setError(requestError?.message || 'Không thể tải kết quả lượt chơi.');
         } finally {
             if (!signal?.aborted) setLoading(false);
         }
@@ -92,7 +92,7 @@ export default function SessionReportPage() {
     if (error || !report) {
         return (
             <ReportError
-                message={error || 'Không tìm thấy kết quả phiên chơi.'}
+                message={error || 'Không tìm thấy kết quả lượt chơi.'}
                 onBack={() => navigate(`${basePath}/sessions`)}
                 onRetry={() => loadReport()}
             />
@@ -114,7 +114,7 @@ export default function SessionReportPage() {
                     className="mb-5 inline-flex items-center gap-2 rounded-xl px-1 py-2 text-sm font-extrabold text-slate-500 transition hover:text-brand-blue"
                 >
                     <ArrowLeft className="h-4 w-4" />
-                    Quay lại lịch sử phiên chơi
+                    Quay lại lịch sử lượt chơi
                 </button>
 
                 <header className="rounded-[24px] border border-slate-200 bg-white p-6 shadow-[0_18px_55px_rgba(15,23,42,0.06)] sm:p-8">
@@ -126,9 +126,9 @@ export default function SessionReportPage() {
                             <Hash className="h-3.5 w-3.5" /> PIN {report.gamePin}
                         </span>
                     </div>
-                    <p className="text-xs font-black uppercase tracking-[0.12em] text-brand-blue">Kết quả phiên chơi</p>
+                    <p className="text-xs font-black uppercase tracking-[0.12em] text-brand-blue">Kết quả lượt chơi</p>
                     <h1 className="mt-2 text-3xl font-black tracking-[-0.025em] text-slate-950 sm:text-4xl">
-                        {report.quizTitle || `Phiên chơi #${report.sessionId}`}
+                        {report.quizTitle || `Lượt chơi #${report.sessionId}`}
                     </h1>
                     <p className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-slate-500">
                         <Clock3 className="h-4 w-4" /> Bắt đầu lúc {formatDate(report.createdAt)}
@@ -206,7 +206,7 @@ function ViewTab({ active, onClick, children }) {
 }
 
 function ParticipantTable({ participants, expandedParticipantId, onToggle }) {
-    if (participants.length === 0) return <EmptyDetail icon={Users} message="Phiên này chưa có người tham gia." />;
+    if (participants.length === 0) return <EmptyDetail icon={Users} message="Lượt chơi này chưa có người tham gia." />;
     return (
         <div>
             <div className="hidden grid-cols-[80px_minmax(220px,1fr)_130px_130px_150px_40px] gap-4 bg-slate-50 px-7 py-3 text-xs font-black uppercase tracking-[0.08em] text-slate-500 lg:grid">
@@ -278,7 +278,7 @@ function ParticipantAnswers({ participant }) {
 }
 
 function QuestionTable({ questions }) {
-    if (questions.length === 0) return <EmptyDetail icon={CircleHelp} message="Phiên này chưa có dữ liệu câu hỏi." />;
+    if (questions.length === 0) return <EmptyDetail icon={CircleHelp} message="Lượt chơi này chưa có dữ liệu câu hỏi." />;
     return (
         <div className="divide-y divide-slate-100">
             {questions.map((question) => (
@@ -314,7 +314,7 @@ function EmptyDetail({ icon: Icon, message }) {
 function ReportLoading() {
     return (
         <div className="flex min-h-[70vh] items-center justify-center bg-[#f8fbff]">
-            <div className="text-center"><Loader2 className="mx-auto h-9 w-9 animate-spin text-brand-blue" /><p className="mt-4 text-sm font-extrabold text-slate-500">Đang tổng hợp kết quả phiên chơi...</p></div>
+            <div className="text-center"><Loader2 className="mx-auto h-9 w-9 animate-spin text-brand-blue" /><p className="mt-4 text-sm font-extrabold text-slate-500">Đang tổng hợp kết quả lượt chơi...</p></div>
         </div>
     );
 }
@@ -324,7 +324,7 @@ function ReportError({ message, onBack, onRetry }) {
         <div className="flex min-h-[70vh] items-center justify-center bg-[#f8fbff] px-6">
             <div className="w-full max-w-lg rounded-[24px] border border-slate-200 bg-white p-8 text-center shadow-[0_18px_55px_rgba(15,23,42,0.07)]">
                 <AlertCircle className="mx-auto h-12 w-12 text-rose-500" />
-                <h1 className="mt-4 text-xl font-black text-slate-950">Không thể mở kết quả phiên chơi</h1>
+                <h1 className="mt-4 text-xl font-black text-slate-950">Không thể mở kết quả lượt chơi</h1>
                 <p className="mt-2 text-sm font-semibold text-slate-500">{message}</p>
                 <div className="mt-6 flex justify-center gap-3">
                     <button onClick={onBack} className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-extrabold text-slate-700 hover:bg-slate-50">Quay lại</button>
