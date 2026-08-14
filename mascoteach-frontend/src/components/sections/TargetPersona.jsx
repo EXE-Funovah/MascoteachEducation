@@ -86,7 +86,7 @@ export default function TargetPersona() {
   const { eyebrow, title, subtitle, personas } = TARGET_PERSONA;
 
   return (
-    <section id="targeting" className="relative overflow-hidden bg-white py-20 md:py-28" aria-label="Đối tượng mục tiêu">
+    <section id="targeting" className="relative scroll-mt-28 overflow-hidden bg-white py-20 md:py-28" aria-label="Đối tượng mục tiêu">
       <div className="pointer-events-none absolute inset-x-0 top-0 h-[360px] bg-gradient-to-b from-sky-50/70 via-white to-white" />
 
       <div className="relative z-10 mx-auto max-w-6xl px-6">

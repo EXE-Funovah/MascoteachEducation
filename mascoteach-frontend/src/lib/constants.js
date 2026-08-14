@@ -7,8 +7,9 @@ export const SITE = {
 
 export const NAV_LINKS = [
   { label: 'Trang chủ', href: '/' },
-  { label: 'Sản phẩm', href: '/product' },
-  { label: 'Tính năng', href: '/features' },
+  { label: 'Cách hoạt động', href: '/#how-it-works' },
+  { label: 'Tính năng', href: '/#features' },
+  { label: 'Dành cho ai', href: '/#targeting' },
   { label: 'Bảng giá', href: '/pricing' },
 ];
 
@@ -192,30 +193,20 @@ export const CTA = {
 export const FOOTER = {
   columns: [
     {
-      title: 'Sản phẩm',
+      title: 'Khám phá',
       links: [
-        { label: 'Tính năng', href: '/features' },
-        { label: 'Cách hoạt động', href: '/product' },
+        { label: 'Cách hoạt động', href: '/#how-it-works' },
+        { label: 'Tính năng', href: '/#features' },
+        { label: 'Dành cho ai', href: '/#targeting' },
         { label: 'Bảng giá', href: '/pricing' },
-        { label: 'Roadmap', href: '/product' },
       ],
     },
     {
-      title: 'Tài liệu',
+      title: 'Bắt đầu',
       links: [
-        { label: 'Tài liệu hướng dẫn', href: '/features' },
-        { label: 'Blog giáo dục', href: '/features' },
-        { label: 'Case studies', href: '/product' },
-        { label: 'Câu hỏi thường gặp', href: '/features' },
-      ],
-    },
-    {
-      title: 'Công ty',
-      links: [
-        { label: 'Về chúng tôi', href: '/product' },
-        { label: 'Tuyển dụng', href: '/product' },
-        { label: 'Liên hệ', href: '/product' },
-        { label: 'Đối tác', href: '/product' },
+        { label: 'Đăng ký giáo viên', href: '/register' },
+        { label: 'Đăng nhập', href: '/signin' },
+        { label: 'Tham gia phòng', href: '/play' },
       ],
     },
   ],

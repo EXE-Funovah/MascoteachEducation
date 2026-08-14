@@ -1,34 +1,24 @@
 import { motion, useReducedMotion } from 'framer-motion';
-import { Mail, MapPin, Phone } from 'lucide-react';
+import { Mail, MapPin } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { SITE } from '@/lib/constants';
 
 const FOOTER_COLUMNS = [
   {
-    title: 'Công ty',
+    title: 'Khám phá',
     links: [
-      { label: 'Về Mascoteach', href: '/product' },
-      { label: 'Sản phẩm', href: '/product' },
-      { label: 'Cộng đồng', href: '/features' },
+      { label: 'Cách hoạt động', href: '/#how-it-works' },
+      { label: 'Tính năng', href: '/#features' },
+      { label: 'Dành cho ai', href: '/#targeting' },
       { label: 'Bảng giá', href: '/pricing' },
     ],
   },
   {
-    title: 'Hỗ trợ',
+    title: 'Bắt đầu',
     links: [
-      { label: 'Trung tâm trợ giúp', href: '/features' },
-      { label: 'Tài liệu hướng dẫn', href: '/features' },
-      { label: 'Webinars', href: '/product' },
-      { label: 'Góp ý', href: '/product' },
-    ],
-  },
-  {
-    title: 'Liên kết',
-    links: [
-      { label: 'Tính năng', href: '/features' },
-      { label: 'Trở thành giáo viên', href: '/register' },
-      { label: 'Dịch vụ', href: '/product' },
-      { label: 'Tất cả trong một', href: '/product' },
+      { label: 'Đăng ký giáo viên', href: '/register' },
+      { label: 'Đăng nhập', href: '/signin' },
+      { label: 'Tham gia phòng', href: '/play' },
     ],
   },
 ];
@@ -58,8 +48,8 @@ export default function Footer({ withOverlappingCta = false }) {
       transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
     >
       <div className="w-full overflow-hidden bg-white shadow-[0_-18px_70px_rgba(27,58,107,0.10)]">
-        <div className={`mx-auto grid max-w-7xl gap-10 px-6 pb-14 sm:px-10 md:grid-cols-[1.35fr_1fr_1fr] lg:grid-cols-[1.7fr_1fr_1fr_1fr_1.4fr] lg:px-16 ${withOverlappingCta ? 'pt-24 md:pt-28' : 'pt-14'}`}>
-          <div className="md:col-span-3 lg:col-span-1">
+        <div className={`mx-auto grid max-w-7xl gap-10 px-6 pb-14 sm:px-10 md:grid-cols-2 lg:grid-cols-[1.7fr_1fr_1fr_1.4fr] lg:px-16 ${withOverlappingCta ? 'pt-24 md:pt-28' : 'pt-14'}`}>
+          <div className="md:col-span-2 lg:col-span-1">
             <Link to="/" className="mb-5 inline-block">
               <img src="/images/Logo_Redesign.webp" alt={SITE.name} className="h-14 w-auto max-w-[240px] object-contain" />
             </Link>
@@ -106,12 +96,6 @@ export default function Footer({ withOverlappingCta = false }) {
             <h4 className="mb-5 text-base font-semibold text-ink md:text-lg">Liên hệ</h4>
             <ul className="space-y-4 text-base font-medium text-ink/72 md:text-lg">
               <li className="flex items-start gap-3">
-                <Phone className="mt-0.5 h-5 w-5 flex-none text-[#4E79E6]" strokeWidth={2.4} />
-                <a href="tel:+84987654321" className="transition-colors hover:text-brand-blue">
-                  (+84) 987 654 321
-                </a>
-              </li>
-              <li className="flex items-start gap-3">
                 <Mail className="mt-0.5 h-5 w-5 flex-none text-[#4E79E6]" strokeWidth={2.4} />
                 <a href="mailto:support@mascoteach.com" className="transition-colors hover:text-brand-blue">
                   support@mascoteach.com
@@ -135,12 +119,6 @@ export default function Footer({ withOverlappingCta = false }) {
             </Link>
             <Link to="/terms" className="transition-colors hover:text-brand-blue">
               Điều khoản sử dụng
-            </Link>
-            <Link to="/product" className="transition-colors hover:text-brand-blue">
-              Pháp lý
-            </Link>
-            <Link to="/features" className="transition-colors hover:text-brand-blue">
-              Sơ đồ trang
             </Link>
           </div>
         </div>

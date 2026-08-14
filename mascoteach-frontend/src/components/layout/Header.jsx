@@ -1,15 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { ArrowUpRight, ChevronDown, CreditCard, Crown, LayoutDashboard, LogOut, Menu, User, X } from 'lucide-react';
-import { Link, NavLink, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { isPremiumActive } from '@/lib/billingUi';
 import { SITE } from '@/lib/constants';
 
 const NAV_ITEMS = [
   { label: 'Trang chủ', href: '/' },
-  { label: 'Sản phẩm', href: '/product' },
-  { label: 'Tính năng', href: '/features' },
+  { label: 'Cách hoạt động', href: '/#how-it-works' },
+  { label: 'Tính năng', href: '/#features' },
+  { label: 'Dành cho ai', href: '/#targeting' },
   { label: 'Bảng giá', href: '/pricing' },
 ];
 
@@ -18,6 +19,7 @@ const lerp = (from, to, progress) => from + (to - from) * progress;
 
 export default function Header() {
   const location = useLocation();
+  const navigate = useNavigate();
   const { user, isLoggedIn, loading, logout } = useAuth();
   const accountMenuRef = useRef(null);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -90,6 +92,23 @@ export default function Header() {
   const displayName = user?.fullName || user?.email || 'Tài khoản';
   const avatarInitial = displayName.trim().charAt(0).toUpperCase() || 'M';
 
+  const isNavItemActive = (href) => {
+    if (href === '/') return location.pathname === '/' && !location.hash;
+    if (href.startsWith('/#')) return location.pathname === '/' && location.hash === href.slice(1);
+    return location.pathname === href;
+  };
+
+  const handleSectionNavigation = (event, href) => {
+    if (!href.startsWith('/#') || location.pathname !== '/') return;
+
+    event.preventDefault();
+    navigate(href);
+    document.getElementById(href.slice(2))?.scrollIntoView({
+      behavior: shouldReduceMotion ? 'auto' : 'smooth',
+      block: 'start',
+    });
+  };
+
   const navLinkClass = ({ isActive }) => [
     'relative rounded-full px-4 py-2 text-[15px] font-semibold transition-colors duration-300',
     'after:absolute after:inset-x-4 after:bottom-1 after:h-0.5 after:origin-center after:rounded-full after:bg-[#6DA6E8] after:transition-transform after:duration-300',
@@ -133,9 +152,14 @@ export default function Header() {
           style={{ transform: `translateX(${lerp(0, -10, collapse)}px)` }}
         >
           {NAV_ITEMS.map((item) => (
-            <NavLink key={item.href} to={item.href} className={navLinkClass}>
+            <Link
+              key={item.href}
+              to={item.href}
+              className={navLinkClass({ isActive: isNavItemActive(item.href) })}
+              onClick={(event) => handleSectionNavigation(event, item.href)}
+            >
               {item.label}
-            </NavLink>
+            </Link>
           ))}
         </nav>
 
@@ -306,7 +330,7 @@ export default function Header() {
                   ]
                 : [{ label: 'Đăng nhập', href: '/signin' }]),
             ].map((item) => {
-              const active = location.pathname === item.href;
+              const active = isNavItemActive(item.href);
 
               return (
                 <Link
@@ -316,7 +340,10 @@ export default function Header() {
                     'rounded-2xl px-4 py-3.5 text-base font-semibold transition-colors',
                     active ? 'bg-[#EAF4FF] text-[#173154]' : 'text-[#173154]/78 hover:bg-sky-50',
                   ].join(' ')}
-                  onClick={() => setMobileOpen(false)}
+                  onClick={(event) => {
+                    handleSectionNavigation(event, item.href);
+                    setMobileOpen(false);
+                  }}
                 >
                   {item.label}
                 </Link>

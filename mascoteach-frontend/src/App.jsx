@@ -1,6 +1,5 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import Home from '@/pages/Home';
-import MarketingPlaceholderPage from '@/pages/MarketingPlaceholderPage';
 import PricingPage from '@/pages/PricingPage';
 import CheckoutPage from '@/pages/CheckoutPage';
 import PaymentSuccessPage from '@/pages/PaymentSuccessPage';
@@ -58,8 +57,8 @@ export default function App() {
       <GlobalConfirmDialog />
       <Routes>
         <Route path="/" element={<Home />} />
-        <Route path="/product" element={<MarketingPlaceholderPage type="product" />} />
-        <Route path="/features" element={<MarketingPlaceholderPage type="features" />} />
+        <Route path="/product" element={<Navigate to="/#how-it-works" replace />} />
+        <Route path="/features" element={<Navigate to="/#features" replace />} />
         <Route path="/pricing" element={<PricingPage />} />
         <Route path="/privacy" element={<PrivacyPolicyPage />} />
         <Route path="/terms" element={<TermsPage />} />

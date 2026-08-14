@@ -33,7 +33,7 @@ export default function HowMascoteachWorks() {
   return (
     <section
       id="how-it-works"
-      className="relative overflow-hidden bg-[linear-gradient(180deg,#F7FAFF_0%,#FFFFFF_48%,#F6FAFF_100%)] px-4 py-20 text-ink md:py-24 lg:py-28"
+      className="relative scroll-mt-28 overflow-hidden bg-[linear-gradient(180deg,#F7FAFF_0%,#FFFFFF_48%,#F6FAFF_100%)] px-4 py-20 text-ink md:py-24 lg:py-28"
       aria-labelledby="how-mascoteach-works-title"
     >
       <div className="pointer-events-none absolute inset-x-0 bottom-0 h-52 bg-[linear-gradient(180deg,rgba(255,255,255,0)_0%,rgba(219,236,255,0.52)_100%)]" />

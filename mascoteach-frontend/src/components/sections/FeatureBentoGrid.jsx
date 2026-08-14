@@ -95,7 +95,7 @@ const CARD_CONFIG = {
 
 export default function FeatureBentoGrid() {
   return (
-    <section id="features" className="py-16 md:py-20 relative overflow-hidden" aria-label="Tính năng">
+    <section id="features" className="relative scroll-mt-28 overflow-hidden py-16 md:py-20" aria-label="Tính năng">
       <div className="orb orb-sky w-[400px] h-[400px] -top-20 right-0 opacity-40" />
       <div className="orb orb-pink w-[300px] h-[300px] bottom-10 -left-20 opacity-30" />
 
