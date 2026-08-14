@@ -62,7 +62,7 @@ export default function GameLobby() {
     }
 
     return (
-        <div className={`relative grid overflow-hidden bg-[#eef7fd] px-5 py-8 text-slate-900 ${isStudentPortal ? 'min-h-[calc(100dvh-4rem)]' : 'min-h-dvh'}`}>
+        <div className={`relative grid overflow-hidden bg-[#eef7fd] px-5 py-8 text-slate-900 ${isStudentPortal ? 'min-h-[calc(100dvh-4rem)] lg:min-h-dvh' : 'min-h-dvh'}`}>
             <div className="pointer-events-none absolute inset-0" aria-hidden="true">
                 <div className="absolute -left-24 -top-32 h-[30rem] w-[30rem] rounded-full bg-brand-light/35 blur-3xl" />
                 <div className="absolute -bottom-48 right-[-8rem] h-[36rem] w-[36rem] rounded-full bg-brand-blue/15 blur-3xl" />

@@ -21,7 +21,7 @@ export default function PortalLayout() {
     const location = useLocation();
     const { user } = useAuth();
     const role = String(user?.role || user?.roleName || 'Teacher').toLowerCase();
-    const isWidePortalPage = ['/library', '/sessions', '/classes', '/flashcards']
+    const isWidePortalPage = ['/library', '/sessions', '/classes', '/flashcards', '/join-session']
         .some((segment) => location.pathname.includes(segment));
     const basePath = location.pathname.startsWith('/dev/teacher')
         ? '/dev/teacher'
