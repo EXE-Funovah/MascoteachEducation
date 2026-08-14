@@ -268,7 +268,27 @@ function AdminToast({ toast, onClose }) {
 }
 
 function formatAdminActionError(error, fallback = 'Không thể thực hiện thao tác.') {
-    const message = error?.message || fallback;
+    const rawMessage = error?.message || fallback;
+    const localizedMessages = {
+        'Admin identity claims are missing.': 'Không tìm thấy thông tin định danh của quản trị viên.',
+        'User does not exist.': 'Người dùng không tồn tại.',
+        'Administrators cannot change their own role.': 'Quản trị viên không thể tự thay đổi vai trò của mình.',
+        'The last active Admin cannot be demoted.': 'Không thể hạ quyền quản trị viên đang hoạt động cuối cùng.',
+        'Administrators cannot lock their own account.': 'Quản trị viên không thể tự khóa tài khoản của mình.',
+        'The last active Admin cannot be locked.': 'Không thể khóa quản trị viên đang hoạt động cuối cùng.',
+        'Role is required.': 'Vui lòng chọn vai trò.',
+        'Role must be one of: Teacher, Student, Parent, Admin.': 'Vai trò được chọn không hợp lệ.',
+        'Subscription tier is required.': 'Vui lòng chọn gói đăng ký.',
+        'Subscription tier must be one of: Freemium, Premium.': 'Gói đăng ký được chọn không hợp lệ.',
+        'Status is required.': 'Vui lòng chọn trạng thái.',
+        'Status must be one of: Active, Deleted.': 'Trạng thái được chọn không hợp lệ.',
+        'Premium expiry is required for a Premium subscription.': 'Vui lòng chọn ngày hết hạn cho gói Premium.',
+        'Premium expiry must be in the future.': 'Ngày hết hạn Premium phải ở trong tương lai.',
+        'Reason is required.': 'Vui lòng nhập lý do.',
+        'Reason must not exceed 500 characters.': 'Lý do không được vượt quá 500 ký tự.',
+        'Vui long chon ngay het han Premium.': 'Vui lòng chọn ngày hết hạn Premium.',
+    };
+    const message = localizedMessages[rawMessage] || rawMessage;
     if (error?.status === 400) return `Dữ liệu chưa hợp lệ: ${message}`;
     if (error?.status === 404) return `Không tìm thấy dữ liệu: ${message}`;
     if (error?.status === 409) return `Không thể thực hiện: ${message}`;
@@ -769,7 +789,7 @@ function adaptAuditLog(row) {
     return {
         id: String(getField(row, 'id', 'Id', '')),
         time: formatDateTime(getField(row, 'createdAt', 'CreatedAt')),
-        actor: getField(row, 'actorEmail', 'ActorEmail', 'Khong ro'),
+        actor: getField(row, 'actorEmail', 'ActorEmail', 'Không rõ'),
         action: getField(row, 'action', 'Action', ''),
         target: `${targetType}${targetId ? ` #${targetId}` : ''}`,
         risk: getField(row, 'riskLevel', 'RiskLevel', ''),
@@ -899,11 +919,11 @@ function AuditLogDetailModal({ log, onClose }) {
                     <InfoBlock label="Action" value={log.action} />
                     <InfoBlock label="Target" value={log.target} />
                     <InfoBlock label="Risk" value={log.risk} />
-                    <InfoBlock label="IP" value={log.ipAddress || 'Khong co'} />
+                    <InfoBlock label="IP" value={log.ipAddress || 'Không có'} />
                 </div>
                 <div className="mt-5 rounded-[20px] bg-[#F7FBFE] p-4">
                     <p className="text-xs font-black uppercase tracking-[0.1em] text-[#7C91A8]">Reason</p>
-                    <p className="mt-2 text-sm font-bold leading-6 text-[#102744]">{log.reason || 'Khong co'}</p>
+                    <p className="mt-2 text-sm font-bold leading-6 text-[#102744]">{log.reason || 'Không có'}</p>
                 </div>
                 <div className="mt-5 grid gap-4 md:grid-cols-2">
                     <pre className="max-h-80 overflow-auto rounded-[18px] bg-[#102744] p-4 text-xs font-semibold leading-5 text-white">{log.beforeJson || 'No before data'}</pre>
@@ -1200,50 +1220,50 @@ export function AdminUserDetailPage() {
         const currentStatus = user?.status === 'Deleted' ? 'Deleted' : 'Active';
         const configs = {
             role: {
-                title: 'Doi vai tro nguoi dung',
-                description: 'Backend se ghi audit log va chan tu doi vai tro hoac ha quyen admin cuoi cung.',
-                submitLabel: 'Luu vai tro',
+                title: 'Đổi vai trò người dùng',
+                description: 'Hệ thống sẽ ghi nhật ký thao tác và ngăn quản trị viên tự đổi vai trò hoặc hạ quyền quản trị viên cuối cùng.',
+                submitLabel: 'Lưu vai trò',
                 fields: [
                     {
                         name: 'role',
-                        label: 'Vai tro',
+                        label: 'Vai trò',
                         type: 'select',
                         required: true,
                         options: ['Teacher', 'Student', 'Parent', 'Admin'].map((role) => ({ value: role, label: formatAdminValue(role) })),
                     },
-                    { name: 'reason', label: 'Ly do', type: 'textarea', required: true, maxLength: 500 },
+                    { name: 'reason', label: 'Lý do', type: 'textarea', required: true, maxLength: 500 },
                 ],
             },
             subscription: {
-                title: 'Cap nhat goi dang ky',
-                description: 'Goi Premium can ngay het han trong tuong lai.',
-                submitLabel: 'Luu goi',
+                title: 'Cập nhật gói đăng ký',
+                description: 'Gói Premium cần có ngày hết hạn trong tương lai.',
+                submitLabel: 'Lưu',
                 fields: [
                     {
                         name: 'subscriptionTier',
-                        label: 'Goi',
+                        label: 'Gói',
                         type: 'select',
                         required: true,
                         options: ['Freemium', 'Premium'].map((tier) => ({ value: tier, label: formatAdminValue(tier) })),
                     },
-                    { name: 'premiumExpiresAt', label: 'Ngay het han Premium', type: 'datetime-local' },
-                    { name: 'reason', label: 'Ly do', type: 'textarea', required: true, maxLength: 500 },
+                    { name: 'premiumExpiresAt', label: 'Ngày hết hạn Premium', type: 'datetime-local' },
+                    { name: 'reason', label: 'Lý do', type: 'textarea', required: true, maxLength: 500 },
                 ],
             },
             status: {
-                title: currentStatus === 'Deleted' ? 'Khoi phuc tai khoan' : 'Khoa tai khoan',
-                description: 'Backend se chan tu khoa tai khoan admin hien tai va admin cuoi cung.',
-                submitLabel: currentStatus === 'Deleted' ? 'Khoi phuc' : 'Khoa tai khoan',
+                title: currentStatus === 'Deleted' ? 'Khôi phục tài khoản' : 'Khóa tài khoản',
+                description: 'Hệ thống sẽ ngăn quản trị viên tự khóa tài khoản hiện tại hoặc khóa quản trị viên cuối cùng.',
+                submitLabel: currentStatus === 'Deleted' ? 'Khôi phục' : 'Khóa tài khoản',
                 tone: currentStatus === 'Deleted' ? 'primary' : 'danger',
                 fields: [
                     {
                         name: 'status',
-                        label: 'Trang thai moi',
+                        label: 'Trạng thái mới',
                         type: 'select',
                         required: true,
                         options: ['Active', 'Deleted'].map((status) => ({ value: status, label: formatAdminValue(status) })),
                     },
-                    { name: 'reason', label: 'Ly do', type: 'textarea', required: true, maxLength: 500 },
+                    { name: 'reason', label: 'Lý do', type: 'textarea', required: true, maxLength: 500 },
                 ],
             },
         };
@@ -1300,7 +1320,7 @@ export function AdminUserDetailPage() {
                 });
             } else if (commandType === 'subscription') {
                 if (commandValues.subscriptionTier === 'Premium' && !commandValues.premiumExpiresAt) {
-                    throw new Error('Vui long chon ngay het han Premium.');
+                    throw new Error('Vui lòng chọn ngày hết hạn.');
                 }
                 await updateAdminUserSubscription(userId, {
                     subscriptionTier: commandValues.subscriptionTier,
@@ -2536,7 +2556,7 @@ export function AdminAuditLogsPage() {
             const detail = await getAdminAuditLogById(numericId);
             setDetailLog(adaptAuditLog(detail));
         } catch (error) {
-            setDetailError(error?.message || 'Khong the tai chi tiet audit log.');
+            setDetailError(error?.message || 'Không thể tải chi tiết nhật ký thao tác.');
         } finally {
             setDetailLoading(false);
         }
