@@ -580,17 +580,18 @@ function adaptOverviewStats(overview) {
 
     const tones = ['blue', 'cyan', 'green', 'peach'];
     return kpis.slice(0, 4).map((item, index) => {
+        const id = getField(item, 'key', 'Key', `kpi-${index}`);
         const value = getField(item, 'value', 'Value', 0);
         const format = getField(item, 'format', 'Format', 'int');
         const deltaPercent = getField(item, 'deltaPercent', 'DeltaPercent', 0);
         const up = getField(item, 'up', 'Up', true);
 
         return {
-            id: getField(item, 'key', 'Key', `kpi-${index}`),
+            id,
             label: getField(item, 'label', 'Label', 'Chỉ số'),
             value: formatKpiValue(value, format),
             delta: `${up ? '+' : '-'}${Math.abs(Number(deltaPercent || 0)).toFixed(1)}%`,
-            note: 'so với kỳ trước',
+            note: id === 'totalUsers' ? 'so với đầu kỳ' : 'so với kỳ trước',
             tone: tones[index] || 'blue',
             api: 'GET /api/Admin/overview',
         };
@@ -949,6 +950,20 @@ export function AdminOverviewPage() {
     const overviewStats = useMemo(() => adaptOverviewStats(overviewState.data), [overviewState.data]);
     const chartSeries = useMemo(() => adaptRevenueSeries(overviewState.data), [overviewState.data]);
     const collectedTotal = chartSeries.reduce((total, point) => total + Number(point.collected || 0), 0);
+    const overviewPeriod = useMemo(() => {
+        const fromValue = getField(overviewState.data, 'from', 'From', null);
+        const toValue = getField(overviewState.data, 'to', 'To', null);
+        const from = fromValue ? new Date(fromValue) : null;
+        const to = toValue ? new Date(toValue) : null;
+        if (!from || !to || Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) return null;
+
+        const previousFrom = new Date(from.getTime() - (to.getTime() - from.getTime()));
+        const previousTo = new Date(from.getTime() - 24 * 60 * 60 * 1000);
+        return {
+            current: `${formatDate(from)} – ${formatDate(to)}`,
+            previous: `${formatDate(previousFrom)} – ${formatDate(previousTo)}`,
+        };
+    }, [overviewState.data]);
 
     if (overviewState.isLoading) {
         return <AdminPageLoader label="Đang tải tổng quan quản trị..." />;
@@ -957,7 +972,13 @@ export function AdminOverviewPage() {
     return (
         <PageGrid>
             <DataStateNotice state={overviewState} />
-            <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+            {overviewPeriod && (
+                <div className="flex flex-wrap items-center gap-x-6 gap-y-2 rounded-2xl border border-[#D9E8F3] bg-white/75 px-5 py-3 text-sm font-bold text-[#63788F]">
+                    <span className="inline-flex items-center gap-2 text-[#173B63]"><Clock3 className="h-4 w-4" />30 ngày gần nhất: {overviewPeriod.current}</span>
+                    <span>So sánh với kỳ trước: {overviewPeriod.previous}</span>
+                </div>
+            )}
+            <div className="grid gap-5 md:grid-cols-3">
                 {overviewStats.map((stat) => <StatCard key={stat.id} stat={stat} />)}
             </div>
 
