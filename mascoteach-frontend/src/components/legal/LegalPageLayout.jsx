@@ -20,7 +20,7 @@ export default function LegalPageLayout({
             <div className="max-w-3xl">
               <p className="text-sm font-black uppercase tracking-[0.18em] text-[#2B7AB5]">{eyebrow}</p>
               <h1 className="mt-4 text-4xl font-black tracking-tight text-[#173154] md:text-5xl">{title}</h1>
-              <p className="mt-5 text-base leading-8 text-slate-600 md:text-lg">{summary}</p>
+              {summary && <p className="mt-5 text-base leading-8 text-slate-600 md:text-lg">{summary}</p>}
               <div className="mt-6 flex flex-wrap items-center gap-3">
                 <Link
                   to="/"
